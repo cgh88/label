@@ -90,8 +90,57 @@ const DEFAULT_INGREDIENTS = [
 // ==========================================
 // Express Setup
 // ==========================================
+const crypto = require('crypto');
+const sessions = {}; // key: token, value: { username, role, expiresAt }
+
 app.use(express.json());
 app.use(express.static(__dirname));
+
+// Custom Cookie Parser Middleware
+app.use((req, res, next) => {
+    const list = {};
+    const rc = req.headers.cookie;
+    if (rc) {
+        rc.split(';').forEach(cookie => {
+            const parts = cookie.split('=');
+            list[parts.shift().trim()] = decodeURIComponent(parts.join('='));
+        });
+    }
+    req.cookies = list;
+    next();
+});
+
+// Authentication Middlewares
+function requireLogin(req, res, next) {
+    const token = req.cookies.session_token;
+    if (!token || !sessions[token]) {
+        return res.status(401).json({ error: '로그인이 필요합니다.' });
+    }
+    if (sessions[token].expiresAt < Date.now()) {
+        delete sessions[token];
+        res.clearCookie('session_token');
+        return res.status(401).json({ error: '세션이 만료되었습니다. 다시 로그인해 주세요.' });
+    }
+    req.user = sessions[token];
+    next();
+}
+
+function requireAdmin(req, res, next) {
+    const token = req.cookies.session_token;
+    if (!token || !sessions[token]) {
+        return res.status(401).json({ error: '로그인이 필요합니다.' });
+    }
+    if (sessions[token].expiresAt < Date.now()) {
+        delete sessions[token];
+        res.clearCookie('session_token');
+        return res.status(401).json({ error: '세션이 만료되었습니다.' });
+    }
+    if (sessions[token].role !== 'admin') {
+        return res.status(403).json({ error: '관리자 권한이 필요합니다.' });
+    }
+    req.user = sessions[token];
+    next();
+}
 
 const db = new sqlite3.Database(DB_PATH, (err) => {
     if (err) {
@@ -106,8 +155,36 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
 // ==========================================
 // Database Initialization & Migration
 // ==========================================
+function seedDefaultUsers() {
+    const adminHash = crypto.createHash('sha256').update('admin').digest('hex');
+    const staffHash = crypto.createHash('sha256').update('staff').digest('hex');
+    
+    db.get("SELECT username FROM users WHERE username = 'admin'", (err, row) => {
+        if (!row) {
+            console.log('Seeding default admin user');
+            db.run("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", ['admin', adminHash, 'admin']);
+        }
+    });
+    
+    db.get("SELECT username FROM users WHERE username = 'staff'", (err, row) => {
+        if (!row) {
+            console.log('Seeding default staff user');
+            db.run("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", ['staff', staffHash, 'staff']);
+        }
+    });
+}
+
 function initDatabase() {
     db.serialize(() => {
+        // Create user table
+        db.run(`CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'staff'
+        )`, (err) => {
+            if (!err) seedDefaultUsers();
+        });
+
         // Create new tables
         db.run(`CREATE TABLE IF NOT EXISTS categories (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -312,16 +389,69 @@ function seedAllDefaults() {
 }
 
 // ==========================================
+// API: Authentication
+// ==========================================
+app.post('/api/auth/login', (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ error: '아이디와 비밀번호를 입력해 주세요.' });
+    }
+    
+    const hash = crypto.createHash('sha256').update(password).digest('hex');
+    db.get("SELECT * FROM users WHERE username = ?", [username], (err, user) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!user || user.password !== hash) {
+            return res.status(400).json({ error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
+        }
+        
+        const token = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
+        const expiresAt = Date.now() + 2 * 60 * 60 * 1000; // 2 hours
+        sessions[token] = { username: user.username, role: user.role, expiresAt };
+        
+        res.cookie('session_token', token, {
+            httpOnly: true,
+            maxAge: 2 * 60 * 60 * 1000, // 2 hours
+            sameSite: 'strict',
+            path: '/'
+        });
+        
+        res.json({ success: true, user: { username: user.username, role: user.role } });
+    });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+    const token = req.cookies.session_token;
+    if (token) {
+        delete sessions[token];
+    }
+    res.clearCookie('session_token');
+    res.json({ success: true });
+});
+
+app.get('/api/auth/status', (req, res) => {
+    const token = req.cookies.session_token;
+    if (token && sessions[token]) {
+        if (sessions[token].expiresAt > Date.now()) {
+            return res.json({ loggedIn: true, user: { username: sessions[token].username, role: sessions[token].role } });
+        } else {
+            delete sessions[token];
+            res.clearCookie('session_token');
+        }
+    }
+    res.json({ loggedIn: false });
+});
+
+// ==========================================
 // API: Categories
 // ==========================================
-app.get('/api/categories', (req, res) => {
+app.get('/api/categories', requireLogin, (req, res) => {
     db.all("SELECT * FROM categories ORDER BY sort_order ASC, id ASC", [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });
 });
 
-app.post('/api/categories', (req, res) => {
+app.post('/api/categories', requireAdmin, (req, res) => {
     const { name, emoji } = req.body;
     if (!name) return res.status(400).json({ error: '카테고리 이름은 필수입니다.' });
     db.run("INSERT INTO categories (name, emoji, sort_order) VALUES (?, ?, (SELECT COALESCE(MAX(sort_order),0)+1 FROM categories))",
@@ -334,7 +464,7 @@ app.post('/api/categories', (req, res) => {
         });
 });
 
-app.delete('/api/categories/:id', (req, res) => {
+app.delete('/api/categories/:id', requireAdmin, (req, res) => {
     db.run("DELETE FROM categories WHERE id = ?", [req.params.id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ success: true });
@@ -344,14 +474,14 @@ app.delete('/api/categories/:id', (req, res) => {
 // ==========================================
 // API: Storage Locations
 // ==========================================
-app.get('/api/storage-locations', (req, res) => {
+app.get('/api/storage-locations', requireLogin, (req, res) => {
     db.all("SELECT * FROM storage_locations ORDER BY sort_order ASC, id ASC", [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });
 });
 
-app.post('/api/storage-locations', (req, res) => {
+app.post('/api/storage-locations', requireAdmin, (req, res) => {
     const { name } = req.body;
     if (!name) return res.status(400).json({ error: '보관위치 이름은 필수입니다.' });
     db.run("INSERT INTO storage_locations (name, sort_order) VALUES (?, (SELECT COALESCE(MAX(sort_order),0)+1 FROM storage_locations))",
@@ -364,23 +494,24 @@ app.post('/api/storage-locations', (req, res) => {
         });
 });
 
-app.delete('/api/storage-locations/:id', (req, res) => {
+app.delete('/api/storage-locations/:id', requireAdmin, (req, res) => {
     db.run("DELETE FROM storage_locations WHERE id = ?", [req.params.id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ success: true });
     });
 });
+
 // ==========================================
 // API: Label Sizes
 // ==========================================
-app.get('/api/label-sizes', (req, res) => {
+app.get('/api/label-sizes', requireLogin, (req, res) => {
     db.all("SELECT * FROM label_sizes ORDER BY width ASC, height ASC, id ASC", [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });
 });
 
-app.post('/api/label-sizes', (req, res) => {
+app.post('/api/label-sizes', requireAdmin, (req, res) => {
     const { width, height } = req.body;
     const w = parseInt(width);
     const h = parseInt(height);
@@ -400,7 +531,7 @@ app.post('/api/label-sizes', (req, res) => {
     });
 });
 
-app.delete('/api/label-sizes/:id', (req, res) => {
+app.delete('/api/label-sizes/:id', requireAdmin, (req, res) => {
     db.run("DELETE FROM label_sizes WHERE id = ?", [req.params.id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ success: true });
@@ -410,7 +541,7 @@ app.delete('/api/label-sizes/:id', (req, res) => {
 // ==========================================
 // API: Ingredients (v2 — with dynamic storage)
 // ==========================================
-app.get('/api/ingredients', (req, res) => {
+app.get('/api/ingredients', requireLogin, (req, res) => {
     // Join ingredients with their storage mappings
     db.all("SELECT * FROM ingredients_v2 ORDER BY name ASC", [], (err, ingredients) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -437,7 +568,7 @@ app.get('/api/ingredients', (req, res) => {
     });
 });
 
-app.post('/api/ingredients', (req, res) => {
+app.post('/api/ingredients', requireAdmin, (req, res) => {
     const { category, name, abbr, storage } = req.body;
     if (!name || !category) return res.status(400).json({ error: '재료명과 카테고리는 필수 항목입니다.' });
 
@@ -468,7 +599,7 @@ app.post('/api/ingredients', (req, res) => {
         });
 });
 
-app.delete('/api/ingredients/:name', (req, res) => {
+app.delete('/api/ingredients/:name', requireAdmin, (req, res) => {
     const name = decodeURIComponent(req.params.name);
     db.serialize(() => {
         db.run("DELETE FROM ingredient_storage WHERE ingredient_name = ?", [name]);
@@ -479,7 +610,7 @@ app.delete('/api/ingredients/:name', (req, res) => {
     });
 });
 
-app.post('/api/ingredients/reset', (req, res) => {
+app.post('/api/ingredients/reset', requireAdmin, (req, res) => {
     db.serialize(() => {
         db.run("DELETE FROM ingredient_storage");
         db.run("DELETE FROM ingredients_v2");

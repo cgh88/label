@@ -37,6 +37,7 @@ let state = {
     categories: [],
     locations: [],
     presets: [],
+    user: null,            // Currently logged in user { username, role }
     selectedId: null,      // Name string of selected ingredient
     selectedStorage: null, // Name of selected storage location (e.g. "워크인 랙산")
     prepTime: null,        // Date Object
@@ -80,6 +81,14 @@ const settingsOpenBtn = document.getElementById("settings-open-btn");
 const settingsCloseBtn = document.getElementById("settings-close-btn");
 const settingsModal = document.getElementById("settings-modal");
 
+// Login Elements
+const loginOverlay = document.getElementById("login-overlay");
+const loginForm = document.getElementById("login-form");
+const loginUsernameInput = document.getElementById("login-username");
+const loginPasswordInput = document.getElementById("login-password");
+const loginErrorMsg = document.getElementById("login-error-msg");
+const logoutBtn = document.getElementById("logout-btn");
+
 // ==========================================
 // Initialization & Event Binding
 // ==========================================
@@ -88,30 +97,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     initDateTime();
     loadStaffName();
     
-    try {
-        await loadAllData();
-    } catch (e) {
-        console.error("Failed to load initial data from Server DB", e);
-        alert("데이터베이스 연결에 실패했습니다.");
-    }
-
     initTabs();
     initLabelSizeControls();
     setupEventHandlers();
     
-    // Initial Render
-    renderCategoryFilterTabs();
-    renderIngredients();
-    renderCategoryChips();
-    renderLocationChips();
-    renderCategoryDropdown();
-    renderStorageFieldsInForm();
-    renderRegisteredIngredientsTable();
-    
-    // Auto-select first ingredient
-    if (state.ingredients.length > 0) {
-        selectIngredient(state.ingredients[0].name);
-    }
+    await checkAuthStatus();
     
     lucide.createIcons();
 });
@@ -394,6 +384,14 @@ function setupEventHandlers() {
     document.getElementById("add-location-form").addEventListener("submit", handleAddLocation);
     document.getElementById("mgmt-add-ingredient-form").addEventListener("submit", handleMgmtAddIngredient);
     document.getElementById("reset-default-btn").addEventListener("click", handleResetDatabase);
+
+    // Login & Logout
+    if (loginForm) {
+        loginForm.addEventListener("submit", handleLogin);
+    }
+    if (logoutBtn) {
+        logoutBtn.addEventListener("click", handleLogout);
+    }
 }
 
 // ==========================================
@@ -1045,4 +1043,140 @@ function toggleTheme() {
         document.body.classList.remove("light-theme");
     }
     localStorage.setItem("label_theme", state.theme);
+}
+
+// ==========================================
+// Authentication Logic & Helpers
+// ==========================================
+async function checkAuthStatus() {
+    try {
+        const status = await apiGet('/api/auth/status');
+        if (status.loggedIn) {
+            state.user = status.user;
+            loginOverlay.style.display = "none";
+            logoutBtn.style.display = "flex";
+            
+            applyRoleRestrictions();
+            await loadAllData();
+            
+            renderCategoryFilterTabs();
+            renderIngredients();
+            renderCategoryChips();
+            renderLocationChips();
+            renderCategoryDropdown();
+            renderStorageFieldsInForm();
+            renderRegisteredIngredientsTable();
+            
+            if (state.ingredients.length > 0) {
+                selectIngredient(state.ingredients[0].name);
+            }
+        } else {
+            state.user = null;
+            loginOverlay.style.display = "flex";
+            logoutBtn.style.display = "none";
+        }
+    } catch (e) {
+        console.error("Auth check failed:", e);
+        loginOverlay.style.display = "flex";
+        logoutBtn.style.display = "none";
+    }
+}
+
+function applyRoleRestrictions() {
+    const manageTabBtn = document.querySelector('.main-tab[data-tab="tab-manage"]');
+    if (!state.user) return;
+    
+    if (state.user.role === 'admin') {
+        if (settingsOpenBtn) settingsOpenBtn.style.display = "flex";
+        if (manageTabBtn) manageTabBtn.style.display = "flex";
+    } else {
+        // Staff role restrictions
+        if (settingsOpenBtn) settingsOpenBtn.style.display = "none";
+        if (manageTabBtn) manageTabBtn.style.display = "none";
+        
+        // Force to Print Tab
+        state.activeTab = "tab-print";
+        document.querySelectorAll(".main-tab").forEach(t => {
+            if (t.dataset.tab === "tab-print") t.classList.add("active");
+            else t.classList.remove("active");
+        });
+        document.querySelectorAll(".tab-content").forEach(c => {
+            if (c.id === "tab-print") c.classList.add("active");
+            else c.classList.remove("active");
+        });
+    }
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+    loginErrorMsg.style.display = "none";
+    
+    const username = loginUsernameInput.value.trim();
+    const password = loginPasswordInput.value;
+    
+    if (!username || !password) {
+        showLoginError("아이디와 비밀번호를 모두 입력해 주세요.");
+        return;
+    }
+    
+    try {
+        const response = await apiPost('/api/auth/login', { username, password });
+        if (response.success) {
+            state.user = response.user;
+            loginUsernameInput.value = "";
+            loginPasswordInput.value = "";
+            loginOverlay.style.display = "none";
+            logoutBtn.style.display = "flex";
+            
+            applyRoleRestrictions();
+            await loadAllData();
+            
+            renderCategoryFilterTabs();
+            renderIngredients();
+            renderCategoryChips();
+            renderLocationChips();
+            renderCategoryDropdown();
+            renderStorageFieldsInForm();
+            renderRegisteredIngredientsTable();
+            
+            if (state.ingredients.length > 0) {
+                selectIngredient(state.ingredients[0].name);
+            }
+            lucide.createIcons();
+        }
+    } catch (err) {
+        showLoginError(err.message || "로그인 요청에 실패했습니다.");
+    }
+}
+
+function showLoginError(msg) {
+    loginErrorMsg.textContent = msg;
+    loginErrorMsg.style.display = "block";
+}
+
+async function handleLogout() {
+    if (!confirm("로그아웃 하시겠습니까?")) return;
+    try {
+        await apiPost('/api/auth/logout', {});
+        state.user = null;
+        loginOverlay.style.display = "flex";
+        logoutBtn.style.display = "none";
+        
+        // Reset state
+        state.ingredients = [];
+        state.categories = [];
+        state.locations = [];
+        state.presets = [];
+        state.selectedId = null;
+        state.selectedStorage = null;
+        
+        if (ingredientsGrid) ingredientsGrid.innerHTML = "";
+        if (selectedIngDisplay) selectedIngDisplay.textContent = "재료를 선택해 주세요";
+        if (storageOptionsContainer) storageOptionsContainer.innerHTML = "";
+    } catch (e) {
+        console.error("Logout failed:", e);
+        state.user = null;
+        loginOverlay.style.display = "flex";
+        logoutBtn.style.display = "none";
+    }
 }
