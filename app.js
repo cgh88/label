@@ -99,6 +99,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     
     initTabs();
     initLabelSizeControls();
+    initEmojiPicker();
     setupEventHandlers();
     
     await checkAuthStatus();
@@ -1179,4 +1180,79 @@ async function handleLogout() {
         loginOverlay.style.display = "flex";
         logoutBtn.style.display = "none";
     }
+}
+
+function initEmojiPicker() {
+    const emojiInput = document.getElementById("new-cat-emoji");
+    if (!emojiInput) return;
+
+    // Prevent typing multiple characters/emojis; keep only the latest emoji
+    emojiInput.addEventListener("input", () => {
+        const value = emojiInput.value;
+        const segments = Array.from(value);
+        if (segments.length > 0) {
+            // Keep the last valid emoji/char
+            emojiInput.value = segments[segments.length - 1];
+        }
+    });
+
+    // Make input look clickable and show helper tooltip
+    emojiInput.style.cursor = "pointer";
+    emojiInput.title = "클릭하여 이모지 선택";
+
+    // Create wrapper & popover dynamically
+    const wrapper = document.createElement("div");
+    wrapper.className = "emoji-input-wrapper";
+    emojiInput.parentNode.insertBefore(wrapper, emojiInput);
+    wrapper.appendChild(emojiInput);
+
+    const popover = document.createElement("div");
+    popover.id = "emoji-picker-popover";
+    popover.className = "emoji-picker-popover";
+    popover.style.display = "none";
+
+    const EMOJIS = [
+        "❌", "🥬", "🥦", "🥕", "🧅", "🍄", "🍅", 
+        "🍖", "🥩", "🍗", "🥓", "🧀", "🥫", 
+        "🏺", "🍕", "🍞", "🥚", "🥛", "🧈", 
+        "🦐", "🐟", "🍇", "🍓", "🍋", "🍍", 
+        "🍯", "🧂", "🍟", "☕", "🥤", "🧴"
+    ];
+
+    EMOJIS.forEach(emoji => {
+        const item = document.createElement("span");
+        item.className = "emoji-picker-item";
+        item.textContent = emoji;
+        // Tooltip for clear option
+        if (emoji === "❌") {
+            item.title = "이모지 없음 (지우기)";
+        }
+        item.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (emoji === "❌") {
+                emojiInput.value = "";
+            } else {
+                emojiInput.value = emoji;
+            }
+            popover.style.display = "none";
+            // Dispatch input event to trigger any validation or input handling
+            emojiInput.dispatchEvent(new Event("input"));
+        });
+        popover.appendChild(item);
+    });
+
+    wrapper.appendChild(popover);
+
+    // Toggle popover on click
+    emojiInput.addEventListener("click", (e) => {
+        e.stopPropagation();
+        popover.style.display = popover.style.display === "none" ? "grid" : "none";
+    });
+
+    // Close popover when clicking outside
+    document.addEventListener("click", (e) => {
+        if (!wrapper.contains(e.target)) {
+            popover.style.display = "none";
+        }
+    });
 }
