@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>소비기한 라벨 솔루션</title>
+    <!-- Google Fonts: Outfit & Noto Sans KR -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@300;400;500;600;700;900&display=swap"
+        rel="stylesheet">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="background-decorations no-print">
+        <div class="circle circle-1"></div>
+        <div class="circle circle-2"></div>
+    </div>
+
+    <!-- MAIN APP WRAPPER (HIDDEN DURING STICKER PRINT) -->
+    <div class="app-container no-print">
+        <header class="app-header">
+            <div class="header-logo">
+                <i data-lucide="tag" class="logo-icon"></i>
+                <div>
+                    <h1>소비기한 라벨링 App</h1>
+                    <p class="subtitle">Material Label Printer & Shelf Life Tracker</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="theme-toggle-btn" class="icon-btn" title="테마 전환" aria-label="테마 전환">
+                    <i data-lucide="sun" class="sun-icon"></i>
+                    <i data-lucide="moon" class="moon-icon"></i>
+                </button>
+                <button id="settings-open-btn" class="icon-btn" title="재료 데이터 관리" aria-label="재료 데이터 관리">
+                    <i data-lucide="settings"></i>
+                </button>
+            </div>
+        </header>
+
+        <nav class="main-tabs no-print">
+            <button class="main-tab active" data-tab="tab-print">
+                <i data-lucide="printer" class="tab-icon"></i>
+                <span>라벨 인쇄</span>
+            </button>
+            <button class="main-tab" data-tab="tab-manage">
+                <i data-lucide="database" class="tab-icon"></i>
+                <span>등록 재료 관리</span>
+            </button>
+        </nav>
+
+        <!-- 1. TAB: PRINT LABEL -->
+        <div id="tab-print" class="tab-content active">
+            <main class="app-main-layout">
+                <!-- Left Side: Ingredients List & Filter Panel -->
+                <section class="ingredients-panel">
+                    <div class="panel-header">
+                        <div class="search-bar-wrapper">
+                            <i data-lucide="search" class="search-icon"></i>
+                            <input type="text" id="ingredient-search" placeholder="재료명 또는 약자(초성) 검색..."
+                                autocomplete="off">
+                        </div>
+                    </div>
+
+                    <!-- Category Tabs (Dynamically rendered) -->
+                    <div class="category-tabs" id="dynamic-category-tabs">
+                        <button class="category-tab active" data-category="all">전체</button>
+                        <!-- Injected by JS -->
+                    </div>
+
+                    <!-- Grid of items -->
+                    <div id="ingredients-grid" class="ingredients-grid">
+                        <!-- Javascript will inject ingredient cards here -->
+                    </div>
+                </section>
+
+                <!-- Right Side: Configuration & Preview -->
+                <section class="config-panel">
+                    <!-- 1. Selection Info & Storage Configuration -->
+                    <div class="config-card">
+                        <h2 class="config-section-title">1. 보관 방법 및 인쇄 정보</h2>
+
+                        <div class="form-group">
+                            <label>선택한 재료</label>
+                            <div id="selected-ingredient-display" class="selected-item-pill">
+                                재료를 선택해 주세요
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>보관 및 Prep 위치</label>
+                            <div id="storage-options" class="storage-options-grid">
+                                <!-- Options like Walk-in, Makeline, Bottle will be rendered dynamically -->
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="prep-time-input">준비 일시</label>
+                            <input type="datetime-local" id="prep-time-input">
+                            <div class="time-adjustments">
+                                <button type="button" class="time-adjust-btn" data-action="now">방금</button>
+                                <button type="button" class="time-adjust-btn" data-action="-30m">-30분</button>
+                                <button type="button" class="time-adjust-btn" data-action="+30m">+30분</button>
+                                <button type="button" class="time-adjust-btn" data-action="-1h">-1시간</button>
+                                <button type="button" class="time-adjust-btn" data-action="+1h">+1시간</button>
+                                <button type="button" class="time-adjust-btn" data-action="-1d">-1일</button>
+                                <button type="button" class="time-adjust-btn" data-action="+1d">+1일</button>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-6">
+                                <label for="staff-input">작업 담당자</label>
+                                <input type="text" id="staff-input" placeholder="이름 입력" autocomplete="on">
+                            </div>
+                            <div class="form-group col-6">
+                                <label for="label-qty">출력 수량</label>
+                                <input type="number" id="label-qty" min="1" max="50" value="1">
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- 2. Live Preview Card -->
+                    <div class="config-card">
+                        <h2 class="config-section-title">2. 라벨 스티커 미리보기 (<span id="preview-size-label">50 × 30</span>mm)
+                        </h2>
+
+                        <div class="sticker-preview-outer">
+                            <div id="sticker-preview" class="sticker-preview-content">
+                                <!-- Live sticker content -->
+                                <div class="sticker-top-row">
+                                    <div id="sticker-abbr" class="sticker-abbr-badge">E</div>
+                                    <div class="sticker-location-title" id="sticker-loc">보관위치</div>
+                                </div>
+                                <div class="sticker-main-name" id="sticker-name">재료명</div>
+                                <div class="sticker-dates">
+                                    <div><strong>준비일시:</strong> <span id="sticker-prep-date">2026-06-02 (화) 16:00</span>
+                                    </div>
+                                    <div class="expire-date-row"><strong>폐기일시:</strong> <span id="sticker-expire-date"
+                                            class="highlight-expire">2026-06-05 (금) 16:00</span></div>
+                                </div>
+                                <div class="sticker-bottom-row">
+                                    <span class="sticker-staff">담당: <span id="sticker-staff-val">-</span></span>
+                                    <span class="sticker-watermark">PAPA LABELS</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button id="print-label-btn" class="print-primary-btn">
+                            <i data-lucide="printer"></i>
+                            <span>라벨 스티커 인쇄하기</span>
+                        </button>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- 2. TAB: MANAGE INGREDIENTS -->
+        <div id="tab-manage" class="tab-content">
+            <main class="management-layout">
+                <!-- Sidebar: Category & Location Tag Lists -->
+                <div class="management-sidebar">
+                    <!-- Categories Management -->
+                    <div class="config-card">
+                        <h2 class="config-section-title">
+                            <i data-lucide="folder"></i>
+                            <span>카테고리 관리</span>
+                        </h2>
+                        <div id="manage-categories-list" class="chip-container">
+                            <!-- Dynamic category chips -->
+                        </div>
+                        <form id="add-category-form" class="management-inline-form">
+                            <input type="text" id="new-cat-name" placeholder="카테고리 이름" required>
+                            <input type="text" id="new-cat-emoji" placeholder="이모지"
+                                style="width: 60px; text-align: center;">
+                            <button type="submit" class="action-add-btn" title="추가">
+                                <i data-lucide="plus"></i>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Storage Locations Management -->
+                    <div class="config-card">
+                        <h2 class="config-section-title">
+                            <i data-lucide="map-pin"></i>
+                            <span>보관위치 관리</span>
+                        </h2>
+                        <div id="manage-locations-list" class="chip-container">
+                            <!-- Dynamic storage location chips -->
+                        </div>
+                        <form id="add-location-form" class="management-inline-form">
+                            <input type="text" id="new-loc-name" placeholder="보관위치 이름" required>
+                            <button type="submit" class="action-add-btn" title="추가">
+                                <i data-lucide="plus"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Main Content: Add Ingredient & Table List -->
+                <div class="management-main">
+                    <!-- Register New Ingredient -->
+                    <div class="config-card">
+                        <h2 class="config-section-title">
+                            <i data-lucide="plus-circle"></i>
+                            <span>새 재료 등록</span>
+                        </h2>
+                        <form id="mgmt-add-ingredient-form" class="mgmt-ingredient-form">
+                            <div class="form-grid-three">
+                                <div class="form-group">
+                                    <label for="mgmt-new-name">재료명 *</label>
+                                    <input type="text" id="mgmt-new-name" required placeholder="예: 페페로니">
+                                </div>
+                                <div class="form-group">
+                                    <label for="mgmt-new-abbr">식별 약어</label>
+                                    <input type="text" id="mgmt-new-abbr" placeholder="예: P">
+                                </div>
+                                <div class="form-group">
+                                    <label for="mgmt-new-category">카테고리 *</label>
+                                    <select id="mgmt-new-category" required>
+                                        <!-- Loaded dynamically -->
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-top: 15px;">
+                                <label style="margin-bottom: 8px; display: block; font-weight: 500;">보관위치별 유통기한(일) 설정
+                                    (공란 시 사용 안 함)</label>
+                                <div id="mgmt-storage-fields" class="storage-fields-grid">
+                                    <!-- Dynamic inputs created based on active locations -->
+                                </div>
+                            </div>
+
+                            <button type="submit" class="submit-new-btn" style="margin-top: 15px; width: 100%;">새로운 재료
+                                등록하기</button>
+                        </form>
+                    </div>
+
+                    <!-- Registered Ingredients Table -->
+                    <div class="config-card">
+                        <div class="modal-actions-row">
+                            <h2 class="config-section-title" style="margin:0;">
+                                <i data-lucide="list"></i>
+                                <span>등록된 재료 목록</span>
+                            </h2>
+                            <button id="reset-default-btn" class="reset-danger-btn">
+                                <i data-lucide="refresh-cw"></i> 전체 초기화 (기본값 복원)
+                            </button>
+                        </div>
+
+                        <div class="table-wrapper">
+                            <table class="db-table">
+                                <thead>
+                                    <tr id="mgmt-table-header">
+                                        <th>카테고리</th>
+                                        <th>재료명</th>
+                                        <th>약어</th>
+                                        <!-- Dynamic columns for locations injected here -->
+                                        <th>동작</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mgmt-table-body">
+                                    <!-- Javascript will inject registered rows here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <footer class="app-footer no-print">
+            <p>재료 라벨 프린터 &copy; 2026. Designed for quick kitchen printing.</p>
+        </footer>
+    </div>
+
+    <!-- PRINT ONLY CONTAINER (SHOWN ONLY DURING WINDOW.PRINT()) -->
+    <div id="print-sticker-container" class="print-only-container">
+        <!-- Rendered dynamically by JS to duplicate sticker previews based on print count -->
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal" class="modal-overlay no-print">
+        <div class="modal-container" style="max-width: 480px;">
+            <header class="modal-header">
+                <h2><i data-lucide="settings"></i> 라벨 출력 규격 설정</h2>
+                <button id="settings-close-btn" class="modal-close-btn">&times;</button>
+            </header>
+
+            <div class="modal-body">
+                <div class="modal-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="label-width">가로 크기 (Width)</label>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <input type="number" id="label-width" min="20" max="150" value="50" step="1"
+                                    style="width:100% !important; text-align:center;">
+                                <span class="size-unit">mm</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="label-height">세로 크기 (Height)</label>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <input type="number" id="label-height" min="15" max="150" value="30" step="1"
+                                    style="width:100% !important; text-align:center;">
+                                <span class="size-unit">mm</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>단위</label>
+                            <input type="text" value="밀리미터 (mm)" disabled
+                                style="text-align:center; background:rgba(255,255,255,0.01); border-style:dashed;">
+                        </div>
+                        <div class="form-group"
+                            style="grid-column: 1 / -1; display: flex; justify-content: flex-end; margin-top: 4px;">
+                            <button type="button" id="save-current-size-preset-btn" class="submit-new-btn"
+                                style="width: auto; padding: 6px 12px; font-size: 0.82rem; display: flex; align-items: center; gap: 4px;">
+                                <i data-lucide="plus" style="width:14px; height:14px;"></i>
+                                <span>현재 규격을 프리셋으로 등록</span>
+                            </button>
+                        </div>
+                        <div class="form-group" style="grid-column: 1 / -1; margin-top: 8px;">
+                            <label>규격 프리셋 선택</label>
+                            <div class="size-presets" id="db-size-presets">
+                                <!-- Injected dynamically from SQLite DB -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script File -->
+    <script src="app.js"></script>
+</body>
+
+</html>
