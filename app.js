@@ -20,6 +20,19 @@ async function apiPost(url, data) {
     return await response.json();
 }
 
+async function apiPut(url, data) {
+    const response = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "수정 실패");
+    }
+    return await response.json();
+}
+
 async function apiDelete(url) {
     const response = await fetch(url, { method: "DELETE" });
     if (!response.ok) {
@@ -27,6 +40,43 @@ async function apiDelete(url) {
         throw new Error(err.error || "삭제 실패");
     }
     return await response.json();
+}
+
+function clearElement(element) {
+    element.replaceChildren();
+}
+
+function createTextElement(tagName, className, text) {
+    const element = document.createElement(tagName);
+    if (className) element.className = className;
+    element.textContent = text;
+    return element;
+}
+
+function appendDeleteButton(container, onClick) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "delete-chip-btn";
+    button.textContent = "\u00d7";
+    button.addEventListener("click", onClick);
+    container.appendChild(button);
+    return button;
+}
+
+function renderMainDataViews() {
+    renderCategoryFilterTabs();
+    renderIngredients();
+    renderCategoryChips();
+    renderLocationChips();
+    renderCategoryDropdown();
+    renderStorageFieldsInForm();
+    renderRegisteredIngredientsTable();
+    renderPresetButtons();
+}
+
+async function reloadAndRenderMainViews() {
+    await loadAllData();
+    renderMainDataViews();
 }
 
 // ==========================================
@@ -80,6 +130,17 @@ const printStickerContainer = document.getElementById("print-sticker-container")
 const settingsOpenBtn = document.getElementById("settings-open-btn");
 const settingsCloseBtn = document.getElementById("settings-close-btn");
 const settingsModal = document.getElementById("settings-modal");
+
+// Edit Ingredient Modal
+const editIngredientModal = document.getElementById("edit-ingredient-modal");
+const editModalCloseBtn = document.getElementById("edit-modal-close-btn");
+const editModalCancelBtn = document.getElementById("edit-modal-cancel-btn");
+const editIngredientForm = document.getElementById("mgmt-edit-ingredient-form");
+const editOldNameInput = document.getElementById("mgmt-edit-old-name");
+const editNameInput = document.getElementById("mgmt-edit-name");
+const editAbbrInput = document.getElementById("mgmt-edit-abbr");
+const editCategorySelect = document.getElementById("mgmt-edit-category");
+const editStorageFieldsContainer = document.getElementById("mgmt-edit-storage-fields");
 
 // Login Elements
 const loginOverlay = document.getElementById("login-overlay");
@@ -191,64 +252,75 @@ function initLabelSizeControls() {
 }
 
 function renderPresetButtons() {
-    const container = document.getElementById("db-size-presets");
-    if (!container) return;
+    const dbContainer = document.getElementById("db-size-presets");
+    const previewContainer = document.getElementById("preview-size-presets");
     
-    container.innerHTML = "";
     const labelWidthInput = document.getElementById("label-width");
     const labelHeightInput = document.getElementById("label-height");
 
-    state.presets.forEach(p => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "size-preset-btn";
-        btn.dataset.w = p.width;
-        btn.dataset.h = p.height;
-        btn.dataset.id = p.id;
-        const standardSizes = [[50,30], [60,40], [70,40], [80,50], [100,60], [100,70]];
-        const isStandard = p.is_default === 1 || standardSizes.some(sz => sz[0] === p.width && sz[1] === p.height);
-        const deleteBtnHTML = isStandard ? "" : `<span class="delete-preset-x" data-id="${p.id}">&times;</span>`;
+    const buildButtons = (container, isSettingsModal) => {
+        if (!container) return;
+        clearElement(container);
         
-        btn.innerHTML = `
-            <span>${p.width}×${p.height}</span>
-            ${deleteBtnHTML}
-        `;
-        if (!isStandard) {
-            btn.classList.add("has-delete");
-        }
-        
-        btn.addEventListener("click", (e) => {
-            if (e.target.classList.contains("delete-preset-x")) return;
+        state.presets.forEach(p => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "size-preset-btn";
+            btn.dataset.w = p.width;
+            btn.dataset.h = p.height;
+            btn.dataset.id = p.id;
             
-            document.querySelectorAll(".size-preset-btn").forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
+            const standardSizes = [[50,30], [60,40], [70,40], [80,50], [100,60], [100,70]];
+            const isStandard = p.is_default === 1 || standardSizes.some(sz => sz[0] === p.width && sz[1] === p.height);
             
-            if (labelWidthInput && labelHeightInput) {
-                labelWidthInput.value = p.width;
-                labelHeightInput.value = p.height;
+            btn.appendChild(createTextElement("span", "", `${p.width}×${p.height}`));
+            
+            const showDelete = isSettingsModal && !isStandard;
+            if (showDelete) {
+                btn.classList.add("has-delete");
             }
-            updateLabelSize();
-            saveLabelSize();
-        });
-        
-        if (!isStandard) {
-            btn.querySelector(".delete-preset-x").addEventListener("click", async (e) => {
-                e.stopPropagation();
-                if (confirm(`'${p.width}×${p.height}' 규격 프리셋을 삭제하시겠습니까?`)) {
-                    try {
-                        await apiDelete(`/api/label-sizes/${p.id}`);
-                        state.presets = await apiGet("/api/label-sizes");
-                        renderPresetButtons();
-                        updateLabelSize();
-                    } catch (err) {
-                        alert("프리셋 삭제에 실패했습니다: " + err.message);
-                    }
+            
+            btn.addEventListener("click", (e) => {
+                if (e.target.classList.contains("delete-preset-x")) return;
+                
+                document.querySelectorAll(".size-preset-btn").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                
+                if (labelWidthInput) {
+                    labelWidthInput.value = p.width;
                 }
+                if (labelHeightInput) {
+                    labelHeightInput.value = p.height;
+                }
+                updateLabelSize();
+                saveLabelSize();
             });
-        }
-        
-        container.appendChild(btn);
-    });
+            
+            if (showDelete) {
+                const deleteX = createTextElement("span", "delete-preset-x", "\u00d7");
+                deleteX.dataset.id = p.id;
+                btn.appendChild(deleteX);
+                deleteX.addEventListener("click", async (e) => {
+                    e.stopPropagation();
+                    if (confirm(`'${p.width}×${p.height}' 규격 프리셋을 삭제하시겠습니까?`)) {
+                        try {
+                            await apiDelete(`/api/label-sizes/${p.id}`);
+                            state.presets = await apiGet("/api/label-sizes");
+                            renderPresetButtons();
+                            updateLabelSize();
+                        } catch (err) {
+                            alert("프리셋 삭제에 실패했습니다: " + err.message);
+                        }
+                    }
+                });
+            }
+            
+            container.appendChild(btn);
+        });
+    };
+
+    buildButtons(dbContainer, true);
+    buildButtons(previewContainer, false);
 }
 
 function updateLabelSize() {
@@ -380,6 +452,22 @@ function setupEventHandlers() {
         if (e.target === settingsModal) closeSettingsModal();
     });
 
+    // Edit modal controls
+    if (editModalCloseBtn) {
+        editModalCloseBtn.addEventListener("click", closeEditModal);
+    }
+    if (editModalCancelBtn) {
+        editModalCancelBtn.addEventListener("click", closeEditModal);
+    }
+    if (editIngredientModal) {
+        editIngredientModal.addEventListener("click", (e) => {
+            if (e.target === editIngredientModal) closeEditModal();
+        });
+    }
+    if (editIngredientForm) {
+        editIngredientForm.addEventListener("submit", handleMgmtEditIngredient);
+    }
+
     // Forms in Management Tab
     document.getElementById("add-category-form").addEventListener("submit", handleAddCategory);
     document.getElementById("add-location-form").addEventListener("submit", handleAddLocation);
@@ -427,7 +515,7 @@ function selectIngredient(name) {
     if (availableLocations.length > 0) {
         state.selectedStorage = availableLocations[0];
     } else {
-        state.selectedStorage = null;
+        state.selectedStorage = "입고";
     }
     
     renderStorageOptions(ingredient);
@@ -479,7 +567,7 @@ function renderCategoryFilterTabs() {
     const tabsContainer = document.getElementById("dynamic-category-tabs");
     if (!tabsContainer) return;
     
-    tabsContainer.innerHTML = "";
+    clearElement(tabsContainer);
     
     // All
     const allTab = document.createElement("button");
@@ -509,7 +597,7 @@ function handleCategoryFilterClick(e) {
 
 function renderIngredients() {
     if (!ingredientsGrid) return;
-    ingredientsGrid.innerHTML = "";
+    clearElement(ingredientsGrid);
     
     const searchVal = state.filters.search.toLowerCase();
     const searchChosung = getChosung(searchVal);
@@ -535,11 +623,9 @@ function renderIngredients() {
     });
     
     if (filtered.length === 0) {
-        ingredientsGrid.innerHTML = `
-            <div class="empty-state" style="display:flex; grid-column: 1/-1; justify-content:center; align-items:center; height:200px; color:var(--text-muted);">
-                조건에 맞는 재료가 없습니다
-            </div>
-        `;
+        const emptyState = createTextElement("div", "empty-state", "조건에 맞는 재료가 없습니다");
+        emptyState.style.cssText = "display:flex; grid-column: 1/-1; justify-content:center; align-items:center; height:200px; color:var(--text-muted);";
+        ingredientsGrid.appendChild(emptyState);
         return;
     }
     
@@ -551,23 +637,30 @@ function renderIngredients() {
         const categoryObj = state.categories.find(c => c.name === item.category);
         const categoryLabel = categoryObj ? `${categoryObj.emoji || ''} ${item.category}` : item.category;
         
-        let storagePillsHTML = "";
+        const storagePills = [];
         if (item.storage) {
             Object.entries(item.storage).forEach(([locName, data]) => {
                 if (data && data.days !== null) {
-                    storagePillsHTML += `<span class="card-limit-pill">${locName.slice(0,2)}:${data.days}일</span>`;
+                    storagePills.push(`${locName.slice(0, 2)}:${data.days}일`);
                 }
             });
         }
-        
-        card.innerHTML = `
-            <div class="card-category" style="background: rgba(99, 102, 241, 0.15); color: var(--primary-color); border: 1px solid rgba(99, 102, 241, 0.2);">${categoryLabel}</div>
-            <div class="card-name">${item.name}</div>
-            ${item.abbr ? `<div class="card-abbr-badge">${item.abbr}</div>` : ''}
-            <div class="card-limits">
-                ${storagePillsHTML}
-            </div>
-        `;
+
+        const category = createTextElement("div", "card-category", categoryLabel);
+        category.style.cssText = "background: rgba(99, 102, 241, 0.15); color: var(--primary-color); border: 1px solid rgba(99, 102, 241, 0.2);";
+        card.appendChild(category);
+        card.appendChild(createTextElement("div", "card-name", item.name));
+
+        if (item.abbr) {
+            card.appendChild(createTextElement("div", "card-abbr-badge", item.abbr));
+        }
+
+        const limits = document.createElement("div");
+        limits.className = "card-limits";
+        storagePills.forEach(label => {
+            limits.appendChild(createTextElement("span", "card-limit-pill", label));
+        });
+        card.appendChild(limits);
         
         card.addEventListener("click", () => {
             selectIngredient(item.name);
@@ -579,13 +672,16 @@ function renderIngredients() {
 
 function renderStorageOptions(ingredient) {
     if (!selectedIngDisplay || !storageOptionsContainer) return;
-    
-    selectedIngDisplay.innerHTML = `
-        <span>${ingredient.name}</span>
-        ${ingredient.abbr ? `<span class="badge" style="background:var(--primary-color); padding:2px 8px; border-radius:4px; font-size:0.8rem;">${ingredient.abbr}</span>` : ''}
-    `;
-    
-    storageOptionsContainer.innerHTML = "";
+
+    clearElement(selectedIngDisplay);
+    selectedIngDisplay.appendChild(createTextElement("span", "", ingredient.name));
+    if (ingredient.abbr) {
+        const badge = createTextElement("span", "badge", ingredient.abbr);
+        badge.style.cssText = "background:var(--primary-color); padding:2px 8px; border-radius:4px; font-size:0.8rem;";
+        selectedIngDisplay.appendChild(badge);
+    }
+
+    clearElement(storageOptionsContainer);
     
     state.locations.forEach(loc => {
         const config = ingredient.storage && ingredient.storage[loc.name];
@@ -595,10 +691,21 @@ function renderStorageOptions(ingredient) {
         const optCard = document.createElement("div");
         optCard.className = `storage-option-card ${!hasValue ? 'disabled' : ''} ${state.selectedStorage === loc.name ? 'selected' : ''}`;
         
-        optCard.innerHTML = `
-            <div class="storage-title">${loc.name}</div>
-            <div class="storage-days">${hasValue ? `${days}일` : 'N/A'}</div>
-        `;
+        let daysText = "N/A";
+        if (hasValue) {
+            if (loc.name === "소스보틀" || loc.name === "분할") {
+                if (loc.name === "분할" && days === 22) {
+                    daysText = "당일 22시";
+                } else {
+                    daysText = `${days}시간`;
+                }
+            } else {
+                daysText = `${days}일`;
+            }
+        }
+        
+        optCard.appendChild(createTextElement("div", "storage-title", loc.name));
+        optCard.appendChild(createTextElement("div", "storage-days", daysText));
         
         if (hasValue) {
             optCard.addEventListener("click", () => {
@@ -610,6 +717,18 @@ function renderStorageOptions(ingredient) {
         
         storageOptionsContainer.appendChild(optCard);
     });
+
+    // Virtual "입고" card
+    const ipgoCard = document.createElement("div");
+    ipgoCard.className = `storage-option-card ${state.selectedStorage === "입고" ? 'selected' : ''}`;
+    ipgoCard.appendChild(createTextElement("div", "storage-title", "입고"));
+    ipgoCard.appendChild(createTextElement("div", "storage-days", "상시"));
+    ipgoCard.addEventListener("click", () => {
+        state.selectedStorage = "입고";
+        renderStorageOptions(ingredient);
+        updateStickerPreview();
+    });
+    storageOptionsContainer.appendChild(ipgoCard);
 }
 
 // ==========================================
@@ -619,15 +738,12 @@ function renderCategoryChips() {
     const list = document.getElementById("manage-categories-list");
     if (!list) return;
     
-    list.innerHTML = "";
+    clearElement(list);
     state.categories.forEach(cat => {
         const chip = document.createElement("div");
         chip.className = "tag-chip";
-        chip.innerHTML = `
-            <span>${cat.emoji ? cat.emoji + ' ' : ''}${cat.name}</span>
-            <button type="button" class="delete-chip-btn">&times;</button>
-        `;
-        chip.querySelector(".delete-chip-btn").addEventListener("click", async (e) => {
+        chip.appendChild(createTextElement("span", "", `${cat.emoji ? cat.emoji + ' ' : ''}${cat.name}`));
+        appendDeleteButton(chip, async (e) => {
             e.stopPropagation();
             if (confirm(`'${cat.name}' 카테고리를 삭제하시겠습니까?\n이 카테고리에 속한 재료들은 카테고리 정보가 그대로 남지만 목록 필터에서 이 카테고리는 없어집니다.`)) {
                 try {
@@ -650,15 +766,12 @@ function renderLocationChips() {
     const list = document.getElementById("manage-locations-list");
     if (!list) return;
     
-    list.innerHTML = "";
+    clearElement(list);
     state.locations.forEach(loc => {
         const chip = document.createElement("div");
         chip.className = "tag-chip";
-        chip.innerHTML = `
-            <span>${loc.name}</span>
-            <button type="button" class="delete-chip-btn">&times;</button>
-        `;
-        chip.querySelector(".delete-chip-btn").addEventListener("click", async (e) => {
+        chip.appendChild(createTextElement("span", "", loc.name));
+        appendDeleteButton(chip, async (e) => {
             e.stopPropagation();
             if (confirm(`'${loc.name}' 보관위치를 삭제하시겠습니까?\n이 보관위치로 설정된 모든 재료의 해당 위치 기한 값이 영구 삭제됩니다.`)) {
                 try {
@@ -689,7 +802,7 @@ function renderCategoryDropdown() {
     const select = document.getElementById("mgmt-new-category");
     if (!select) return;
     
-    select.innerHTML = "";
+    clearElement(select);
     state.categories.forEach(cat => {
         const opt = document.createElement("option");
         opt.value = cat.name;
@@ -702,22 +815,33 @@ function renderStorageFieldsInForm() {
     const container = document.getElementById("mgmt-storage-fields");
     if (!container) return;
     
-    container.innerHTML = "";
+    clearElement(container);
     if (state.locations.length === 0) {
-        container.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:10px; color:var(--text-muted); font-size:0.82rem;">등록된 보관위치가 없습니다.</div>`;
+        const emptyState = createTextElement("div", "", "등록된 보관위치가 없습니다.");
+        emptyState.style.cssText = "grid-column:1/-1; text-align:center; padding:10px; color:var(--text-muted); font-size:0.82rem;";
+        container.appendChild(emptyState);
         return;
     }
     
     state.locations.forEach(loc => {
         const group = document.createElement("div");
         group.className = "storage-field-group";
-        group.innerHTML = `
-            <label>${loc.name}</label>
-            <div class="storage-field-input-wrapper">
-                <input type="number" class="mgmt-storage-input" data-loc-id="${loc.id}" min="0" placeholder="기한(일)">
-                <span style="font-size:0.75rem; color:var(--text-muted);">일</span>
-            </div>
-        `;
+        group.appendChild(createTextElement("label", "", loc.name));
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "storage-field-input-wrapper";
+        const input = document.createElement("input");
+        input.type = "number";
+        input.className = "mgmt-storage-input";
+        input.dataset.locId = loc.id;
+        input.min = "1";
+        input.placeholder = "기한(일)";
+        wrapper.appendChild(input);
+
+        const unit = createTextElement("span", "", "일");
+        unit.style.cssText = "font-size:0.75rem; color:var(--text-muted);";
+        wrapper.appendChild(unit);
+        group.appendChild(wrapper);
         container.appendChild(group);
     });
 }
@@ -727,11 +851,10 @@ function renderRegisteredIngredientsTable() {
     const tbody = document.getElementById("mgmt-table-body");
     if (!headerRow || !tbody) return;
     
-    headerRow.innerHTML = `
-        <th>카테고리</th>
-        <th>재료명</th>
-        <th>약어</th>
-    `;
+    clearElement(headerRow);
+    ["카테고리", "재료명", "약어"].forEach(label => {
+        headerRow.appendChild(createTextElement("th", "", label));
+    });
     state.locations.forEach(loc => {
         const th = document.createElement("th");
         th.textContent = loc.name;
@@ -741,32 +864,52 @@ function renderRegisteredIngredientsTable() {
     actTh.textContent = "동작";
     headerRow.appendChild(actTh);
     
-    tbody.innerHTML = "";
+    clearElement(tbody);
     state.ingredients.forEach(ing => {
         const tr = document.createElement("tr");
-        
-        let storageCells = "";
+
+        const categoryCell = document.createElement("td");
+        const categoryTag = createTextElement("strong", "cat-tag", ing.category);
+        categoryTag.style.cssText = "background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid var(--card-border);";
+        categoryCell.appendChild(categoryTag);
+        tr.appendChild(categoryCell);
+
+        tr.appendChild(createTextElement("td", "", ing.name));
+        tr.appendChild(createTextElement("td", "", ing.abbr || "-"));
+
         state.locations.forEach(loc => {
             const shelfDays = ing.storage && ing.storage[loc.name] ? ing.storage[loc.name].days : null;
-            storageCells += `<td>${shelfDays !== null ? `${shelfDays}일` : '-'}</td>`;
+            tr.appendChild(createTextElement("td", "", shelfDays !== null ? `${shelfDays}일` : "-"));
         });
+
+        const actionCell = document.createElement("td");
         
-        tr.innerHTML = `
-            <td><strong class="cat-tag" style="background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid var(--card-border);">${ing.category}</strong></td>
-            <td>${ing.name}</td>
-            <td>${ing.abbr || '-'}</td>
-            ${storageCells}
-            <td>
-                <button class="db-action-btn delete" data-name="${ing.name}" title="삭제">
-                    <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
-                </button>
-            </td>
-        `;
-        
-        tr.querySelector(".db-action-btn.delete").addEventListener("click", () => {
+        const editBtn = document.createElement("button");
+        editBtn.className = "db-action-btn edit";
+        editBtn.dataset.name = ing.name;
+        editBtn.title = "수정";
+        const editIcon = document.createElement("i");
+        editIcon.dataset.lucide = "edit-3";
+        editIcon.style.cssText = "width:14px;height:14px;";
+        editBtn.appendChild(editIcon);
+        editBtn.addEventListener("click", () => {
+            openEditModal(ing.name);
+        });
+        actionCell.appendChild(editBtn);
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "db-action-btn delete";
+        deleteBtn.dataset.name = ing.name;
+        deleteBtn.title = "삭제";
+        const icon = document.createElement("i");
+        icon.dataset.lucide = "trash-2";
+        icon.style.cssText = "width:14px;height:14px;";
+        deleteBtn.appendChild(icon);
+        deleteBtn.addEventListener("click", () => {
             deleteIngredient(ing.name);
         });
-        
+        actionCell.appendChild(deleteBtn);
+        tr.appendChild(actionCell);
         tbody.appendChild(tr);
     });
     
@@ -882,7 +1025,7 @@ async function deleteIngredient(name) {
                     state.selectedId = null;
                     state.selectedStorage = null;
                     selectedIngDisplay.textContent = "재료를 선택해 주세요";
-                    storageOptionsContainer.innerHTML = "";
+                    clearElement(storageOptionsContainer);
                 }
             }
         } catch (err) {
@@ -891,19 +1034,126 @@ async function deleteIngredient(name) {
     }
 }
 
+function openEditModal(name) {
+    const ingredient = state.ingredients.find(i => i.name === name);
+    if (!ingredient) return;
+
+    editOldNameInput.value = name;
+    editNameInput.value = name;
+    editAbbrInput.value = ingredient.abbr || "";
+    
+    clearElement(editCategorySelect);
+    state.categories.forEach(cat => {
+        const opt = document.createElement("option");
+        opt.value = cat.name;
+        opt.textContent = `${cat.emoji ? cat.emoji + ' ' : ''}${cat.name}`;
+        if (cat.name === ingredient.category) {
+            opt.selected = true;
+        }
+        editCategorySelect.appendChild(opt);
+    });
+
+    clearElement(editStorageFieldsContainer);
+    if (state.locations.length === 0) {
+        const emptyState = createTextElement("div", "", "등록된 보관위치가 없습니다.");
+        emptyState.style.cssText = "grid-column:1/-1; text-align:center; padding:10px; color:var(--text-muted); font-size:0.82rem;";
+        editStorageFieldsContainer.appendChild(emptyState);
+    } else {
+        state.locations.forEach(loc => {
+            const shelfDays = ingredient.storage && ingredient.storage[loc.name] ? ingredient.storage[loc.name].days : "";
+
+            const group = document.createElement("div");
+            group.className = "storage-field-group";
+            group.appendChild(createTextElement("label", "", loc.name));
+
+            const wrapper = document.createElement("div");
+            wrapper.className = "storage-field-input-wrapper";
+            const input = document.createElement("input");
+            input.type = "number";
+            input.className = "mgmt-edit-storage-input";
+            input.dataset.locId = loc.id;
+            input.min = "1";
+            input.placeholder = "기한(일)";
+            input.value = shelfDays;
+            wrapper.appendChild(input);
+
+            const unit = createTextElement("span", "", "일");
+            unit.style.cssText = "font-size:0.75rem; color:var(--text-muted);";
+            wrapper.appendChild(unit);
+            group.appendChild(wrapper);
+            editStorageFieldsContainer.appendChild(group);
+        });
+    }
+
+    editIngredientModal.style.display = "flex";
+    document.body.classList.add("modal-open");
+    lucide.createIcons();
+}
+
+function closeEditModal() {
+    editIngredientModal.style.display = "none";
+    document.body.classList.remove("modal-open");
+}
+
+async function handleMgmtEditIngredient(e) {
+    e.preventDefault();
+    const oldName = editOldNameInput.value;
+    const name = editNameInput.value.trim();
+    const abbr = editAbbrInput.value.trim().toUpperCase();
+    const category = editCategorySelect.value;
+
+    if (!name || !category) {
+        alert("재료명과 카테고리는 필수 항목입니다.");
+        return;
+    }
+
+    const storage = {};
+    const storageInputs = document.querySelectorAll(".mgmt-edit-storage-input");
+    storageInputs.forEach(inp => {
+        const locId = inp.dataset.locId;
+        const val = inp.value.trim();
+        if (val !== "") {
+            storage[locId] = parseInt(val);
+        }
+    });
+
+    try {
+        await apiPut(`/api/ingredients/${encodeURIComponent(oldName)}`, { category, name, abbr, storage });
+        
+        // If selected ingredient was renamed, update selectedId
+        if (state.selectedId === oldName) {
+            state.selectedId = name;
+        }
+
+        await loadAllData();
+        renderRegisteredIngredientsTable();
+        renderIngredients();
+        
+        // Update selected details if selected item was modified
+        if (state.selectedId === name) {
+            const updated = state.ingredients.find(i => i.name === name);
+            if (updated) {
+                // Adjust selected storage if it's no longer available
+                const availableLocations = updated.storage ? Object.keys(updated.storage) : [];
+                if (state.selectedStorage && !availableLocations.includes(state.selectedStorage) && state.selectedStorage !== "입고") {
+                    state.selectedStorage = availableLocations.length > 0 ? availableLocations[0] : "입고";
+                }
+                renderStorageOptions(updated);
+                updateStickerPreview();
+            }
+        }
+
+        closeEditModal();
+    } catch (err) {
+        alert("재료 수정 실패: " + err.message);
+    }
+}
+
 async function handleResetDatabase() {
     if (confirm("정말로 모든 설정을 기본값으로 리셋하시겠습니까?\n직접 추가하거나 수정한 카테고리, 보관위치, 재료, 라벨 규격이 전부 삭제됩니다.")) {
         try {
             await apiPost("/api/ingredients/reset", {});
-            await loadAllData();
-            
-            renderCategoryFilterTabs();
-            renderIngredients();
-            renderCategoryChips();
-            renderLocationChips();
-            renderCategoryDropdown();
-            renderStorageFieldsInForm();
-            renderRegisteredIngredientsTable();
+            await reloadAndRenderMainViews();
             renderPresetButtons();
             
             if (state.ingredients.length > 0) {
@@ -912,7 +1162,7 @@ async function handleResetDatabase() {
                 state.selectedId = null;
                 state.selectedStorage = null;
                 selectedIngDisplay.textContent = "재료를 선택해 주세요";
-                storageOptionsContainer.innerHTML = "";
+                clearElement(storageOptionsContainer);
             }
             
             alert("전체 리셋이 완료되었습니다.");
@@ -937,6 +1187,15 @@ function formatDate(date) {
     return `${yyyy}-${mm}-${dd} (${day}) ${hh}:${min}`;
 }
 
+function formatShortDate(date) {
+    const yy = String(date.getFullYear()).slice(-2);
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const hh = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    return `${yy}.${mm}.${dd} ${hh}:${min}`;
+}
+
 function updateStickerPreview() {
     const ingredient = state.ingredients.find(i => i.name === state.selectedId);
     if (!ingredient) return;
@@ -950,16 +1209,42 @@ function updateStickerPreview() {
     
     stickerName.textContent = ingredient.name;
     
-    stickerLoc.textContent = state.selectedStorage ? `${state.selectedStorage} 보관` : "보관위치 미지정";
-    stickerPrepDate.textContent = formatDate(state.prepTime);
+    const stickerPrepLabel = document.getElementById("sticker-prep-label");
+    const expireRow = document.querySelector(".expire-date-row");
     
-    let shelfLifeDays = 0;
-    if (state.selectedStorage && ingredient.storage && ingredient.storage[state.selectedStorage]) {
-        shelfLifeDays = ingredient.storage[state.selectedStorage].days || 0;
+    if (state.selectedStorage === "입고") {
+        stickerLoc.textContent = "입고";
+        if (stickerPrepLabel) stickerPrepLabel.textContent = "입고 :";
+        stickerPrepDate.textContent = formatShortDate(state.prepTime);
+        if (expireRow) expireRow.style.display = "none";
+    } else {
+        stickerLoc.textContent = state.selectedStorage ? `${state.selectedStorage} 보관` : "보관위치 미지정";
+        if (stickerPrepLabel) stickerPrepLabel.textContent = "준비일시:";
+        stickerPrepDate.textContent = formatDate(state.prepTime);
+        if (expireRow) expireRow.style.display = "block";
+        
+        let shelfLifeValue = 0;
+        if (state.selectedStorage && ingredient.storage && ingredient.storage[state.selectedStorage]) {
+            shelfLifeValue = ingredient.storage[state.selectedStorage].days || 0;
+        }
+        
+        let expireTime;
+        if (state.selectedStorage === "소스보틀") {
+            expireTime = new Date(state.prepTime.getTime() + shelfLifeValue * 60 * 60000);
+        } else if (state.selectedStorage === "분할") {
+            if (shelfLifeValue === 22) {
+                expireTime = new Date(state.prepTime);
+                expireTime.setHours(22, 0, 0, 0);
+            } else {
+                expireTime = new Date(state.prepTime.getTime() + shelfLifeValue * 60 * 60000);
+            }
+        } else {
+            expireTime = new Date(state.prepTime.getTime() + shelfLifeValue * 24 * 60 * 60000);
+        }
+        
+        stickerExpireDate.textContent = formatDate(expireTime);
     }
     
-    const expireTime = new Date(state.prepTime.getTime() + shelfLifeDays * 24 * 60 * 60000);
-    stickerExpireDate.textContent = formatDate(expireTime);
     stickerStaffVal.textContent = state.staffName ? state.staffName : "-";
 }
 
@@ -968,7 +1253,7 @@ function updateStickerPreview() {
 // ==========================================
 function triggerPrint() {
     const quantity = state.printQty;
-    printStickerContainer.innerHTML = "";
+    clearElement(printStickerContainer);
     
     const w = parseFloat(document.getElementById("label-width").value) || 50;
     const h = parseFloat(document.getElementById("label-height").value) || 30;
@@ -979,7 +1264,7 @@ function triggerPrint() {
         printStyle.id = "dynamic-print-style";
         document.head.appendChild(printStyle);
     }
-    printStyle.innerHTML = `
+    printStyle.textContent = `
         @page {
             size: ${w}mm ${h}mm;
             margin: 0;
@@ -1058,15 +1343,7 @@ async function checkAuthStatus() {
             logoutBtn.style.display = "flex";
             
             applyRoleRestrictions();
-            await loadAllData();
-            
-            renderCategoryFilterTabs();
-            renderIngredients();
-            renderCategoryChips();
-            renderLocationChips();
-            renderCategoryDropdown();
-            renderStorageFieldsInForm();
-            renderRegisteredIngredientsTable();
+            await reloadAndRenderMainViews();
             
             if (state.ingredients.length > 0) {
                 selectIngredient(state.ingredients[0].name);
@@ -1130,15 +1407,7 @@ async function handleLogin(e) {
             logoutBtn.style.display = "flex";
             
             applyRoleRestrictions();
-            await loadAllData();
-            
-            renderCategoryFilterTabs();
-            renderIngredients();
-            renderCategoryChips();
-            renderLocationChips();
-            renderCategoryDropdown();
-            renderStorageFieldsInForm();
-            renderRegisteredIngredientsTable();
+            await reloadAndRenderMainViews();
             
             if (state.ingredients.length > 0) {
                 selectIngredient(state.ingredients[0].name);
@@ -1171,9 +1440,14 @@ async function handleLogout() {
         state.selectedId = null;
         state.selectedStorage = null;
         
-        if (ingredientsGrid) ingredientsGrid.innerHTML = "";
+        if (ingredientsGrid) clearElement(ingredientsGrid);
         if (selectedIngDisplay) selectedIngDisplay.textContent = "재료를 선택해 주세요";
-        if (storageOptionsContainer) storageOptionsContainer.innerHTML = "";
+        if (storageOptionsContainer) clearElement(storageOptionsContainer);
+        
+        const dbContainer = document.getElementById("db-size-presets");
+        const previewContainer = document.getElementById("preview-size-presets");
+        if (dbContainer) clearElement(dbContainer);
+        if (previewContainer) clearElement(previewContainer);
     } catch (e) {
         console.error("Logout failed:", e);
         state.user = null;

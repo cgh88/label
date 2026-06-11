@@ -16,6 +16,8 @@
     --accent-glow: rgba(99, 102, 241, 0.25);
 
     /* Category Colors */
+    --color-dough: #3b82f6;
+    /* 도우 */
     --color-meat: #ef4444;
     /* 미트 */
     --color-vegetable: #10b981;
@@ -411,6 +413,11 @@ body.light-theme .ingredient-card:hover {
     padding: 1px 6px;
     border-radius: 4px;
     width: fit-content;
+}
+
+.cat-dough {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--color-dough);
 }
 
 .cat-meat {
@@ -1198,7 +1205,15 @@ body.light-theme .db-table th {
 }
 
 .db-action-btn:hover {
+    color: var(--text-primary);
+}
+
+.db-action-btn.delete:hover {
     color: var(--color-meat);
+}
+
+.db-action-btn.edit:hover {
+    color: var(--primary-color);
 }
 
 /* ==========================================

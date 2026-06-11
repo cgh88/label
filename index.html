@@ -134,6 +134,13 @@
                         <h2 class="config-section-title">2. 라벨 스티커 미리보기 (<span id="preview-size-label">50 × 30</span>mm)
                         </h2>
 
+                        <div class="form-group">
+                            <label>출력 규격 프리셋</label>
+                            <div class="size-presets" id="preview-size-presets">
+                                <!-- Injected dynamically from SQLite DB -->
+                            </div>
+                        </div>
+
                         <div class="sticker-preview-outer">
                             <div id="sticker-preview" class="sticker-preview-content">
                                 <!-- Live sticker content -->
@@ -143,7 +150,7 @@
                                 </div>
                                 <div class="sticker-main-name" id="sticker-name">재료명</div>
                                 <div class="sticker-dates">
-                                    <div><strong>준비일시:</strong> <span id="sticker-prep-date">2026-06-02 (화) 16:00</span>
+                                    <div><strong id="sticker-prep-label">준비일시:</strong> <span id="sticker-prep-date">2026-06-02 (화) 16:00</span>
                                     </div>
                                     <div class="expire-date-row"><strong>폐기일시:</strong> <span id="sticker-expire-date"
                                             class="highlight-expire">2026-06-05 (금) 16:00</span></div>
@@ -336,6 +343,51 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT INGREDIENT MODAL -->
+    <div id="edit-ingredient-modal" class="modal-overlay no-print">
+        <div class="modal-container" style="max-width: 540px;">
+            <header class="modal-header">
+                <h2><i data-lucide="edit-3"></i> 재료 정보 수정</h2>
+                <button id="edit-modal-close-btn" class="modal-close-btn">&times;</button>
+            </header>
+
+            <div class="modal-body">
+                <form id="mgmt-edit-ingredient-form" class="mgmt-ingredient-form">
+                    <input type="hidden" id="mgmt-edit-old-name">
+                    
+                    <div class="form-grid-three">
+                        <div class="form-group">
+                            <label for="mgmt-edit-name">재료명 *</label>
+                            <input type="text" id="mgmt-edit-name" required placeholder="예: 페페로니">
+                        </div>
+                        <div class="form-group">
+                            <label for="mgmt-edit-abbr">식별 약어</label>
+                            <input type="text" id="mgmt-edit-abbr" placeholder="예: P">
+                        </div>
+                        <div class="form-group">
+                            <label for="mgmt-edit-category">카테고리 *</label>
+                            <select id="mgmt-edit-category" required>
+                                <!-- Loaded dynamically -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label style="margin-bottom: 8px; display: block; font-weight: 500;">보관위치별 유통기한(일) 설정 (공란 시 사용 안 함)</label>
+                        <div id="mgmt-edit-storage-fields" class="storage-fields-grid">
+                            <!-- Dynamic inputs created based on active locations -->
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button type="button" id="edit-modal-cancel-btn" class="reset-danger-btn" style="flex: 1; justify-content: center; padding: 10px;">취소</button>
+                        <button type="submit" class="submit-new-btn" style="flex: 2; margin-top: 0;">수정 완료</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
