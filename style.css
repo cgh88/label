@@ -293,22 +293,68 @@ body.light-theme #ingredient-search {
     box-shadow: 0 0 10px var(--accent-glow);
 }
 
-/* Category Tabs */
+/* Category Tabs Container & Scroll Buttons */
+.category-tabs-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
 .category-tabs {
+    flex: 1;
+    overflow-x: auto;
+    scroll-behavior: smooth;
     display: flex;
     gap: 6px;
-    overflow-x: auto;
     padding-bottom: 6px;
+    /* Hide scrollbar for clean layout */
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
 }
 
-/* Custom scroll for tabs */
 .category-tabs::-webkit-scrollbar {
-    height: 4px;
+    display: none; /* Chrome, Safari, Opera */
 }
 
-.category-tabs::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 2px;
+.tabs-scroll-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    color: var(--text-secondary);
+    border-radius: var(--border-radius-sm);
+    width: 34px;
+    height: 34px;
+    display: none; /* Managed by JS .visible class */
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: var(--transition-smooth);
+    flex-shrink: 0;
+}
+
+.tabs-scroll-btn:hover {
+    background: var(--primary-gradient);
+    color: var(--text-primary);
+    border-color: transparent;
+    box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.tabs-scroll-btn.left {
+    margin-right: 6px;
+}
+
+.tabs-scroll-btn.right {
+    margin-left: 6px;
+}
+
+.tabs-scroll-btn.visible {
+    display: flex;
+}
+
+/* Light Theme Scroll Buttons Override */
+body.light-theme .tabs-scroll-btn {
+    background: rgba(0, 0, 0, 0.04);
 }
 
 .category-tab {

@@ -70,10 +70,18 @@
                         </div>
                     </div>
 
-                    <!-- Category Tabs (Dynamically rendered) -->
-                    <div class="category-tabs" id="dynamic-category-tabs">
-                        <button class="category-tab active" data-category="all">전체</button>
-                        <!-- Injected by JS -->
+                    <!-- Category Tabs Container -->
+                    <div class="category-tabs-container">
+                        <button class="tabs-scroll-btn left" id="tabs-scroll-left" type="button" aria-label="이전 카테고리">
+                            <i data-lucide="chevron-left"></i>
+                        </button>
+                        <div class="category-tabs" id="dynamic-category-tabs">
+                            <button class="category-tab active" data-category="all">전체</button>
+                            <!-- Injected by JS -->
+                        </div>
+                        <button class="tabs-scroll-btn right" id="tabs-scroll-right" type="button" aria-label="다음 카테고리">
+                            <i data-lucide="chevron-right"></i>
+                        </button>
                     </div>
 
                     <!-- Grid of items -->
@@ -259,9 +267,20 @@
                                 <i data-lucide="list"></i>
                                 <span>등록된 재료 목록</span>
                             </h2>
-                            <button id="reset-default-btn" class="reset-danger-btn">
-                                <i data-lucide="refresh-cw"></i> 전체 초기화 (기본값 복원)
-                            </button>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <a href="/api/ingredients/sample-excel" class="size-preset-btn" style="text-decoration: none; padding: 10px 16px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem;" download>
+                                    <i data-lucide="download" style="width:16px; height:16px;"></i>
+                                    <span>샘플 엑셀 다운로드</span>
+                                </a>
+                                <button type="button" id="upload-excel-btn" class="submit-new-btn" style="margin-top:0; width:auto; padding: 10px 16px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem;">
+                                    <i data-lucide="upload" style="width:16px; height:16px;"></i>
+                                    <span>엑셀 업로드</span>
+                                </button>
+                                <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="display: none;">
+                                <button id="reset-default-btn" class="reset-danger-btn">
+                                    <i data-lucide="refresh-cw"></i> 전체 초기화 (기본값 복원)
+                                </button>
+                            </div>
                         </div>
 
                         <div class="table-wrapper">

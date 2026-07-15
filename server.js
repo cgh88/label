@@ -2,6 +2,8 @@ const path = require('path');
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const crypto = require('crypto');
+const multer = require('multer');
+const xlsx = require('xlsx');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -834,6 +836,190 @@ app.put('/api/ingredients/:oldName', requireAdmin, (req, res) => {
             performUpdate();
         }
     });
+});
+
+const upload = multer({ storage: multer.memoryStorage() });
+
+app.get('/api/ingredients/sample-excel', requireLogin, (req, res) => {
+    const filePath = path.join(__dirname, 'files', 'SHELFLIFE_sample.xlsx');
+    res.download(filePath, 'SHELFLIFE_sample.xlsx', (err) => {
+        if (err) {
+            res.status(500).json({ error: '샘플 파일을 다운로드하는 중에 오류가 발생했습니다.' });
+        }
+    });
+});
+
+app.post('/api/ingredients/upload-excel', requireAdmin, upload.single('file'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: '엑셀 파일을 업로드해 주세요.' });
+    }
+
+    try {
+        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rows = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+
+        if (!rows || rows.length < 2) {
+            return res.status(400).json({ error: '유효하지 않은 엑셀 파일 형식입니다.' });
+        }
+
+        const parsedCategories = new Set();
+        const parsedIngredients = [];
+
+        let isTable2 = false;
+        let currentCategory = null;
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row || row.length === 0) continue;
+
+            const cell4 = row[4] ? String(row[4]).trim() : '';
+            const cell5 = row[5] ? String(row[5]).trim() : '';
+            if (cell4 === '분할' || cell5 === '폐기') {
+                isTable2 = true;
+                currentCategory = null;
+                continue;
+            }
+
+            if (row[0] === 'ID' || row[1] === '카테고리' || row[2] === '재료명') {
+                continue;
+            }
+
+            const colCat = row[1];
+            const colName = row[2];
+            const colAbbr = row[3];
+
+            if (colCat) {
+                currentCategory = String(colCat).trim();
+            }
+
+            if (colName) {
+                const name = String(colName).trim();
+                const abbr = colAbbr ? String(colAbbr).trim() : '';
+                const category = currentCategory || '기타';
+
+                parsedCategories.add(category);
+
+                const storage = {};
+                if (!isTable2) {
+                    if (row[4] !== null && row[4] !== undefined && row[4] !== '') {
+                        const val = parseInt(row[4]);
+                        if (!isNaN(val)) storage['해동'] = val;
+                    }
+                    if (row[5] !== null && row[5] !== undefined && row[5] !== '') {
+                        const val = parseInt(row[5]);
+                        if (!isNaN(val)) storage['워크인 랙산'] = val;
+                    }
+                    if (row[6] !== null && row[6] !== undefined && row[6] !== '') {
+                        const val = parseInt(row[6]);
+                        if (!isNaN(val)) storage['메이크라인'] = val;
+                    }
+                    if (row[7] !== null && row[7] !== undefined && row[7] !== '') {
+                        const val = parseInt(row[7]);
+                        if (!isNaN(val)) storage['소스보틀'] = val;
+                    }
+                } else {
+                    const expireStr = row[5] ? String(row[5]).trim() : '';
+                    if (expireStr) {
+                        if (expireStr.includes('22시') || expireStr === '22') {
+                            storage['분할'] = 22;
+                        } else if (expireStr.includes('시간')) {
+                            const match = expireStr.match(/(\d+)/);
+                            if (match) {
+                                storage['분할'] = parseInt(match[1]);
+                            }
+                        } else if (expireStr.includes('일')) {
+                            const match = expireStr.match(/(\d+)/);
+                            if (match) {
+                                storage['분할'] = parseInt(match[1]) * 24;
+                            }
+                        } else {
+                            const val = parseInt(expireStr);
+                            if (!isNaN(val)) {
+                                if (val < 10) {
+                                    storage['분할'] = val * 24;
+                                } else {
+                                    storage['분할'] = val;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                parsedIngredients.push({ category, name, abbr, storage });
+            }
+        }
+
+        if (parsedIngredients.length === 0) {
+            return res.status(400).json({ error: '엑셀 파일에서 읽어온 재료 데이터가 없습니다.' });
+        }
+
+        db.serialize(() => {
+            db.run("BEGIN TRANSACTION");
+            
+            // Insert missing categories
+            const catStmt = db.prepare("INSERT OR IGNORE INTO categories (name, sort_order) VALUES (?, (SELECT COALESCE(MAX(sort_order),0)+1 FROM categories))");
+            parsedCategories.forEach(cat => {
+                catStmt.run(cat);
+            });
+            catStmt.finalize();
+
+            // Ensure storage locations exist
+            const defLocations = ["해동", "워크인 랙산", "메이크라인", "소스보틀", "분할"];
+            const locStmt = db.prepare("INSERT OR IGNORE INTO storage_locations (name, sort_order) VALUES (?, (SELECT COALESCE(MAX(sort_order),0)+1 FROM storage_locations))");
+            defLocations.forEach(loc => {
+                locStmt.run(loc);
+            });
+            locStmt.finalize();
+
+            // Clear active ingredients and storage mappings
+            db.run("DELETE FROM ingredient_storage");
+            db.run("DELETE FROM ingredients_v2");
+
+            const ingStmt = db.prepare("INSERT INTO ingredients_v2 (name, category, abbr) VALUES (?, ?, ?)");
+            parsedIngredients.forEach(ing => {
+                ingStmt.run(ing.name, ing.category, ing.abbr);
+            });
+            ingStmt.finalize();
+
+            db.all("SELECT id, name FROM storage_locations", (err, dbLocations) => {
+                if (err) {
+                    db.run("ROLLBACK");
+                    return res.status(500).json({ error: err.message });
+                }
+
+                const locMap = {};
+                dbLocations.forEach(l => { locMap[l.name] = l.id; });
+
+                const mappingStmt = db.prepare("INSERT INTO ingredient_storage (ingredient_name, storage_id, shelf_days) VALUES (?, ?, ?)");
+                parsedIngredients.forEach(ing => {
+                    Object.entries(ing.storage).forEach(([locName, val]) => {
+                        if (locMap[locName]) {
+                            mappingStmt.run(ing.name, locMap[locName], val);
+                        }
+                    });
+                });
+
+                mappingStmt.finalize((err) => {
+                    if (err) {
+                        db.run("ROLLBACK");
+                        return res.status(500).json({ error: err.message });
+                    }
+                    db.run("COMMIT", (commitErr) => {
+                        if (commitErr) {
+                            return res.status(500).json({ error: commitErr.message });
+                        }
+                        res.json({ success: true, count: parsedIngredients.length });
+                    });
+                });
+            });
+        });
+
+    } catch (err) {
+        console.error("Excel upload parsing error:", err);
+        res.status(500).json({ error: '엑셀 파싱 및 데이터베이스 업데이트 중 오류가 발생했습니다: ' + err.message });
+    }
 });
 
 app.post('/api/ingredients/reset', requireAdmin, (req, res) => {

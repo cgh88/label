@@ -474,12 +474,84 @@ function setupEventHandlers() {
     document.getElementById("mgmt-add-ingredient-form").addEventListener("submit", handleMgmtAddIngredient);
     document.getElementById("reset-default-btn").addEventListener("click", handleResetDatabase);
 
+    // Excel Upload
+    const uploadExcelBtn = document.getElementById("upload-excel-btn");
+    const excelFileInput = document.getElementById("excel-file-input");
+    if (uploadExcelBtn && excelFileInput) {
+        uploadExcelBtn.addEventListener("click", () => {
+            excelFileInput.click();
+        });
+        excelFileInput.addEventListener("change", async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            try {
+                uploadExcelBtn.disabled = true;
+                const span = uploadExcelBtn.querySelector("span");
+                if (span) span.textContent = "업로드 중...";
+
+                const response = await fetch("/api/ingredients/upload-excel", {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || "엑셀 업로드 실패");
+                }
+
+                const result = await response.json();
+                alert(`엑셀 파일 업로드 성공! ${result.count}개의 재료 데이터가 업데이트되었습니다.`);
+                
+                await reloadAndRenderMainViews();
+                if (state.ingredients.length > 0) {
+                    selectIngredient(state.ingredients[0].name);
+                }
+            } catch (err) {
+                alert("엑셀 파일 업로드 중 오류가 발생했습니다: " + err.message);
+            } finally {
+                uploadExcelBtn.disabled = false;
+                const span = uploadExcelBtn.querySelector("span");
+                if (span) span.textContent = "엑셀 업로드";
+                excelFileInput.value = "";
+            }
+        });
+    }
+
     // Login & Logout
     if (loginForm) {
         loginForm.addEventListener("submit", handleLogin);
     }
     if (logoutBtn) {
         logoutBtn.addEventListener("click", handleLogout);
+    }
+
+    // Category tabs scroll buttons setup
+    const tabsContainer = document.getElementById("dynamic-category-tabs");
+    if (tabsContainer) {
+        tabsContainer.addEventListener("scroll", updateCategoryTabsScrollButtons);
+        window.addEventListener("resize", updateCategoryTabsScrollButtons);
+    }
+    
+    const leftBtn = document.getElementById("tabs-scroll-left");
+    if (leftBtn) {
+        leftBtn.addEventListener("click", () => {
+            if (tabsContainer) {
+                tabsContainer.scrollBy({ left: -180, behavior: 'smooth' });
+            }
+        });
+    }
+    
+    const rightBtn = document.getElementById("tabs-scroll-right");
+    if (rightBtn) {
+        rightBtn.addEventListener("click", () => {
+            if (tabsContainer) {
+                tabsContainer.scrollBy({ left: 180, behavior: 'smooth' });
+            }
+        });
     }
 }
 
@@ -586,6 +658,34 @@ function renderCategoryFilterTabs() {
         tab.addEventListener("click", handleCategoryFilterClick);
         tabsContainer.appendChild(tab);
     });
+
+    // Schedule scroll buttons update after DOM renders
+    setTimeout(updateCategoryTabsScrollButtons, 50);
+}
+
+function updateCategoryTabsScrollButtons() {
+    const tabsContainer = document.getElementById("dynamic-category-tabs");
+    const leftBtn = document.getElementById("tabs-scroll-left");
+    const rightBtn = document.getElementById("tabs-scroll-right");
+    if (!tabsContainer || !leftBtn || !rightBtn) return;
+
+    const scrollLeft = tabsContainer.scrollLeft;
+    const scrollWidth = tabsContainer.scrollWidth;
+    const clientWidth = tabsContainer.clientWidth;
+
+    // Show left scroll button if scrolled to the right
+    if (scrollLeft > 5) {
+        leftBtn.classList.add("visible");
+    } else {
+        leftBtn.classList.remove("visible");
+    }
+
+    // Show right scroll button if there is overflow remaining to the right
+    if (scrollLeft + clientWidth < scrollWidth - 5) {
+        rightBtn.classList.add("visible");
+    } else {
+        rightBtn.classList.remove("visible");
+    }
 }
 
 function handleCategoryFilterClick(e) {
@@ -641,7 +741,15 @@ function renderIngredients() {
         if (item.storage) {
             Object.entries(item.storage).forEach(([locName, data]) => {
                 if (data && data.days !== null) {
-                    storagePills.push(`${locName.slice(0, 2)}:${data.days}일`);
+                    if (locName === "소스보틀" || locName === "분할") {
+                        if (locName === "분할" && data.days === 22) {
+                            storagePills.push(`${locName.slice(0, 2)}:당일 22시`);
+                        } else {
+                            storagePills.push(`${locName.slice(0, 2)}:${data.days}시간`);
+                        }
+                    } else {
+                        storagePills.push(`${locName.slice(0, 2)}:${data.days}일`);
+                    }
                 }
             });
         }
@@ -835,10 +943,11 @@ function renderStorageFieldsInForm() {
         input.className = "mgmt-storage-input";
         input.dataset.locId = loc.id;
         input.min = "1";
-        input.placeholder = "기한(일)";
+        const isHourUnit = (loc.name === "소스보틀" || loc.name === "분할");
+        input.placeholder = isHourUnit ? "기한(시간)" : "기한(일)";
         wrapper.appendChild(input);
 
-        const unit = createTextElement("span", "", "일");
+        const unit = createTextElement("span", "", isHourUnit ? "시간" : "일");
         unit.style.cssText = "font-size:0.75rem; color:var(--text-muted);";
         wrapper.appendChild(unit);
         group.appendChild(wrapper);
@@ -879,7 +988,19 @@ function renderRegisteredIngredientsTable() {
 
         state.locations.forEach(loc => {
             const shelfDays = ing.storage && ing.storage[loc.name] ? ing.storage[loc.name].days : null;
-            tr.appendChild(createTextElement("td", "", shelfDays !== null ? `${shelfDays}일` : "-"));
+            let valText = "-";
+            if (shelfDays !== null) {
+                if (loc.name === "소스보틀" || loc.name === "분할") {
+                    if (loc.name === "분할" && shelfDays === 22) {
+                        valText = "당일 22시";
+                    } else {
+                        valText = `${shelfDays}시간`;
+                    }
+                } else {
+                    valText = `${shelfDays}일`;
+                }
+            }
+            tr.appendChild(createTextElement("td", "", valText));
         });
 
         const actionCell = document.createElement("td");
@@ -994,7 +1115,7 @@ async function handleMgmtAddIngredient(e) {
         const locId = inp.dataset.locId;
         const val = inp.value.trim();
         if (val !== "") {
-            storage[locId] = parseInt(val);
+            storage[locId] = { days: parseInt(val) };
         }
     });
     
@@ -1073,11 +1194,12 @@ function openEditModal(name) {
             input.className = "mgmt-edit-storage-input";
             input.dataset.locId = loc.id;
             input.min = "1";
-            input.placeholder = "기한(일)";
+            const isHourUnit = (loc.name === "소스보틀" || loc.name === "분할");
+            input.placeholder = isHourUnit ? "기한(시간)" : "기한(일)";
             input.value = shelfDays;
             wrapper.appendChild(input);
 
-            const unit = createTextElement("span", "", "일");
+            const unit = createTextElement("span", "", isHourUnit ? "시간" : "일");
             unit.style.cssText = "font-size:0.75rem; color:var(--text-muted);";
             wrapper.appendChild(unit);
             group.appendChild(wrapper);
