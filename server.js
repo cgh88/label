@@ -32,15 +32,13 @@ const DEFAULT_CATEGORIES = [
     { name: "캔",   emoji: "🥫", sort_order: 6 },
     { name: "기타", emoji: "🍕", sort_order: 7 }
 ];
-
 const DEFAULT_STORAGE_LOCATIONS = [
-    { name: "해동", sort_order: 1 },
-    { name: "워크인 랙산", sort_order: 2 },
-    { name: "메이크라인", sort_order: 3 },
-    { name: "소스보틀",   sort_order: 4 },
-    { name: "분할",       sort_order: 5 }
+    { name: "해동", sort_order: 1, unit: "day" },
+    { name: "워크인 랙산", sort_order: 2, unit: "day" },
+    { name: "메이크라인", sort_order: 3, unit: "day" },
+    { name: "소스보틀",   sort_order: 4, unit: "hour" },
+    { name: "분할",       sort_order: 5, unit: "hour" }
 ];
-
 const DEFAULT_LABEL_SIZES = [
     { width: 50, height: 30, is_default: 1 },
     { width: 60, height: 40, is_default: 1 },
@@ -292,8 +290,8 @@ async function seedDefaultsAsync() {
     DEFAULT_CATEGORIES.forEach(c => catStmt.run(c.name, c.emoji, c.sort_order));
     await finalizeAsync(catStmt);
 
-    const slStmt = db.prepare("INSERT OR IGNORE INTO storage_locations (name, sort_order) VALUES (?, ?)");
-    DEFAULT_STORAGE_LOCATIONS.forEach(s => slStmt.run(s.name, s.sort_order));
+    const slStmt = db.prepare("INSERT OR IGNORE INTO storage_locations (name, sort_order, unit) VALUES (?, ?, ?)");
+    DEFAULT_STORAGE_LOCATIONS.forEach(s => slStmt.run(s.name, s.sort_order, s.unit || 'day'));
     await finalizeAsync(slStmt);
 
     const ingStmt = db.prepare("INSERT OR IGNORE INTO ingredients_v2 (name, category, abbr) VALUES (?, ?, ?)");
@@ -382,8 +380,14 @@ function initDatabase() {
         db.run(`CREATE TABLE IF NOT EXISTS storage_locations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT UNIQUE NOT NULL,
-            sort_order INTEGER DEFAULT 0
+            sort_order INTEGER DEFAULT 0,
+            unit TEXT DEFAULT 'day'
         )`);
+
+        // Migrate existing database to include 'unit' column if it doesn't exist
+        db.run(`ALTER TABLE storage_locations ADD COLUMN unit TEXT DEFAULT 'day'`, (err) => {
+            // Error is expected if the column already exists, safe to ignore
+        });
 
         db.run(`CREATE TABLE IF NOT EXISTS label_sizes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -443,8 +447,8 @@ function migrateFromOldSchema() {
         catStmt.finalize();
 
         // 2. Seed storage locations
-        const slStmt = db.prepare("INSERT OR IGNORE INTO storage_locations (name, sort_order) VALUES (?, ?)");
-        DEFAULT_STORAGE_LOCATIONS.forEach(s => slStmt.run(s.name, s.sort_order));
+        const slStmt = db.prepare("INSERT OR IGNORE INTO storage_locations (name, sort_order, unit) VALUES (?, ?, ?)");
+        DEFAULT_STORAGE_LOCATIONS.forEach(s => slStmt.run(s.name, s.sort_order, s.unit || 'day'));
         slStmt.finalize();
 
         // 3. Migrate ingredients from old table
@@ -635,15 +639,16 @@ app.get('/api/storage-locations', requireLogin, (req, res) => {
 });
 
 app.post('/api/storage-locations', requireAdmin, (req, res) => {
-    const { name } = req.body;
+    const { name, unit } = req.body;
     if (!name) return res.status(400).json({ error: '보관위치 이름은 필수입니다.' });
-    db.run("INSERT INTO storage_locations (name, sort_order) VALUES (?, (SELECT COALESCE(MAX(sort_order),0)+1 FROM storage_locations))",
-        [name], function(err) {
+    const insertUnit = unit || 'day';
+    db.run("INSERT INTO storage_locations (name, sort_order, unit) VALUES (?, (SELECT COALESCE(MAX(sort_order),0)+1 FROM storage_locations), ?)",
+        [name, insertUnit], function(err) {
             if (err) {
                 if (err.message.includes('UNIQUE')) return res.status(400).json({ error: '이미 존재하는 보관위치입니다.' });
                 return res.status(500).json({ error: err.message });
             }
-            res.status(201).json({ id: this.lastID, name });
+            res.status(201).json({ id: this.lastID, name, unit: insertUnit });
         });
 });
 
@@ -966,10 +971,16 @@ app.post('/api/ingredients/upload-excel', requireAdmin, upload.single('file'), (
             catStmt.finalize();
 
             // Ensure storage locations exist
-            const defLocations = ["해동", "워크인 랙산", "메이크라인", "소스보틀", "분할"];
-            const locStmt = db.prepare("INSERT OR IGNORE INTO storage_locations (name, sort_order) VALUES (?, (SELECT COALESCE(MAX(sort_order),0)+1 FROM storage_locations))");
+            const defLocations = [
+                { name: "해동", unit: "day" },
+                { name: "워크인 랙산", unit: "day" },
+                { name: "메이크라인", unit: "day" },
+                { name: "소스보틀", unit: "hour" },
+                { name: "분할", unit: "hour" }
+            ];
+            const locStmt = db.prepare("INSERT OR IGNORE INTO storage_locations (name, sort_order, unit) VALUES (?, (SELECT COALESCE(MAX(sort_order),0)+1 FROM storage_locations), ?)");
             defLocations.forEach(loc => {
-                locStmt.run(loc);
+                locStmt.run(loc.name, loc.unit);
             });
             locStmt.finalize();
 

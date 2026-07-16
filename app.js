@@ -36,8 +36,14 @@ async function apiPut(url, data) {
 async function apiDelete(url) {
     const response = await fetch(url, { method: "DELETE" });
     if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "삭제 실패");
+        let errMsg = "삭제 실패";
+        try {
+            const err = await response.json();
+            errMsg = err.error || errMsg;
+        } catch (_) {}
+        const e = new Error(errMsg);
+        e.status = response.status;
+        throw e;
     }
     return await response.json();
 }
@@ -97,7 +103,8 @@ let state = {
     activeTab: "tab-print",
     filters: {
         category: "all",
-        search: ""
+        search: "",
+        mgmtSearch: ""
     }
 };
 
@@ -106,6 +113,7 @@ let state = {
 // ==========================================
 const ingredientsGrid = document.getElementById("ingredients-grid");
 const searchInput = document.getElementById("ingredient-search");
+const mgmtSearchInput = document.getElementById("mgmt-ingredient-search");
 
 const selectedIngDisplay = document.getElementById("selected-ingredient-display");
 const storageOptionsContainer = document.getElementById("storage-options");
@@ -120,6 +128,11 @@ const stickerLoc = document.getElementById("sticker-loc");
 const stickerPrepDate = document.getElementById("sticker-prep-date");
 const stickerExpireDate = document.getElementById("sticker-expire-date");
 const stickerStaffVal = document.getElementById("sticker-staff-val");
+
+const stickerLine1 = document.getElementById("sticker-line-1");
+const stickerLine2 = document.getElementById("sticker-line-2");
+const stickerLine3 = document.getElementById("sticker-line-3");
+const stickerLine4 = document.getElementById("sticker-line-4");
 
 // Control buttons
 const printLabelBtn = document.getElementById("print-label-btn");
@@ -218,33 +231,25 @@ function initTabs() {
     });
 }
 
+// Fixed label size: 55mm × 20mm
+const FIXED_LABEL_W = 55;
+const FIXED_LABEL_H = 20;
+
 function initLabelSizeControls() {
+    // Label size is fixed at 55×20mm - clear any stale saved values
+    localStorage.setItem("label_width", FIXED_LABEL_W);
+    localStorage.setItem("label_height", FIXED_LABEL_H);
+
     const labelWidthInput = document.getElementById("label-width");
     const labelHeightInput = document.getElementById("label-height");
-    const savePresetBtn = document.getElementById("save-current-size-preset-btn");
+    if (labelWidthInput) labelWidthInput.value = FIXED_LABEL_W;
+    if (labelHeightInput) labelHeightInput.value = FIXED_LABEL_H;
 
-    // Load saved sizes from localStorage
-    const savedWidth = localStorage.getItem("label_width");
-    const savedHeight = localStorage.getItem("label_height");
-
-    if (savedWidth && savedHeight) {
-        if (labelWidthInput) labelWidthInput.value = savedWidth;
-        if (labelHeightInput) labelHeightInput.value = savedHeight;
-    }
-
-    if (labelWidthInput && labelHeightInput) {
-        labelWidthInput.addEventListener("input", () => {
-            updateLabelSize();
-            saveLabelSize();
-        });
-        labelHeightInput.addEventListener("input", () => {
-            updateLabelSize();
-            saveLabelSize();
-        });
-    }
-
-    if (savePresetBtn) {
-        savePresetBtn.addEventListener("click", handleAddPreset);
+    // Hide preset selection UI in preview tab (not needed when size is fixed)
+    const previewPresetsWrapper = document.getElementById("preview-size-presets");
+    if (previewPresetsWrapper) {
+        const wrapperGroup = previewPresetsWrapper.closest(".form-group");
+        if (wrapperGroup) wrapperGroup.style.display = "none";
     }
 
     renderPresetButtons();
@@ -324,38 +329,23 @@ function renderPresetButtons() {
 }
 
 function updateLabelSize() {
-    const labelWidthInput = document.getElementById("label-width");
-    const labelHeightInput = document.getElementById("label-height");
-    const previewSizeLabel = document.getElementById("preview-size-label");
+    // Size is fixed at 55×20mm
+    const w = FIXED_LABEL_W;
+    const h = FIXED_LABEL_H;
 
-    if (!labelWidthInput || !labelHeightInput) return;
-    
-    const w = parseFloat(labelWidthInput.value) || 50;
-    const h = parseFloat(labelHeightInput.value) || 30;
-    
     document.documentElement.style.setProperty("--label-w", w);
     document.documentElement.style.setProperty("--label-h", h);
+
+    const previewSizeLabel = document.getElementById("preview-size-label");
     if (previewSizeLabel) {
         previewSizeLabel.textContent = `${w} × ${h}`;
     }
-
-    // Match active class with selected preset
-    document.querySelectorAll(".size-preset-btn").forEach(btn => {
-        if (parseFloat(btn.dataset.w) === w && parseFloat(btn.dataset.h) === h) {
-            btn.classList.add("active");
-        } else {
-            btn.classList.remove("active");
-        }
-    });
 }
 
 function saveLabelSize() {
-    const labelWidthInput = document.getElementById("label-width");
-    const labelHeightInput = document.getElementById("label-height");
-    if (labelWidthInput && labelHeightInput) {
-        localStorage.setItem("label_width", labelWidthInput.value);
-        localStorage.setItem("label_height", labelHeightInput.value);
-    }
+    // Size is fixed at 55×20mm
+    localStorage.setItem("label_width", FIXED_LABEL_W);
+    localStorage.setItem("label_height", FIXED_LABEL_H);
 }
 
 async function handleAddPreset() {
@@ -400,7 +390,9 @@ function loadStaffName() {
     if (savedStaff) {
         state.staffName = savedStaff;
         staffInput.value = savedStaff;
-        stickerStaffVal.textContent = savedStaff;
+        if (stickerStaffVal) {
+            stickerStaffVal.textContent = savedStaff;
+        }
     }
 }
 
@@ -410,6 +402,13 @@ function setupEventHandlers() {
         state.filters.search = e.target.value.trim();
         renderIngredients();
     });
+
+    if (mgmtSearchInput) {
+        mgmtSearchInput.addEventListener("input", (e) => {
+            state.filters.mgmtSearch = e.target.value.trim();
+            renderRegisteredIngredientsTable();
+        });
+    }
     
     // Theme Toggle
     themeToggleBtn.addEventListener("click", toggleTheme);
@@ -741,7 +740,9 @@ function renderIngredients() {
         if (item.storage) {
             Object.entries(item.storage).forEach(([locName, data]) => {
                 if (data && data.days !== null) {
-                    if (locName === "소스보틀" || locName === "분할") {
+                    const loc = state.locations.find(l => l.name === locName);
+                    const isHourUnit = loc ? loc.unit === "hour" : (locName === "소스보틀" || locName === "분할");
+                    if (isHourUnit) {
                         if (locName === "분할" && data.days === 22) {
                             storagePills.push(`${locName.slice(0, 2)}:당일 22시`);
                         } else {
@@ -801,7 +802,7 @@ function renderStorageOptions(ingredient) {
         
         let daysText = "N/A";
         if (hasValue) {
-            if (loc.name === "소스보틀" || loc.name === "분할") {
+            if (loc.unit === "hour") {
                 if (loc.name === "분할" && days === 22) {
                     daysText = "당일 22시";
                 } else {
@@ -878,10 +879,11 @@ function renderLocationChips() {
     state.locations.forEach(loc => {
         const chip = document.createElement("div");
         chip.className = "tag-chip";
-        chip.appendChild(createTextElement("span", "", loc.name));
+        const unitText = loc.unit === "hour" ? "시간" : "일";
+        chip.appendChild(createTextElement("span", "", `${loc.name} (${unitText})`));
         appendDeleteButton(chip, async (e) => {
             e.stopPropagation();
-            if (confirm(`'${loc.name}' 보관위치를 삭제하시겠습니까?\n이 보관위치로 설정된 모든 재료의 해당 위치 기한 값이 영구 삭제됩니다.`)) {
+            if (confirm(`${loc.name} 삭제하시겠습니까?`)) {
                 try {
                     await apiDelete(`/api/storage-locations/${loc.id}`);
                     await loadAllData();
@@ -898,7 +900,14 @@ function renderLocationChips() {
                         if (ing) renderStorageOptions(ing);
                     }
                 } catch (err) {
-                    alert("보관위치 삭제 실패: " + err.message);
+                    if (err.status === 401) {
+                        alert("세션이 만료되었습니다. 다시 로그인해 주세요.");
+                        loginOverlay.style.display = "flex";
+                    } else if (err.status === 403) {
+                        alert("관리자 권한이 필요합니다.");
+                    } else {
+                        alert("보관위치 삭제 실패: " + err.message);
+                    }
                 }
             }
         });
@@ -943,7 +952,7 @@ function renderStorageFieldsInForm() {
         input.className = "mgmt-storage-input";
         input.dataset.locId = loc.id;
         input.min = "1";
-        const isHourUnit = (loc.name === "소스보틀" || loc.name === "분할");
+        const isHourUnit = loc.unit === "hour";
         input.placeholder = isHourUnit ? "기한(시간)" : "기한(일)";
         wrapper.appendChild(input);
 
@@ -974,7 +983,22 @@ function renderRegisteredIngredientsTable() {
     headerRow.appendChild(actTh);
     
     clearElement(tbody);
-    state.ingredients.forEach(ing => {
+    
+    const query = (state.filters.mgmtSearch || "").trim().toLowerCase();
+    const queryChosung = getChosung(query);
+    const filteredIngredients = state.ingredients.filter(ing => {
+        if (!query) return true;
+        const name = (ing.name || "").toLowerCase();
+        const nameChosung = getChosung(name);
+        const category = (ing.category || "").toLowerCase();
+        const abbr = (ing.abbr || "").toLowerCase();
+        return name.includes(query) || 
+               nameChosung.includes(queryChosung) || 
+               category.includes(query) || 
+               abbr.includes(query);
+    });
+
+    filteredIngredients.forEach(ing => {
         const tr = document.createElement("tr");
 
         const categoryCell = document.createElement("td");
@@ -990,7 +1014,7 @@ function renderRegisteredIngredientsTable() {
             const shelfDays = ing.storage && ing.storage[loc.name] ? ing.storage[loc.name].days : null;
             let valText = "-";
             if (shelfDays !== null) {
-                if (loc.name === "소스보틀" || loc.name === "분할") {
+                if (loc.unit === "hour") {
                     if (loc.name === "분할" && shelfDays === 22) {
                         valText = "당일 22시";
                     } else {
@@ -1069,7 +1093,9 @@ async function handleAddCategory(e) {
 async function handleAddLocation(e) {
     e.preventDefault();
     const nameInput = document.getElementById("new-loc-name");
+    const unitSelect = document.getElementById("new-loc-unit");
     const name = nameInput.value.trim();
+    const unit = unitSelect ? unitSelect.value : "day";
     
     if (state.locations.some(l => l.name === name)) {
         alert("이미 존재하는 보관위치입니다.");
@@ -1077,13 +1103,14 @@ async function handleAddLocation(e) {
     }
     
     try {
-        await apiPost("/api/storage-locations", { name });
+        await apiPost("/api/storage-locations", { name, unit });
         state.locations = await apiGet("/api/storage-locations");
         renderLocationChips();
         renderStorageFieldsInForm();
         renderRegisteredIngredientsTable();
         
         nameInput.value = "";
+        if (unitSelect) unitSelect.value = "day";
     } catch (err) {
         alert("보관위치 추가 실패: " + err.message);
     }
@@ -1194,7 +1221,7 @@ function openEditModal(name) {
             input.className = "mgmt-edit-storage-input";
             input.dataset.locId = loc.id;
             input.min = "1";
-            const isHourUnit = (loc.name === "소스보틀" || loc.name === "분할");
+            const isHourUnit = loc.unit === "hour";
             input.placeholder = isHourUnit ? "기한(시간)" : "기한(일)";
             input.value = shelfDays;
             wrapper.appendChild(input);
@@ -1322,52 +1349,78 @@ function updateStickerPreview() {
     const ingredient = state.ingredients.find(i => i.name === state.selectedId);
     if (!ingredient) return;
     
-    if (ingredient.abbr) {
-        stickerAbbr.textContent = ingredient.abbr;
-        stickerAbbr.style.display = "flex";
-    } else {
-        stickerAbbr.style.display = "none";
+    // 1. Support legacy layout elements with safety checks
+    if (stickerAbbr) {
+        if (ingredient.abbr) {
+            stickerAbbr.textContent = ingredient.abbr;
+            stickerAbbr.style.display = "flex";
+        } else {
+            stickerAbbr.style.display = "none";
+        }
     }
     
-    stickerName.textContent = ingredient.name;
+    if (stickerName) {
+        stickerName.textContent = ingredient.name;
+    }
     
     const stickerPrepLabel = document.getElementById("sticker-prep-label");
     const expireRow = document.querySelector(".expire-date-row");
-    
-    if (state.selectedStorage === "입고") {
-        stickerLoc.textContent = "입고";
-        if (stickerPrepLabel) stickerPrepLabel.textContent = "입고 :";
-        stickerPrepDate.textContent = formatShortDate(state.prepTime);
-        if (expireRow) expireRow.style.display = "none";
-    } else {
-        stickerLoc.textContent = state.selectedStorage ? `${state.selectedStorage} 보관` : "보관위치 미지정";
-        if (stickerPrepLabel) stickerPrepLabel.textContent = "준비일시:";
-        stickerPrepDate.textContent = formatDate(state.prepTime);
-        if (expireRow) expireRow.style.display = "block";
-        
-        let shelfLifeValue = 0;
-        if (state.selectedStorage && ingredient.storage && ingredient.storage[state.selectedStorage]) {
-            shelfLifeValue = ingredient.storage[state.selectedStorage].days || 0;
-        }
-        
-        let expireTime;
-        if (state.selectedStorage === "소스보틀") {
-            expireTime = new Date(state.prepTime.getTime() + shelfLifeValue * 60 * 60000);
-        } else if (state.selectedStorage === "분할") {
-            if (shelfLifeValue === 22) {
-                expireTime = new Date(state.prepTime);
-                expireTime.setHours(22, 0, 0, 0);
-            } else {
-                expireTime = new Date(state.prepTime.getTime() + shelfLifeValue * 60 * 60000);
-            }
-        } else {
-            expireTime = new Date(state.prepTime.getTime() + shelfLifeValue * 24 * 60 * 60000);
-        }
-        
-        stickerExpireDate.textContent = formatDate(expireTime);
+    let shelfLifeValue = 0;
+    if (state.selectedStorage && ingredient.storage && ingredient.storage[state.selectedStorage]) {
+        shelfLifeValue = ingredient.storage[state.selectedStorage].days || 0;
     }
     
-    stickerStaffVal.textContent = state.staffName ? state.staffName : "-";
+    const loc = state.locations.find(l => l.name === state.selectedStorage);
+    const isHourUnit = loc ? loc.unit === "hour" : (state.selectedStorage === "소스보틀" || state.selectedStorage === "분할");
+
+    let expireTime;
+    if (isHourUnit) {
+        if (state.selectedStorage === "분할" && shelfLifeValue === 22) {
+            expireTime = new Date(state.prepTime);
+            expireTime.setHours(22, 0, 0, 0);
+        } else {
+            expireTime = new Date(state.prepTime.getTime() + shelfLifeValue * 60 * 60000);
+        }
+    } else {
+        expireTime = new Date(state.prepTime.getTime() + shelfLifeValue * 24 * 60 * 60000);
+    }
+
+    if (state.selectedStorage === "입고") {
+        if (stickerLoc) stickerLoc.textContent = "입고";
+        if (stickerPrepLabel) stickerPrepLabel.textContent = "입고 :";
+        if (stickerPrepDate) stickerPrepDate.textContent = formatShortDate(state.prepTime);
+        if (expireRow) expireRow.style.display = "none";
+    } else {
+        if (stickerLoc) stickerLoc.textContent = state.selectedStorage ? `${state.selectedStorage} 보관` : "보관위치 미지정";
+        if (stickerPrepLabel) stickerPrepLabel.textContent = "준비일시:";
+        if (stickerPrepDate) stickerPrepDate.textContent = formatDate(state.prepTime);
+        if (expireRow) expireRow.style.display = "block";
+        if (stickerExpireDate) stickerExpireDate.textContent = formatDate(expireTime);
+    }
+    
+    if (stickerStaffVal) {
+        stickerStaffVal.textContent = state.staffName ? state.staffName : "-";
+    }
+
+    // 2. Support new 4-line layout if present (no crash if absent)
+    if (stickerLine1) {
+        const storageDisplay = state.selectedStorage === "입고" ? "입고" : `${state.selectedStorage} 보관`;
+        const abbrText = ingredient.abbr ? ` (${ingredient.abbr})` : "";
+        stickerLine1.textContent = `[${storageDisplay}] ${ingredient.name}${abbrText}`;
+    }
+    if (stickerLine2) {
+        stickerLine2.textContent = `준비: ${formatDate(state.prepTime)}`;
+    }
+    if (stickerLine3) {
+        if (state.selectedStorage === "입고") {
+            stickerLine3.textContent = `폐기: 상시 보관`;
+        } else {
+            stickerLine3.textContent = `폐기: ${formatDate(expireTime)}`;
+        }
+    }
+    if (stickerLine4) {
+        stickerLine4.textContent = `(담당: ${state.staffName || "-"})`;
+    }
 }
 
 // ==========================================
@@ -1376,9 +1429,10 @@ function updateStickerPreview() {
 function triggerPrint() {
     const quantity = state.printQty;
     clearElement(printStickerContainer);
-    
-    const w = parseFloat(document.getElementById("label-width").value) || 50;
-    const h = parseFloat(document.getElementById("label-height").value) || 30;
+
+    // Label size is fixed at 55×20mm
+    const w = FIXED_LABEL_W;
+    const h = FIXED_LABEL_H;
     
     let printStyle = document.getElementById("dynamic-print-style");
     if (!printStyle) {
@@ -1394,7 +1448,18 @@ function triggerPrint() {
         .print-only-container .sticker-preview-content {
             width: ${w}mm !important;
             height: ${h}mm !important;
-            padding: ${h * 0.12}mm ${w * 0.08}mm !important;
+            padding: 1mm 2mm 1mm 7mm !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            align-items: flex-start !important;
+        }
+        .print-only-container .sticker-line {
+            font-size: 9pt !important;
+            line-height: 1.15 !important;
+        }
+        #sticker-line-4 {
+            font-size: 5pt !important;
         }
     `;
     

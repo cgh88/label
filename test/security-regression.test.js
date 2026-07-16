@@ -56,6 +56,97 @@ test('static allowlist does not expose server files or database', async () => {
     }
 });
 
+test('api/default-database returns default database content', async () => {
+    const server = app.listen(0);
+    const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+    try {
+        const res = await fetch(`${baseUrl}/api/default-database`);
+        assert.equal(res.status, 200);
+        const data = await res.json();
+        assert.ok(data.categories);
+        assert.ok(data.storage_locations);
+        assert.ok(data.label_sizes);
+        assert.ok(data.ingredients_v2);
+        assert.ok(data.ingredient_storage);
+    } finally {
+        await new Promise(resolve => server.close(resolve));
+    }
+});
+
+test('api/print-logs appends a log entry', async () => {
+    const server = app.listen(0);
+    const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+    try {
+        const payload = {
+            ingredient_name: '그릴드치킨',
+            category: '미트',
+            abbr: 'E',
+            storage_location: '해동',
+            prep_date: '2026-07-10 17:00',
+            expire_date: '2026-07-17 17:00',
+            staff: 'admin',
+            quantity: 2
+        };
+
+        const res = await fetch(`${baseUrl}/api/print-logs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        assert.equal(res.status, 200);
+        const data = await res.json();
+        assert.equal(data.success, true);
+        assert.equal(data.log.ingredient_name, '그릴드치킨');
+        assert.equal(data.log.quantity, 2);
+
+        // Verify GET returns it
+        const getRes = await fetch(`${baseUrl}/api/print-logs`);
+        assert.equal(getRes.status, 200);
+        const logs = await getRes.json();
+        assert.ok(logs.length > 0);
+        assert.equal(logs[logs.length - 1].ingredient_name, '그릴드치킨');
+    } finally {
+        await new Promise(resolve => server.close(resolve));
+    }
+});
+
+test('api/sync/database allows GET and POST', async () => {
+    const server = app.listen(0);
+    const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+    try {
+        const getRes = await fetch(`${baseUrl}/api/sync/database`);
+        assert.equal(getRes.status, 200);
+        const dbData = await getRes.json();
+        assert.ok(dbData.last_updated);
+        assert.ok(Array.isArray(dbData.categories));
+
+        const updatedDb = {
+            ...dbData,
+            last_updated: new Date().toISOString(),
+            test_sync_flag: true
+        };
+
+        const postRes = await fetch(`${baseUrl}/api/sync/database`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedDb)
+        });
+        assert.equal(postRes.status, 200);
+        const postResult = await postRes.json();
+        assert.equal(postResult.success, true);
+
+        const getRes2 = await fetch(`${baseUrl}/api/sync/database`);
+        const dbData2 = await getRes2.json();
+        assert.equal(dbData2.test_sync_flag, true);
+    } finally {
+        await new Promise(resolve => server.close(resolve));
+    }
+});
+
 test('login failures are rate limited after repeated attempts', () => {
     const req = { ip: `test-${Date.now()}-${Math.random()}` };
     const username = 'admin';

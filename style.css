@@ -32,8 +32,8 @@
     /* 기타 */
 
     /* Label Size (dynamic, overridden by JS) */
-    --label-w: 50;
-    --label-h: 30;
+    --label-w: 55;
+    --label-h: 20;
 
     /* Layout Tokens */
     --border-radius-sm: 8px;
@@ -271,7 +271,7 @@ body.light-theme .moon-icon {
     height: 18px;
 }
 
-#ingredient-search {
+#ingredient-search, #mgmt-ingredient-search {
     width: 100%;
     padding: 12px 14px 12px 42px;
     background: rgba(255, 255, 255, 0.03);
@@ -284,11 +284,11 @@ body.light-theme .moon-icon {
     transition: var(--transition-smooth);
 }
 
-body.light-theme #ingredient-search {
+body.light-theme #ingredient-search, body.light-theme #mgmt-ingredient-search {
     background: #ffffff;
 }
 
-#ingredient-search:focus {
+#ingredient-search:focus, #mgmt-ingredient-search:focus {
     border-color: var(--primary-color);
     box-shadow: 0 0 10px var(--accent-glow);
 }

@@ -13,7 +13,7 @@
         rel="stylesheet">
     <!-- Lucide Icons CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=1.0.3">
 </head>
 
 <body>
@@ -139,34 +139,15 @@
 
                     <!-- 2. Live Preview Card -->
                     <div class="config-card">
-                        <h2 class="config-section-title">2. 라벨 스티커 미리보기 (<span id="preview-size-label">50 × 30</span>mm)
+                        <h2 class="config-section-title">2. 라벨 스티커 미리보기 (55 × 20mm)
                         </h2>
 
-                        <div class="form-group">
-                            <label>출력 규격 프리셋</label>
-                            <div class="size-presets" id="preview-size-presets">
-                                <!-- Injected dynamically from SQLite DB -->
-                            </div>
-                        </div>
-
                         <div class="sticker-preview-outer">
-                            <div id="sticker-preview" class="sticker-preview-content">
-                                <!-- Live sticker content -->
-                                <div class="sticker-top-row">
-                                    <div id="sticker-abbr" class="sticker-abbr-badge">E</div>
-                                    <div class="sticker-location-title" id="sticker-loc">보관위치</div>
-                                </div>
-                                <div class="sticker-main-name" id="sticker-name">재료명</div>
-                                <div class="sticker-dates">
-                                    <div><strong id="sticker-prep-label">준비일시:</strong> <span id="sticker-prep-date">2026-06-02 (화) 16:00</span>
-                                    </div>
-                                    <div class="expire-date-row"><strong>폐기일시:</strong> <span id="sticker-expire-date"
-                                            class="highlight-expire">2026-06-05 (금) 16:00</span></div>
-                                </div>
-                                <div class="sticker-bottom-row">
-                                    <span class="sticker-staff">담당: <span id="sticker-staff-val">-</span></span>
-                                    <span class="sticker-watermark">PAPA LABELS</span>
-                                </div>
+                            <div id="sticker-preview" class="sticker-preview-content" style="padding: 4px 8px 4px 28px; gap: 0px; justify-content: center; align-items: flex-start;">
+                                <div class="sticker-line" id="sticker-line-1" style="font-size: 0.85rem; font-weight: 700; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; text-align: left;">재료명</div>
+                                <div class="sticker-line" id="sticker-line-2" style="font-size: 0.85rem; font-weight: 700; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; text-align: left;">준비일시</div>
+                                <div class="sticker-line" id="sticker-line-3" style="font-size: 0.85rem; font-weight: 700; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; text-align: left;">폐기일시</div>
+                                <div class="sticker-line" id="sticker-line-4" style="font-size: 0.5rem; font-weight: 700; color: #555555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; text-align: left;">(담당: -)</div>
                             </div>
                         </div>
 
@@ -213,7 +194,11 @@
                             <!-- Dynamic storage location chips -->
                         </div>
                         <form id="add-location-form" class="management-inline-form">
-                            <input type="text" id="new-loc-name" placeholder="보관위치 이름" required>
+                            <input type="text" id="new-loc-name" placeholder="보관위치 이름" required style="flex: 2;">
+                            <select id="new-loc-unit" required style="width: 80px; flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--bg-color); color: var(--text-color);">
+                                <option value="day">일</option>
+                                <option value="hour">시간</option>
+                            </select>
                             <button type="submit" class="action-add-btn" title="추가">
                                 <i data-lucide="plus"></i>
                             </button>
@@ -281,6 +266,12 @@
                                     <i data-lucide="refresh-cw"></i> 전체 초기화 (기본값 복원)
                                 </button>
                             </div>
+                        </div>
+
+                        <!-- Search Bar for Ingredients List -->
+                        <div class="search-bar-wrapper" style="margin: 16px 0; max-width: 350px;">
+                            <i data-lucide="search" class="search-icon"></i>
+                            <input type="text" id="mgmt-ingredient-search" placeholder="카테고리, 재료명 또는 약어 검색..." autocomplete="off">
                         </div>
 
                         <div class="table-wrapper">
@@ -360,6 +351,92 @@
                                 <!-- Injected dynamically from SQLite DB -->
                             </div>
                         </div>
+
+                        <!-- Layout Fine-Tuning Controls -->
+                        <div class="form-group" style="grid-column: 1 / -1; margin-top: 16px; border-top: 1px solid var(--card-border); padding-top: 16px;">
+                            <label style="font-size: 1.0rem; color: var(--primary-color); display: flex; align-items: center; gap: 6px; font-weight: 700;">
+                                <i data-lucide="layout" style="width: 16px; height: 16px;"></i> 레이아웃 상세 설정
+                            </label>
+                        </div>
+
+                        <!-- Margin Controls: Top / Right / Bottom / Left -->
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px; display: block;">여백 조정 (단위: px)</label>
+                            <!-- Top row: empty / Top / empty -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; align-items: center; text-align: center; margin-bottom: 4px;">
+                                <div></div>
+                                <div>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px;">상 (Top)</div>
+                                    <input type="number" id="layout-top-padding" min="0" max="200" value="10" step="1" oninput="saveLayoutState()" style="width: 100%; text-align: center;">
+                                </div>
+                                <div></div>
+                            </div>
+                            <!-- Middle row: Left / [label] / Right -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; align-items: center; text-align: center; margin-bottom: 4px;">
+                                <div>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px;">좌 (Left)</div>
+                                    <input type="number" id="layout-left-padding" min="0" max="200" value="30" step="1" oninput="saveLayoutState()" style="width: 100%; text-align: center;">
+                                </div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted); border: 1px dashed var(--card-border); border-radius: 4px; padding: 6px 0; height: 36px; display: flex; align-items: center; justify-content: center;">라벨</div>
+                                <div>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px;">우 (Right)</div>
+                                    <input type="number" id="layout-right-padding" min="0" max="200" value="13" step="1" oninput="saveLayoutState()" style="width: 100%; text-align: center;">
+                                </div>
+                            </div>
+                            <!-- Bottom row: empty / Bottom / empty -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; align-items: center; text-align: center;">
+                                <div></div>
+                                <div>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px;">하 (Bottom)</div>
+                                    <input type="number" id="layout-bottom-padding" min="0" max="200" value="0" step="1" oninput="saveLayoutState()" style="width: 100%; text-align: center;">
+                                </div>
+                                <div></div>
+                            </div>
+                        </div>
+
+                        <!-- Line Gap -->
+                        <div class="form-group">
+                            <label for="layout-vertical-gap">줄 간격 (Line Spacing)</label>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <input type="number" id="layout-vertical-gap" min="0" max="30" value="4" step="1" oninput="saveLayoutState()" style="width:100% !important; text-align:center;">
+                                <span class="size-unit">px</span>
+                            </div>
+                        </div>
+
+                        <!-- Line-by-Line Settings -->
+                        <div class="form-group" style="grid-column: 1 / -1; margin-top: 8px;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid var(--card-border); color: var(--text-muted); text-align: left;">
+                                        <th style="padding: 6px 0;">인쇄 행 (Line)</th>
+                                        <th style="padding: 6px 0; text-align: center;">표기 여부</th>
+                                        <th style="padding: 6px 0; text-align: center;">폰트 크기 (rem)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                                        <td style="padding: 8px 0; color: var(--text-primary);">1행 (보관위치 + 재료명)</td>
+                                        <td style="padding: 8px 0; text-align: center;"><input type="checkbox" id="layout-show-line-1" checked></td>
+                                        <td style="padding: 8px 0; text-align: center;"><input type="number" id="layout-size-line-1" min="0.3" max="3.0" value="1.0" step="0.05" style="width: 70px; text-align: center;"></td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                                        <td style="padding: 8px 0; color: var(--text-primary);">2행 (준비일시)</td>
+                                        <td style="padding: 8px 0; text-align: center;"><input type="checkbox" id="layout-show-line-2" checked></td>
+                                        <td style="padding: 8px 0; text-align: center;"><input type="number" id="layout-size-line-2" min="0.3" max="3.0" value="1.0" step="0.05" style="width: 70px; text-align: center;"></td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                                        <td style="padding: 8px 0; color: var(--text-primary);">3행 (폐기일시)</td>
+                                        <td style="padding: 8px 0; text-align: center;"><input type="checkbox" id="layout-show-line-3" checked></td>
+                                        <td style="padding: 8px 0; text-align: center;"><input type="number" id="layout-size-line-3" min="0.3" max="3.0" value="1.0" step="0.05" style="width: 70px; text-align: center;"></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: var(--text-primary);">4행 (담당자)</td>
+                                        <td style="padding: 8px 0; text-align: center;"><input type="checkbox" id="layout-show-line-4" checked></td>
+                                        <td style="padding: 8px 0; text-align: center;"><input type="number" id="layout-size-line-4" min="0.1" max="2.0" value="0.5" step="0.05" style="width: 70px; text-align: center;"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -435,7 +512,7 @@
     </div>
 
     <!-- Script File -->
-    <script src="app.js"></script>
+    <script src="app.js?v=1.0.3"></script>
 </body>
 
 </html>
