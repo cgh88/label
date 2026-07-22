@@ -105,6 +105,21 @@ let state = {
         category: "all",
         search: "",
         mgmtSearch: ""
+    },
+    layout: {
+        topPadding: 10,
+        leftPadding: 30,
+        rightPadding: 13,
+        bottomPadding: 0,
+        verticalGap: 4,
+        showLine1: true,
+        sizeLine1: 1.0,
+        showLine2: true,
+        sizeLine2: 1.0,
+        showLine3: true,
+        sizeLine3: 1.0,
+        showLine4: true,
+        sizeLine4: 0.5
     }
 };
 
@@ -173,6 +188,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     
     initTabs();
     initLabelSizeControls();
+    initLayoutSettings();
     initEmojiPicker();
     setupEventHandlers();
     
@@ -346,6 +362,120 @@ function saveLabelSize() {
     // Size is fixed at 55×20mm
     localStorage.setItem("label_width", FIXED_LABEL_W);
     localStorage.setItem("label_height", FIXED_LABEL_H);
+}
+
+// Global layout settings save handler (must be global for inline HTML oninput handlers)
+window.saveLayoutState = function() {
+    saveLayoutSettings();
+};
+
+function loadLayoutSettings() {
+    const saved = localStorage.getItem("label_layout_settings");
+    if (saved) {
+        try {
+            state.layout = { ...state.layout, ...JSON.parse(saved) };
+        } catch (e) {
+            console.error("Failed to parse layout settings:", e);
+        }
+    }
+    
+    // Apply values to inputs in the settings modal
+    const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val;
+    };
+    const setChecked = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.checked = val;
+    };
+    
+    setVal("layout-top-padding", state.layout.topPadding);
+    setVal("layout-left-padding", state.layout.leftPadding);
+    setVal("layout-right-padding", state.layout.rightPadding);
+    setVal("layout-bottom-padding", state.layout.bottomPadding);
+    setVal("layout-vertical-gap", state.layout.verticalGap);
+    
+    setChecked("layout-show-line-1", state.layout.showLine1);
+    setVal("layout-size-line-1", state.layout.sizeLine1);
+    setChecked("layout-show-line-2", state.layout.showLine2);
+    setVal("layout-size-line-2", state.layout.sizeLine2);
+    setChecked("layout-show-line-3", state.layout.showLine3);
+    setVal("layout-size-line-3", state.layout.sizeLine3);
+    setChecked("layout-show-line-4", state.layout.showLine4);
+    setVal("layout-size-line-4", state.layout.sizeLine4);
+}
+
+function saveLayoutSettings() {
+    const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
+    const getChecked = (id) => document.getElementById(id).checked;
+    
+    state.layout = {
+        topPadding: getVal("layout-top-padding"),
+        leftPadding: getVal("layout-left-padding"),
+        rightPadding: getVal("layout-right-padding"),
+        bottomPadding: getVal("layout-bottom-padding"),
+        verticalGap: getVal("layout-vertical-gap"),
+        showLine1: getChecked("layout-show-line-1"),
+        sizeLine1: getVal("layout-size-line-1"),
+        showLine2: getChecked("layout-show-line-2"),
+        sizeLine2: getVal("layout-size-line-2"),
+        showLine3: getChecked("layout-show-line-3"),
+        sizeLine3: getVal("layout-size-line-3"),
+        showLine4: getChecked("layout-show-line-4"),
+        sizeLine4: getVal("layout-size-line-4")
+    };
+    localStorage.setItem("label_layout_settings", JSON.stringify(state.layout));
+    applyLayoutSettings();
+}
+
+function applyLayoutSettings() {
+    const preview = document.getElementById("sticker-preview");
+    if (!preview) return;
+    
+    const lay = state.layout;
+    preview.style.padding = `${lay.topPadding}px ${lay.rightPadding}px ${lay.bottomPadding}px ${lay.leftPadding}px`;
+    preview.style.gap = `${lay.verticalGap}px`;
+    
+    const lines = [
+        { show: lay.showLine1, size: lay.sizeLine1, el: document.getElementById("sticker-line-1") },
+        { show: lay.showLine2, size: lay.sizeLine2, el: document.getElementById("sticker-line-2") },
+        { show: lay.showLine3, size: lay.sizeLine3, el: document.getElementById("sticker-line-3") },
+        { show: lay.showLine4, size: lay.sizeLine4, el: document.getElementById("sticker-line-4") }
+    ];
+    
+    lines.forEach((line) => {
+        if (line.el) {
+            if (line.show) {
+                line.el.style.display = "block";
+                line.el.style.fontSize = `${line.size}rem`;
+            } else {
+                line.el.style.display = "none";
+            }
+        }
+    });
+}
+
+function initLayoutSettings() {
+    loadLayoutSettings();
+    applyLayoutSettings();
+    
+    // Bind change/input events to all layout elements
+    const inputs = [
+        "layout-top-padding", "layout-left-padding", "layout-right-padding", "layout-bottom-padding",
+        "layout-vertical-gap", "layout-size-line-1", "layout-size-line-2", "layout-size-line-3", "layout-size-line-4"
+    ];
+    inputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener("input", saveLayoutSettings);
+    });
+    
+    const checkboxes = [
+        "layout-show-line-1", "layout-show-line-2", "layout-show-line-3", "layout-show-line-4"
+    ];
+    checkboxes.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener("change", saveLayoutSettings);
+    });
 }
 
 async function handleAddPreset() {
@@ -1421,6 +1551,7 @@ function updateStickerPreview() {
     if (stickerLine4) {
         stickerLine4.textContent = `(담당: ${state.staffName || "-"})`;
     }
+    applyLayoutSettings();
 }
 
 // ==========================================
@@ -1434,6 +1565,13 @@ function triggerPrint() {
     const w = FIXED_LABEL_W;
     const h = FIXED_LABEL_H;
     
+    const scale = 6.4;
+    const mmTop = (state.layout.topPadding / scale).toFixed(2);
+    const mmLeft = (state.layout.leftPadding / scale).toFixed(2);
+    const mmRight = (state.layout.rightPadding / scale).toFixed(2);
+    const mmBottom = (state.layout.bottomPadding / scale).toFixed(2);
+    const mmGap = (state.layout.verticalGap / scale).toFixed(2);
+
     let printStyle = document.getElementById("dynamic-print-style");
     if (!printStyle) {
         printStyle = document.createElement("style");
@@ -1448,18 +1586,61 @@ function triggerPrint() {
         .print-only-container .sticker-preview-content {
             width: ${w}mm !important;
             height: ${h}mm !important;
-            padding: 1mm 2mm 1mm 7mm !important;
+            padding: ${mmTop}mm ${mmRight}mm ${mmBottom}mm ${mmLeft}mm !important;
+            gap: ${mmGap}mm !important;
             display: flex !important;
             flex-direction: column !important;
             justify-content: center !important;
             align-items: flex-start !important;
+            box-sizing: border-box !important;
         }
-        .print-only-container .sticker-line {
-            font-size: 9pt !important;
+        .print-only-container #sticker-line-1 {
+            font-size: ${state.layout.showLine1 ? (state.layout.sizeLine1 * 2.5).toFixed(2) : 0}mm !important;
+            display: ${state.layout.showLine1 ? 'block' : 'none'} !important;
             line-height: 1.15 !important;
+            font-weight: 700 !important;
+            color: #000000 !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+            width: 100% !important;
+            text-align: left !important;
         }
-        #sticker-line-4 {
-            font-size: 5pt !important;
+        .print-only-container #sticker-line-2 {
+            font-size: ${state.layout.showLine2 ? (state.layout.sizeLine2 * 2.5).toFixed(2) : 0}mm !important;
+            display: ${state.layout.showLine2 ? 'block' : 'none'} !important;
+            line-height: 1.15 !important;
+            font-weight: 700 !important;
+            color: #000000 !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+            width: 100% !important;
+            text-align: left !important;
+        }
+        .print-only-container #sticker-line-3 {
+            font-size: ${state.layout.showLine3 ? (state.layout.sizeLine3 * 2.5).toFixed(2) : 0}mm !important;
+            display: ${state.layout.showLine3 ? 'block' : 'none'} !important;
+            line-height: 1.15 !important;
+            font-weight: 700 !important;
+            color: #000000 !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+            width: 100% !important;
+            text-align: left !important;
+        }
+        .print-only-container #sticker-line-4 {
+            font-size: ${state.layout.showLine4 ? (state.layout.sizeLine4 * 2.5).toFixed(2) : 0}mm !important;
+            display: ${state.layout.showLine4 ? 'block' : 'none'} !important;
+            line-height: 1.15 !important;
+            font-weight: 700 !important;
+            color: #555555 !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+            width: 100% !important;
+            text-align: left !important;
         }
     `;
     

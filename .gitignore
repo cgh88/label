@@ -1,4 +1,14 @@
 node_modules/
 *.sqlite
 *.sqlite-journal
+# Runtime DB export containing user password hashes — must never be committed
+database.json
 .DS_Store
+.omx/
+.env
+build/
+client_flutter/build/
+client_flutter/.dart_tool/
+client_flutter/.flutter-plugins
+client_flutter/.flutter-plugins-dependencies
+

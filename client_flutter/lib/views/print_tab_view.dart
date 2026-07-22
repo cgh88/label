@@ -438,6 +438,13 @@ class _PrintTabViewState extends State<PrintTabView> {
     final categoriesList = DatabaseService.instance.categories;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final double scale = (_labelWidth / 50.0).clamp(0.5, 2.0);
+    final double screenFontSize1 = _fontSize1 * 1.734 * scale;
+    final double screenFontSize2 = _fontSize2 * 1.734 * scale;
+    final double screenFontSize3 = _fontSize3 * 1.734 * scale;
+    final double screenFontSize4 = _fontSize4 * 1.734 * scale;
+    final double screenVerticalGap = _verticalGap * scale * 0.97;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Row(
@@ -913,9 +920,9 @@ class _PrintTabViewState extends State<PrintTabView> {
                               duration: const Duration(milliseconds: 200),
                               width: _labelWidth * 6.4,
                               height: _labelHeight * 6.4,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: _labelHeight < 25 ? 12.0 : (_labelWidth * 0.08 * 6.4),
-                                vertical: _labelHeight < 25 ? 6.0 : (_labelHeight * 0.12 * 6.4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 0.0,
+                                vertical: 4.5,
                               ),
                               decoration: BoxDecoration(
                                 color: Colors.white,
@@ -932,7 +939,7 @@ class _PrintTabViewState extends State<PrintTabView> {
                               child: Padding(
                                 padding: EdgeInsets.only(
                                   left: _labelWidth * (_leftPadding / 100.0) * 6.4,
-                                  right: 8.0,
+                                  right: 13.5,
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -943,7 +950,7 @@ class _PrintTabViewState extends State<PrintTabView> {
                                         '[${_selectedStorage == '입고' ? '입고' : '$_selectedStorage 보관'}] ${_selectedIngredient!.name}${_selectedIngredient!.abbr.isNotEmpty ? " (${_selectedIngredient!.abbr})" : ""}',
                                         style: TextStyle(
                                           color: Colors.black,
-                                          fontSize: _fontSize1,
+                                          fontSize: screenFontSize1,
                                           fontWeight: FontWeight.bold,
                                         ),
                                         maxLines: 1,
@@ -951,13 +958,13 @@ class _PrintTabViewState extends State<PrintTabView> {
                                       ),
                                     ],
                                     if (_showLine1 && (_showLine2 || _showLine3 || _showLine4))
-                                      SizedBox(height: _verticalGap),
+                                      SizedBox(height: screenVerticalGap),
                                     if (_showLine2) ...[
                                       Text(
                                         '준비: ${_formatDateTime(_prepTime)}',
                                         style: TextStyle(
                                           color: Colors.black,
-                                          fontSize: _fontSize2,
+                                          fontSize: screenFontSize2,
                                           fontWeight: FontWeight.bold,
                                         ),
                                         maxLines: 1,
@@ -965,13 +972,13 @@ class _PrintTabViewState extends State<PrintTabView> {
                                       ),
                                     ],
                                     if (_showLine2 && (_showLine3 || _showLine4))
-                                      SizedBox(height: _verticalGap),
+                                      SizedBox(height: screenVerticalGap),
                                     if (_showLine3) ...[
                                       Text(
                                         '폐기: ${_selectedStorage == '입고' ? '상시 보관' : _formatDateTime(_computeExpiration(_selectedIngredient!, _selectedStorage))}',
                                         style: TextStyle(
                                           color: Colors.black,
-                                          fontSize: _fontSize3,
+                                          fontSize: screenFontSize3,
                                           fontWeight: FontWeight.bold,
                                         ),
                                         maxLines: 1,
@@ -979,13 +986,13 @@ class _PrintTabViewState extends State<PrintTabView> {
                                       ),
                                     ],
                                     if (_showLine3 && _showLine4)
-                                      SizedBox(height: _verticalGap),
+                                      SizedBox(height: screenVerticalGap),
                                     if (_showLine4) ...[
                                       Text(
                                         '(담당: ${_staffController.text.isEmpty ? '-' : _staffController.text})',
                                         style: TextStyle(
                                           color: Colors.black54,
-                                          fontSize: _fontSize4,
+                                          fontSize: screenFontSize4,
                                           fontWeight: FontWeight.bold,
                                         ),
                                         maxLines: 1,

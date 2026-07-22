@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const crypto = require('crypto');
@@ -7,7 +8,7 @@ const xlsx = require('xlsx');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DB_PATH = path.join(__dirname, 'database.sqlite');
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'database.sqlite');
 const SESSION_MAX_AGE_MS = 2 * 60 * 60 * 1000;
 const SCRYPT_KEY_LENGTH = 64;
 const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1 };
@@ -21,103 +22,61 @@ const PUBLIC_FILES = new Map([
 ]);
 
 // ==========================================
-// Default Seed Data
+// Default Seed Data (single source: default_database.json)
 // ==========================================
-const DEFAULT_CATEGORIES = [
-    { name: "도우", emoji: "🍞", sort_order: 1 },
-    { name: "미트", emoji: "🍖", sort_order: 2 },
-    { name: "야채", emoji: "🥬", sort_order: 3 },
-    { name: "치즈", emoji: "🧀", sort_order: 4 },
-    { name: "소스", emoji: "🏺", sort_order: 5 },
-    { name: "캔",   emoji: "🥫", sort_order: 6 },
-    { name: "기타", emoji: "🍕", sort_order: 7 }
-];
-const DEFAULT_STORAGE_LOCATIONS = [
-    { name: "해동", sort_order: 1, unit: "day" },
-    { name: "워크인 랙산", sort_order: 2, unit: "day" },
-    { name: "메이크라인", sort_order: 3, unit: "day" },
-    { name: "소스보틀",   sort_order: 4, unit: "hour" },
-    { name: "분할",       sort_order: 5, unit: "hour" }
-];
-const DEFAULT_LABEL_SIZES = [
-    { width: 50, height: 30, is_default: 1 },
-    { width: 60, height: 40, is_default: 1 },
-    { width: 70, height: 40, is_default: 1 },
-    { width: 80, height: 50, is_default: 1 },
-    { width: 100, height: 60, is_default: 1 },
-    { width: 100, height: 70, is_default: 1 }
-];
+function loadDefaultSeedData() {
+    const filePath = path.join(__dirname, 'default_database.json');
+    const raw = fs.readFileSync(filePath, 'utf8');
+    const parsed = JSON.parse(raw);
 
-const DEFAULT_INGREDIENTS = [
-    { category: "도우", name: "크루아상", abbr: "CRO", storage: { "해동": 7 } },
-    { category: "미트", name: "그릴드치킨", abbr: "E", storage: { "해동": 7, "워크인 랙산": 3, "메이크라인": 2 } },
-    { category: "미트", name: "베이컨", abbr: "K", storage: { "해동": 7, "워크인 랙산": 3, "메이크라인": 2 } },
-    { category: "미트", name: "햄", abbr: "H", storage: { "해동": 7, "워크인 랙산": 3, "메이크라인": 2 } },
-    { category: "미트", name: "페페로니", abbr: "P", storage: { "해동": 7, "워크인 랙산": 3, "메이크라인": 2 } },
-    { category: "미트", name: "불고기", abbr: "L", storage: { "해동": 7, "워크인 랙산": 3, "메이크라인": 2 } },
-    { category: "미트", name: "비프", abbr: "B", storage: { "해동": 7, "워크인 랙산": 3, "메이크라인": 2 } },
-    { category: "미트", name: "바베큐 립", abbr: "", storage: { "해동": 7, "워크인 랙산": 3, "메이크라인": 2 } },
-    { category: "미트", name: "이탈리안 소시지", abbr: "I", storage: { "해동": 7, "워크인 랙산": 3, "메이크라인": 2 } },
-    { category: "미트", name: "치킨스트립", abbr: "CSHM", storage: { "해동": 5, "워크인 랙산": 3, "메이크라인": 1 } },
-    { category: "미트", name: "파파스윙", abbr: "10WG", storage: { "해동": 5, "워크인 랙산": 3, "메이크라인": 1 } },
-    { category: "야채", name: "양송이 버섯", abbr: "M", storage: { "워크인 랙산": 2, "메이크라인": 1 } },
-    { category: "야채", name: "양파", abbr: "O", storage: { "워크인 랙산": 2, "메이크라인": 1 } },
-    { category: "야채", name: "청피망", abbr: "G", storage: { "워크인 랙산": 2, "메이크라인": 1 } },
-    { category: "야채", name: "토마토", abbr: "T", storage: { "워크인 랙산": 2, "메이크라인": 1 } },
-    { category: "치즈", name: "2 블랜드치즈", abbr: "2BX", storage: { "해동": 7, "워크인 랙산": 7, "메이크라인": 1 } },
-    { category: "치즈", name: "3 블랜드치즈", abbr: "3BX", storage: { "해동": 7, "워크인 랙산": 7, "메이크라인": 1 } },
-    { category: "치즈", name: "스트링 치즈", abbr: "", storage: { "해동": 7, "워크인 랙산": 7, "메이크라인": 1 } },
-    { category: "치즈", name: "체다스트링 치즈", abbr: "CC", storage: { "해동": 7, "워크인 랙산": 7, "메이크라인": 1 } },
-    { category: "치즈", name: "스파이시 갈릭치즈롤", abbr: "SG", storage: { "메이크라인": 1 } },
-    { category: "치즈", name: "체다 치즈", abbr: "CD", storage: { "워크인 랙산": 3, "메이크라인": 1 } },
-    { category: "치즈", name: "치즈", abbr: "X", storage: { "해동": 14, "워크인 랙산": 1, "메이크라인": 1 } },
-    { category: "치즈", name: "치즈(템퍼링)", abbr: "X", storage: {} },
-    { category: "소스", name: "페퍼 BBQ 소스", abbr: "Z", storage: { "워크인 랙산": 7, "메이크라인": 2, "소스보틀": 12 } },
-    { category: "소스", name: "갈릭 랜치 소스", abbr: "GR", storage: { "워크인 랙산": 5, "메이크라인": 2, "소스보틀": 12 } },
-    { category: "소스", name: "갈릭 소스", abbr: "A", storage: { "워크인 랙산": 5, "메이크라인": 2, "소스보틀": 12 } },
-    { category: "소스", name: "맥앤치즈 소스", abbr: "", storage: { "워크인 랙산": 5, "메이크라인": 2, "소스보틀": 12 } },
-    { category: "소스", name: "불고기 소스", abbr: "", storage: { "워크인 랙산": 7, "메이크라인": 1, "소스보틀": 12 } },
-    { category: "소스", name: "알프레도 소스", abbr: "AL", storage: { "워크인 랙산": 5, "메이크라인": 2, "소스보틀": 12 } },
-    { category: "소스", name: "제스티버거소스", abbr: "ZB", storage: { "워크인 랙산": 5, "메이크라인": 2, "소스보틀": 12 } },
-    { category: "캔", name: "블랙 올리브", abbr: "R", storage: { "워크인 랙산": 7, "메이크라인": 2 } },
-    { category: "캔", name: "파인애플", abbr: "N", storage: { "워크인 랙산": 7, "메이크라인": 2 } },
-    { category: "캔", name: "콘", abbr: "C", storage: { "워크인 랙산": 7, "메이크라인": 2 } },
-    { category: "캔", name: "할라페뇨", abbr: "J", storage: { "워크인 랙산": 7, "메이크라인": 2 } },
-    { category: "캔", name: "피자소스", abbr: "PS", storage: { "소스보틀": 10 } },
-    { category: "기타", name: "고구마 무스", abbr: "SM", storage: { "메이크라인": 2 } },
-    { category: "기타", name: "브라우니", abbr: "", storage: { "해동": 14, "메이크라인": 2 } },
-    { category: "기타", name: "솔티드 카라멜", abbr: "", storage: { "해동": 14, "메이크라인": 2 } },
-    { category: "기타", name: "초코칩 쿠키", abbr: "", storage: { "해동": 14, "메이크라인": 2 } },
-    { category: "기타", name: "큰새우", abbr: "", storage: { "해동": 5, "워크인 랙산": 2, "메이크라인": 1 } },
-    { category: "기타", name: "포데이토 청크", abbr: "U", storage: { "해동": 5, "워크인 랙산": 3, "메이크라인": 2 } },
-    { category: "기타", name: "피클", abbr: "", storage: { "워크인 랙산": 7, "메이크라인": 2 } },
-    { category: "기타", name: "더스티네이터", abbr: "", storage: { "메이크라인": 14 } },
-    { category: "기타", name: "새니타이저", abbr: "", storage: { "소스보틀": 7 } },
-    { category: "기타", name: "피자소스 배달(소분)", abbr: "", storage: { "워크인 랙산": 1, "메이크라인": 1 } },
-    { category: "기타", name: "이탈리안 허브", abbr: "", storage: { "메이크라인": 180 } },
-    { category: "기타", name: "레드 페퍼", abbr: "", storage: { "메이크라인": 180 } },
-    { category: "기타", name: "후레쉬 파프리카 피클", abbr: "", storage: { "워크인 랙산": 14, "메이크라인": 2 } },
-    { category: "도우", name: "레귤러 분할 3일차", abbr: "R(3D)", storage: { "분할": 24 } },
-    { category: "도우", name: "레귤러 분할 4일차", abbr: "R(4D)", storage: { "분할": 24 } },
-    { category: "도우", name: "레귤러 분할 5일차", abbr: "R(5D)", storage: { "분할": 24 } },
-    { category: "도우", name: "레귤러 분할 6일차", abbr: "R(6D)", storage: { "분할": 24 } },
-    { category: "도우", name: "레귤러 분할 7일차", abbr: "R(7D)", storage: { "분할": 22 } },
-    { category: "도우", name: "라지 분할 3일차", abbr: "R(3D)", storage: { "분할": 24 } },
-    { category: "도우", name: "라지 분할 4일차", abbr: "R(4D)", storage: { "분할": 24 } },
-    { category: "도우", name: "라지 분할 5일차", abbr: "R(5D)", storage: { "분할": 24 } },
-    { category: "도우", name: "라지 분할 6일차", abbr: "R(6D)", storage: { "분할": 24 } },
-    { category: "도우", name: "라지 분할 7일차", abbr: "R(7D)", storage: { "분할": 22 } },
-    { category: "도우", name: "패밀리 분할 3일차", abbr: "R(3D)", storage: { "분할": 24 } },
-    { category: "도우", name: "패밀리 분할 4일차", abbr: "R(4D)", storage: { "분할": 24 } },
-    { category: "도우", name: "패밀리 분할 5일차", abbr: "R(5D)", storage: { "분할": 24 } },
-    { category: "도우", name: "패밀리 분할 6일차", abbr: "R(6D)", storage: { "분할": 24 } },
-    { category: "도우", name: "패밀리 분할 7일차", abbr: "R(7D)", storage: { "분할": 22 } },
-    { category: "도우", name: "파티 분할 3일차", abbr: "R(3D)", storage: { "분할": 24 } },
-    { category: "도우", name: "파티 분할 4일차", abbr: "R(4D)", storage: { "분할": 24 } },
-    { category: "도우", name: "파티 분할 5일차", abbr: "R(5D)", storage: { "분할": 24 } },
-    { category: "도우", name: "파티 분할 6일차", abbr: "R(6D)", storage: { "분할": 24 } },
-    { category: "도우", name: "파티 분할 7일차", abbr: "R(7D)", storage: { "분할": 22 } }
-];
+    const locationsById = {};
+    (parsed.storage_locations || []).forEach(l => { locationsById[l.id] = l; });
+
+    const ingredients = (parsed.ingredients_v2 || []).map(i => ({
+        category: i.category,
+        name: i.name,
+        abbr: i.abbr || '',
+        storage: {}
+    }));
+    const ingredientsByName = {};
+    ingredients.forEach(i => { ingredientsByName[i.name] = i; });
+    (parsed.ingredient_storage || []).forEach(m => {
+        const ing = ingredientsByName[m.ingredient_name];
+        const loc = locationsById[m.storage_id];
+        if (ing && loc) ing.storage[loc.name] = m.shelf_days;
+    });
+
+    return {
+        categories: (parsed.categories || []).map(c => ({ name: c.name, emoji: c.emoji || '', sort_order: c.sort_order || 0 })),
+        storageLocations: (parsed.storage_locations || []).map(l => ({ name: l.name, sort_order: l.sort_order || 0, unit: l.unit || 'day' })),
+        labelSizes: (parsed.label_sizes || []).map(s => ({ width: s.width, height: s.height, is_default: s.is_default ? 1 : 0 })),
+        ingredients
+    };
+}
+
+const MINIMAL_FALLBACK_SEED = {
+    categories: [{ name: "기타", emoji: "🍕", sort_order: 1 }],
+    storageLocations: [{ name: "메이크라인", sort_order: 1, unit: "day" }],
+    labelSizes: [{ width: 50, height: 30, is_default: 1 }],
+    ingredients: []
+};
+
+let SEED_DATA;
+try {
+    SEED_DATA = loadDefaultSeedData();
+    if (!SEED_DATA.categories.length || !SEED_DATA.ingredients.length) {
+        console.warn('default_database.json is incomplete; using minimal fallback seed data.');
+        SEED_DATA = MINIMAL_FALLBACK_SEED;
+    }
+} catch (e) {
+    console.warn('Failed to load default_database.json; using minimal fallback seed data:', e.message);
+    SEED_DATA = MINIMAL_FALLBACK_SEED;
+}
+
+const DEFAULT_CATEGORIES = SEED_DATA.categories;
+const DEFAULT_STORAGE_LOCATIONS = SEED_DATA.storageLocations;
+const DEFAULT_LABEL_SIZES = SEED_DATA.labelSizes;
+const DEFAULT_INGREDIENTS = SEED_DATA.ingredients;
 
 // ==========================================
 // Express Setup
@@ -125,7 +84,43 @@ const DEFAULT_INGREDIENTS = [
 const sessions = {}; // key: token, value: { username, role, expiresAt }
 const loginFailures = new Map(); // key: ip + username, value: { count, resetAt }
 
-app.use(express.json());
+const SERVER_START_TIME = Date.now();
+
+app.use(express.json({ limit: '2mb' }));
+
+// Structured HTTP Request Logging
+app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        if (req.path !== '/api/health' && process.env.NODE_ENV !== 'test') {
+            console.log(`[HTTP] ${new Date().toISOString()} | ${req.method} ${req.path} | ${res.statusCode} | ${duration}ms`);
+        }
+    });
+    next();
+});
+
+// Auto-initialize DB if not already running
+app.use(async (req, res, next) => {
+    try {
+        await startDatabase();
+        next();
+    } catch (err) {
+        res.status(500).json({ error: 'Database initialization error: ' + err.message });
+    }
+});
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+    const isDbConnected = db !== null;
+    res.json({
+        status: isDbConnected ? 'ok' : 'degraded',
+        uptimeSeconds: Math.floor((Date.now() - SERVER_START_TIME) / 1000),
+        database: isDbConnected ? 'connected' : 'disconnected',
+        timestamp: new Date().toISOString(),
+        version: '1.0.0'
+    });
+});
 
 app.get(Array.from(PUBLIC_FILES.keys()), (req, res) => {
     const fileName = PUBLIC_FILES.get(req.path);
@@ -158,6 +153,13 @@ function isProduction() {
 function validateRuntimeSecurityConfig() {
     if (isProduction() && (!process.env.DEFAULT_ADMIN_PASSWORD || !process.env.DEFAULT_STAFF_PASSWORD)) {
         throw new Error('DEFAULT_ADMIN_PASSWORD and DEFAULT_STAFF_PASSWORD are required in production.');
+    }
+}
+
+function sendServerError(res, err, userMessage = '서버 처리 중 오류가 발생했습니다.') {
+    console.error('[SERVER ERROR]', err);
+    if (!res.headersSent) {
+        res.status(500).json({ error: userMessage });
     }
 }
 
@@ -286,256 +288,280 @@ function allAsync(sql, params = []) {
 }
 
 async function seedDefaultsAsync() {
-    const catStmt = db.prepare("INSERT OR IGNORE INTO categories (name, emoji, sort_order) VALUES (?, ?, ?)");
-    DEFAULT_CATEGORIES.forEach(c => catStmt.run(c.name, c.emoji, c.sort_order));
-    await finalizeAsync(catStmt);
+    await runAsync("BEGIN TRANSACTION");
+    try {
+        const catStmt = db.prepare("INSERT OR IGNORE INTO categories (name, emoji, sort_order) VALUES (?, ?, ?)");
+        for (const c of DEFAULT_CATEGORIES) {
+            catStmt.run(c.name, c.emoji, c.sort_order);
+        }
+        await finalizeAsync(catStmt);
 
-    const slStmt = db.prepare("INSERT OR IGNORE INTO storage_locations (name, sort_order, unit) VALUES (?, ?, ?)");
-    DEFAULT_STORAGE_LOCATIONS.forEach(s => slStmt.run(s.name, s.sort_order, s.unit || 'day'));
-    await finalizeAsync(slStmt);
+        const slStmt = db.prepare("INSERT OR IGNORE INTO storage_locations (name, sort_order, unit) VALUES (?, ?, ?)");
+        for (const s of DEFAULT_STORAGE_LOCATIONS) {
+            slStmt.run(s.name, s.sort_order, s.unit || 'day');
+        }
+        await finalizeAsync(slStmt);
 
-    const ingStmt = db.prepare("INSERT OR IGNORE INTO ingredients_v2 (name, category, abbr) VALUES (?, ?, ?)");
-    DEFAULT_INGREDIENTS.forEach(i => ingStmt.run(i.name, i.category, i.abbr || ''));
-    await finalizeAsync(ingStmt);
+        const ingStmt = db.prepare("INSERT OR IGNORE INTO ingredients_v2 (name, category, abbr) VALUES (?, ?, ?)");
+        for (const i of DEFAULT_INGREDIENTS) {
+            ingStmt.run(i.name, i.category, i.abbr || '');
+        }
+        await finalizeAsync(ingStmt);
 
-    const locations = await allAsync("SELECT id, name FROM storage_locations");
-    const locMap = {};
-    locations.forEach(l => { locMap[l.name] = l.id; });
+        const locations = await allAsync("SELECT id, name FROM storage_locations");
+        const locMap = {};
+        locations.forEach(l => { locMap[l.name] = l.id; });
 
-    const stStmt = db.prepare("INSERT OR IGNORE INTO ingredient_storage (ingredient_name, storage_id, shelf_days) VALUES (?, ?, ?)");
-    DEFAULT_INGREDIENTS.forEach(item => {
-        Object.entries(item.storage).forEach(([locName, days]) => {
-            if (locMap[locName]) {
-                stStmt.run(item.name, locMap[locName], days);
+        const stStmt = db.prepare("INSERT OR IGNORE INTO ingredient_storage (ingredient_name, storage_id, shelf_days) VALUES (?, ?, ?)");
+        for (const item of DEFAULT_INGREDIENTS) {
+            for (const [locName, days] of Object.entries(item.storage)) {
+                if (locMap[locName]) {
+                    stStmt.run(item.name, locMap[locName], days);
+                }
             }
-        });
-    });
-    await finalizeAsync(stStmt);
+        }
+        await finalizeAsync(stStmt);
 
-    const lsStmt = db.prepare("INSERT OR IGNORE INTO label_sizes (width, height, is_default) VALUES (?, ?, ?)");
-    DEFAULT_LABEL_SIZES.forEach(s => lsStmt.run(s.width, s.height, s.is_default));
-    await finalizeAsync(lsStmt);
+        const lsStmt = db.prepare("INSERT OR IGNORE INTO label_sizes (width, height, is_default) VALUES (?, ?, ?)");
+        for (const s of DEFAULT_LABEL_SIZES) {
+            lsStmt.run(s.width, s.height, s.is_default);
+        }
+        await finalizeAsync(lsStmt);
+
+        await runAsync("COMMIT");
+    } catch (err) {
+        await runAsync("ROLLBACK").catch(() => {});
+        throw err;
+    }
 }
 
 let db;
+let dbInitPromise = null;
 
-function startDatabase() {
-    if (db) return db;
+function getDbPath() {
+    return process.env.DB_PATH || path.join(__dirname, 'database.sqlite');
+}
+
+function startDatabase(customPath) {
+    if (dbInitPromise) return dbInitPromise;
     validateRuntimeSecurityConfig();
+    const targetPath = customPath || getDbPath();
 
-    db = new sqlite3.Database(DB_PATH, (err) => {
-        if (err) {
-            console.error('Error opening database:', err.message);
-        } else {
-            console.log('Connected to SQLite database at:', DB_PATH);
-            db.run("PRAGMA foreign_keys = ON");
-            initDatabase();
+    if (targetPath !== ':memory:') {
+        const dbDir = path.dirname(targetPath);
+        if (!fs.existsSync(dbDir)) {
+            fs.mkdirSync(dbDir, { recursive: true });
         }
+    }
+
+    dbInitPromise = new Promise((resolve, reject) => {
+        db = new sqlite3.Database(targetPath, async (err) => {
+            if (err) {
+                console.error('Error opening database:', err.message);
+                reject(err);
+            } else {
+                console.log('Connected to SQLite database at:', targetPath);
+                db.run("PRAGMA foreign_keys = ON");
+                try {
+                    await initDatabaseAsync();
+                    resolve(db);
+                } catch (initErr) {
+                    reject(initErr);
+                }
+            }
+        });
     });
 
-    return db;
+    return dbInitPromise;
+}
+
+function closeDatabase() {
+    return new Promise((resolve, reject) => {
+        dbInitPromise = null;
+        if (!db) return resolve();
+        db.close((err) => {
+            db = null;
+            if (err) reject(err);
+            else resolve();
+        });
+    });
 }
 
 // ==========================================
 // Database Initialization & Migration
 // ==========================================
-function seedDefaultUsers() {
+async function seedDefaultUsersAsync() {
     const adminHash = hashPassword(process.env.DEFAULT_ADMIN_PASSWORD || 'admin');
     const staffHash = hashPassword(process.env.DEFAULT_STAFF_PASSWORD || 'staff');
     
-    db.get("SELECT username FROM users WHERE username = 'admin'", (err, row) => {
-        if (!row) {
-            console.log('Seeding default admin user');
-            db.run("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", ['admin', adminHash, 'admin']);
-        }
-    });
+    const adminRow = await allAsync("SELECT username FROM users WHERE username = 'admin'");
+    if (!adminRow || adminRow.length === 0) {
+        console.log('Seeding default admin user');
+        await runAsync("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", ['admin', adminHash, 'admin']);
+    }
     
-    db.get("SELECT username FROM users WHERE username = 'staff'", (err, row) => {
-        if (!row) {
-            console.log('Seeding default staff user');
-            db.run("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", ['staff', staffHash, 'staff']);
+    const staffRow = await allAsync("SELECT username FROM users WHERE username = 'staff'");
+    if (!staffRow || staffRow.length === 0) {
+        console.log('Seeding default staff user');
+        await runAsync("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", ['staff', staffHash, 'staff']);
+    }
+}
+
+async function checkAndSeedLabelSizesAsync() {
+    for (const s of DEFAULT_LABEL_SIZES) {
+        const row = await allAsync("SELECT id FROM label_sizes WHERE width = ? AND height = ?", [s.width, s.height]);
+        if (!row || row.length === 0) {
+            console.log(`Seeding missing default label size: ${s.width}x${s.height}`);
+            await runAsync("INSERT INTO label_sizes (width, height, is_default) VALUES (?, ?, ?)", [s.width, s.height, s.is_default]);
         }
-    });
+    }
 }
 
-function initDatabase() {
-    db.serialize(() => {
-        // Create user table
-        db.run(`CREATE TABLE IF NOT EXISTS users (
-            username TEXT PRIMARY KEY,
-            password TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'staff'
-        )`, (err) => {
-            if (!err) seedDefaultUsers();
-        });
+async function initDatabaseAsync() {
+    await runAsync(`CREATE TABLE IF NOT EXISTS users (
+        username TEXT PRIMARY KEY,
+        password TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'staff'
+    )`);
+    await seedDefaultUsersAsync();
 
-        // Create new tables
-        db.run(`CREATE TABLE IF NOT EXISTS categories (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL,
-            emoji TEXT DEFAULT '',
-            sort_order INTEGER DEFAULT 0
-        )`);
+    await runAsync(`CREATE TABLE IF NOT EXISTS categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        emoji TEXT DEFAULT '',
+        sort_order INTEGER DEFAULT 0
+    )`);
 
-        db.run(`CREATE TABLE IF NOT EXISTS storage_locations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL,
-            sort_order INTEGER DEFAULT 0,
-            unit TEXT DEFAULT 'day'
-        )`);
+    await runAsync(`CREATE TABLE IF NOT EXISTS storage_locations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        sort_order INTEGER DEFAULT 0,
+        unit TEXT DEFAULT 'day'
+    )`);
 
-        // Migrate existing database to include 'unit' column if it doesn't exist
-        db.run(`ALTER TABLE storage_locations ADD COLUMN unit TEXT DEFAULT 'day'`, (err) => {
-            // Error is expected if the column already exists, safe to ignore
-        });
+    await runAsync(`ALTER TABLE storage_locations ADD COLUMN unit TEXT DEFAULT 'day'`).catch(() => {});
 
-        db.run(`CREATE TABLE IF NOT EXISTS label_sizes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            width INTEGER NOT NULL,
-            height INTEGER NOT NULL,
-            is_default INTEGER DEFAULT 0
-        )`, (err) => {
-            if (!err) checkAndSeedLabelSizes();
-        });
+    await runAsync(`CREATE TABLE IF NOT EXISTS label_sizes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        width INTEGER NOT NULL,
+        height INTEGER NOT NULL,
+        is_default INTEGER DEFAULT 0
+    )`);
+    await checkAndSeedLabelSizesAsync();
 
-        db.run(`CREATE TABLE IF NOT EXISTS ingredients_v2 (
-            name TEXT PRIMARY KEY,
-            category TEXT NOT NULL,
-            abbr TEXT DEFAULT ''
-        )`);
+    await runAsync(`CREATE TABLE IF NOT EXISTS ingredients_v2 (
+        name TEXT PRIMARY KEY,
+        category TEXT NOT NULL,
+        abbr TEXT DEFAULT ''
+    )`);
 
-        db.run(`CREATE TABLE IF NOT EXISTS ingredient_storage (
-            ingredient_name TEXT NOT NULL,
-            storage_id INTEGER NOT NULL,
-            shelf_days INTEGER NOT NULL,
-            PRIMARY KEY (ingredient_name, storage_id),
-            FOREIGN KEY (ingredient_name) REFERENCES ingredients_v2(name) ON DELETE CASCADE,
-            FOREIGN KEY (storage_id) REFERENCES storage_locations(id) ON DELETE CASCADE
-        )`, () => {
-            checkAndMigrate();
-        });
-    });
+    await runAsync(`CREATE TABLE IF NOT EXISTS ingredient_storage (
+        ingredient_name TEXT NOT NULL,
+        storage_id INTEGER NOT NULL,
+        shelf_days INTEGER NOT NULL,
+        PRIMARY KEY (ingredient_name, storage_id),
+        FOREIGN KEY (ingredient_name) REFERENCES ingredients_v2(name) ON DELETE CASCADE,
+        FOREIGN KEY (storage_id) REFERENCES storage_locations(id) ON DELETE CASCADE
+    )`);
+
+    await runAsync(`CREATE TABLE IF NOT EXISTS print_logs (
+        id TEXT PRIMARY KEY,
+        ingredient_name TEXT NOT NULL,
+        category TEXT DEFAULT '',
+        abbr TEXT DEFAULT '',
+        storage_location TEXT DEFAULT '',
+        prep_date TEXT DEFAULT '',
+        expire_date TEXT DEFAULT '',
+        staff TEXT DEFAULT '',
+        quantity INTEGER DEFAULT 1,
+        timestamp TEXT NOT NULL
+    )`);
+
+    await runAsync(`CREATE TABLE IF NOT EXISTS db_metadata (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    )`);
+
+    await checkAndMigrateAsync();
 }
 
-function checkAndMigrate() {
-    // Check if the old 'ingredients' table with walkin column exists
-    db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='ingredients'", (err, row) => {
-        if (row) {
-            // Old table exists — check if it has the old schema (walkin column)
-            db.all("PRAGMA table_info(ingredients)", (err, columns) => {
-                const hasWalkin = columns && columns.some(c => c.name === 'walkin');
-                if (hasWalkin) {
-                    console.log('Old schema detected. Running migration...');
-                    migrateFromOldSchema();
-                } else {
-                    // Old table exists but doesn't have walkin — maybe already migrated
-                    checkAndSeedNewSchema();
-                }
-            });
+async function checkAndMigrateAsync() {
+    const tableRow = await allAsync("SELECT name FROM sqlite_master WHERE type='table' AND name='ingredients'");
+    if (tableRow && tableRow.length > 0) {
+        const columns = await allAsync("PRAGMA table_info(ingredients)");
+        const hasWalkin = columns && columns.some(c => c.name === 'walkin');
+        if (hasWalkin) {
+            console.log('Old schema detected. Running migration...');
+            await migrateFromOldSchemaAsync();
         } else {
-            // No old table — fresh install
-            checkAndSeedNewSchema();
+            await checkAndSeedNewSchemaAsync();
         }
-    });
+    } else {
+        await checkAndSeedNewSchemaAsync();
+    }
 }
 
-function migrateFromOldSchema() {
-    db.serialize(() => {
-        // 1. Seed categories
-        const catStmt = db.prepare("INSERT OR IGNORE INTO categories (name, emoji, sort_order) VALUES (?, ?, ?)");
-        DEFAULT_CATEGORIES.forEach(c => catStmt.run(c.name, c.emoji, c.sort_order));
-        catStmt.finalize();
-
-        // 2. Seed storage locations
-        const slStmt = db.prepare("INSERT OR IGNORE INTO storage_locations (name, sort_order, unit) VALUES (?, ?, ?)");
-        DEFAULT_STORAGE_LOCATIONS.forEach(s => slStmt.run(s.name, s.sort_order, s.unit || 'day'));
-        slStmt.finalize();
-
-        // 3. Migrate ingredients from old table
-        db.all("SELECT * FROM ingredients", (err, rows) => {
-            if (err || !rows || rows.length === 0) {
-                console.log('No data to migrate from old ingredients table.');
-                db.run("DROP TABLE IF EXISTS ingredients", () => {
-                    checkAndSeedNewSchema();
-                });
-                return;
-            }
-
-            const ingStmt = db.prepare("INSERT OR IGNORE INTO ingredients_v2 (name, category, abbr) VALUES (?, ?, ?)");
-            rows.forEach(r => ingStmt.run(r.name, r.category, r.abbr || ''));
-            ingStmt.finalize();
-
-            // Map old columns to storage locations
-            db.all("SELECT id, name FROM storage_locations", (err, locations) => {
-                const locMap = {};
-                locations.forEach(l => { locMap[l.name] = l.id; });
-
-                const stStmt = db.prepare("INSERT OR IGNORE INTO ingredient_storage (ingredient_name, storage_id, shelf_days) VALUES (?, ?, ?)");
-                rows.forEach(r => {
-                    if (r.walkin !== null && r.walkin !== undefined && locMap["워크인 랙산"]) {
-                        stStmt.run(r.name, locMap["워크인 랙산"], r.walkin);
-                    }
-                    if (r.makeline !== null && r.makeline !== undefined && locMap["메이크라인"]) {
-                        stStmt.run(r.name, locMap["메이크라인"], r.makeline);
-                    }
-                    if (r.bottle !== null && r.bottle !== undefined && locMap["소스보틀"]) {
-                        stStmt.run(r.name, locMap["소스보틀"], r.bottle);
-                    }
-                });
-                stStmt.finalize(() => {
-                    console.log(`Migrated ${rows.length} ingredients to new schema.`);
-                    // Drop old table
-                    db.run("DROP TABLE IF EXISTS ingredients", () => {
-                        console.log('Old ingredients table dropped.');
-                    });
-                });
-            });
-        });
-    });
-}
-
-function checkAndSeedNewSchema() {
-    db.get("SELECT COUNT(*) as count FROM ingredients_v2", (err, row) => {
-        if (err || (row && row.count > 0)) {
-            if (row) console.log(`Database has ${row.count} ingredients (v2 schema).`);
-            return;
-        }
+async function checkAndSeedNewSchemaAsync() {
+    const row = await allAsync("SELECT COUNT(*) as count FROM ingredients_v2");
+    if (!row || row[0].count === 0) {
         console.log('Seeding new schema with default data...');
-        seedDefaultsAsync().catch(seedErr => {
-            console.error('Error seeding default data:', seedErr.message);
-        });
-    });
+        await seedDefaultsAsync();
+    }
 }
 
-function checkAndSeedLabelSizes() {
-    console.log("Checking and seeding default label sizes...");
-    const checkStmt = db.prepare("SELECT id FROM label_sizes WHERE width = ? AND height = ?");
-    let pending = DEFAULT_LABEL_SIZES.length;
+// Migrate a legacy `ingredients` (walkin/makeline/bottle columns) database to
+// the current v2 schema. Runs inside a transaction using the async helpers so
+// that initDatabaseAsync() can await completion.
+async function migrateFromOldSchemaAsync() {
+    await runAsync("BEGIN TRANSACTION");
+    try {
+        const catStmt = db.prepare("INSERT OR IGNORE INTO categories (name, emoji, sort_order) VALUES (?, ?, ?)");
+        for (const c of DEFAULT_CATEGORIES) catStmt.run(c.name, c.emoji, c.sort_order);
+        await finalizeAsync(catStmt);
 
-    const finishOne = () => {
-        pending -= 1;
-        if (pending === 0) {
-            checkStmt.finalize();
+        const slStmt = db.prepare("INSERT OR IGNORE INTO storage_locations (name, sort_order, unit) VALUES (?, ?, ?)");
+        for (const s of DEFAULT_STORAGE_LOCATIONS) slStmt.run(s.name, s.sort_order, s.unit || 'day');
+        await finalizeAsync(slStmt);
+
+        const rows = await allAsync("SELECT * FROM ingredients");
+        if (rows && rows.length > 0) {
+            const ingStmt = db.prepare("INSERT OR IGNORE INTO ingredients_v2 (name, category, abbr) VALUES (?, ?, ?)");
+            for (const r of rows) ingStmt.run(r.name, r.category, r.abbr || '');
+            await finalizeAsync(ingStmt);
+
+            const locations = await allAsync("SELECT id, name FROM storage_locations");
+            const locMap = {};
+            locations.forEach(l => { locMap[l.name] = l.id; });
+
+            const columnToLocation = [
+                ['walkin', '워크인 랙산'],
+                ['makeline', '메이크라인'],
+                ['bottle', '소스보틀'],
+            ];
+            const stStmt = db.prepare("INSERT OR IGNORE INTO ingredient_storage (ingredient_name, storage_id, shelf_days) VALUES (?, ?, ?)");
+            for (const r of rows) {
+                for (const [col, locName] of columnToLocation) {
+                    if (r[col] !== null && r[col] !== undefined && locMap[locName]) {
+                        stStmt.run(r.name, locMap[locName], r[col]);
+                    }
+                }
+            }
+            await finalizeAsync(stStmt);
+            console.log(`Migrated ${rows.length} ingredients to new schema.`);
+        } else {
+            console.log('No data to migrate from old ingredients table.');
         }
-    };
 
-    db.serialize(() => {
-        DEFAULT_LABEL_SIZES.forEach(s => {
-            checkStmt.get(s.width, s.height, (err, row) => {
-                if (err) {
-                    console.error(`Error checking label size ${s.width}x${s.height}:`, err.message);
-                    finishOne();
-                    return;
-                }
-                if (!row) {
-                    console.log(`Seeding missing default label size: ${s.width}x${s.height}`);
-                    db.run("INSERT INTO label_sizes (width, height, is_default) VALUES (?, ?, ?)", [s.width, s.height, s.is_default], finishOne);
-                } else {
-                    finishOne();
-                }
-            });
-        });
-    });
+        await runAsync("DROP TABLE IF EXISTS ingredients");
+        await runAsync("COMMIT");
+        console.log('Old ingredients table dropped.');
+    } catch (err) {
+        await runAsync("ROLLBACK").catch(() => {});
+        throw err;
+    }
+
+    // If the legacy table was empty, fall back to seeding the default dataset.
+    await checkAndSeedNewSchemaAsync();
 }
 
 // ==========================================
@@ -596,6 +622,240 @@ app.get('/api/auth/status', (req, res) => {
         return res.json({ loggedIn: true, user: { username: session.username, role: session.role } });
     }
     res.json({ loggedIn: false });
+});
+
+// ==========================================
+// API: Default Database & Sync & Print Logs
+// ==========================================
+
+// GET /api/default-database
+app.get('/api/default-database', requireLogin, (req, res) => {
+    try {
+        const defaultPath = path.join(__dirname, 'default_database.json');
+        if (fs.existsSync(defaultPath)) {
+            const raw = fs.readFileSync(defaultPath, 'utf8');
+            const parsed = JSON.parse(raw);
+            delete parsed.users;
+            delete parsed.passwords;
+            delete parsed.password;
+            delete parsed.print_logs;
+            return res.json(parsed);
+        }
+    } catch (e) {
+        console.error('Error reading default_database.json:', e);
+    }
+    res.json({
+        last_updated: new Date().toISOString(),
+        categories: DEFAULT_CATEGORIES,
+        storage_locations: DEFAULT_STORAGE_LOCATIONS,
+        label_sizes: DEFAULT_LABEL_SIZES,
+        ingredients_v2: DEFAULT_INGREDIENTS.map(i => ({ name: i.name, category: i.category, abbr: i.abbr || '' })),
+        ingredient_storage: []
+    });
+});
+
+// GET /api/sync/database
+app.get('/api/sync/database', requireLogin, async (req, res) => {
+    try {
+        const categories = await allAsync("SELECT * FROM categories ORDER BY sort_order ASC, id ASC");
+        const storage_locations = await allAsync("SELECT * FROM storage_locations ORDER BY sort_order ASC, id ASC");
+        const label_sizes = await allAsync("SELECT * FROM label_sizes ORDER BY width ASC, height ASC, id ASC");
+        const ingredients_v2 = await allAsync("SELECT * FROM ingredients_v2 ORDER BY name ASC");
+        const ingredient_storage = await allAsync("SELECT * FROM ingredient_storage");
+
+        let lastUpdated = new Date().toISOString();
+        try {
+            const metaRow = await allAsync("SELECT value FROM db_metadata WHERE key = 'last_updated'");
+            if (metaRow && metaRow.length > 0) {
+                lastUpdated = metaRow[0].value;
+            }
+        } catch (metaErr) {
+            // Ignore
+        }
+
+        const result = {
+            last_updated: lastUpdated,
+            categories,
+            storage_locations,
+            label_sizes,
+            ingredients_v2,
+            ingredient_storage
+        };
+
+        try {
+            const extraRow = await allAsync("SELECT value FROM db_metadata WHERE key = 'extra_data'");
+            if (extraRow && extraRow.length > 0) {
+                const extra = JSON.parse(extraRow[0].value);
+                Object.assign(result, extra);
+            }
+        } catch (e) {}
+
+        const etag = crypto.createHash('md5').update(JSON.stringify(result)).digest('hex');
+        res.setHeader('ETag', etag);
+
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/sync/database
+app.post('/api/sync/database', requireLogin, async (req, res) => {
+    const payload = req.body;
+    if (!payload || typeof payload !== 'object') {
+        return res.status(400).json({ error: '유효하지 않은 데이터 형식입니다.' });
+    }
+
+    // Security: NEVER store or overwrite users/passwords from sync payload
+    delete payload.users;
+    delete payload.password;
+    delete payload.passwords;
+
+    const ifMatch = req.headers['if-match'];
+    if (ifMatch) {
+        try {
+            const categories = await allAsync("SELECT * FROM categories ORDER BY sort_order ASC, id ASC");
+            const storage_locations = await allAsync("SELECT * FROM storage_locations ORDER BY sort_order ASC, id ASC");
+            const label_sizes = await allAsync("SELECT * FROM label_sizes ORDER BY width ASC, height ASC, id ASC");
+            const ingredients_v2 = await allAsync("SELECT * FROM ingredients_v2 ORDER BY name ASC");
+            const ingredient_storage = await allAsync("SELECT * FROM ingredient_storage");
+            const currentData = { categories, storage_locations, label_sizes, ingredients_v2, ingredient_storage };
+            const currentEtag = crypto.createHash('md5').update(JSON.stringify(currentData)).digest('hex');
+            if (ifMatch !== currentEtag) {
+                return res.status(409).json({ error: '서버 데이터가 수정되었습니다. 최신 데이터를 먼저 동기화하세요.' });
+            }
+        } catch (e) {
+            // ignore check failure
+        }
+    }
+
+    const newLastUpdated = payload.last_updated || new Date().toISOString();
+    const extraData = {};
+    for (const [key, val] of Object.entries(payload)) {
+        if (!['categories', 'storage_locations', 'label_sizes', 'ingredients_v2', 'ingredient_storage', 'last_updated'].includes(key)) {
+            extraData[key] = val;
+        }
+    }
+
+    try {
+        await runAsync("BEGIN TRANSACTION");
+
+        // Clear child table first due to foreign key constraints
+        if (Array.isArray(payload.ingredient_storage) || Array.isArray(payload.ingredients_v2) || Array.isArray(payload.storage_locations)) {
+            await runAsync("DELETE FROM ingredient_storage");
+        }
+        if (Array.isArray(payload.ingredients_v2)) {
+            await runAsync("DELETE FROM ingredients_v2");
+        }
+        if (Array.isArray(payload.storage_locations)) {
+            await runAsync("DELETE FROM storage_locations");
+        }
+        if (Array.isArray(payload.categories)) {
+            await runAsync("DELETE FROM categories");
+        }
+        if (Array.isArray(payload.label_sizes)) {
+            await runAsync("DELETE FROM label_sizes");
+        }
+
+        // Insert parent tables first
+        if (Array.isArray(payload.categories)) {
+            const catStmt = db.prepare("INSERT INTO categories (id, name, emoji, sort_order) VALUES (?, ?, ?, ?)");
+            for (const c of payload.categories) {
+                await new Promise((res, rej) => catStmt.run(c.id || null, c.name, c.emoji || '', c.sort_order || 0, err => err ? rej(err) : res()));
+            }
+            await finalizeAsync(catStmt);
+        }
+
+        if (Array.isArray(payload.storage_locations)) {
+            const slStmt = db.prepare("INSERT INTO storage_locations (id, name, sort_order, unit) VALUES (?, ?, ?, ?)");
+            for (const s of payload.storage_locations) {
+                await new Promise((res, rej) => slStmt.run(s.id || null, s.name, s.sort_order || 0, s.unit || 'day', err => err ? rej(err) : res()));
+            }
+            await finalizeAsync(slStmt);
+        }
+
+        if (Array.isArray(payload.label_sizes)) {
+            const lsStmt = db.prepare("INSERT INTO label_sizes (id, width, height, is_default) VALUES (?, ?, ?, ?)");
+            for (const l of payload.label_sizes) {
+                await new Promise((res, rej) => lsStmt.run(l.id || null, l.width, l.height, l.is_default ? 1 : 0, err => err ? rej(err) : res()));
+            }
+            await finalizeAsync(lsStmt);
+        }
+
+        if (Array.isArray(payload.ingredients_v2)) {
+            const ingStmt = db.prepare("INSERT INTO ingredients_v2 (name, category, abbr) VALUES (?, ?, ?)");
+            for (const i of payload.ingredients_v2) {
+                await new Promise((res, rej) => ingStmt.run(i.name, i.category, i.abbr || '', err => err ? rej(err) : res()));
+            }
+            await finalizeAsync(ingStmt);
+        }
+
+        if (Array.isArray(payload.ingredient_storage)) {
+            const stStmt = db.prepare("INSERT INTO ingredient_storage (ingredient_name, storage_id, shelf_days) VALUES (?, ?, ?)");
+            for (const st of payload.ingredient_storage) {
+                await new Promise((res, rej) => stStmt.run(st.ingredient_name, st.storage_id, st.shelf_days, err => err ? rej(err) : res()));
+            }
+            await finalizeAsync(stStmt);
+        }
+
+        await runAsync("INSERT OR REPLACE INTO db_metadata (key, value) VALUES ('last_updated', ?)", [newLastUpdated]);
+        if (Object.keys(extraData).length > 0) {
+            await runAsync("INSERT OR REPLACE INTO db_metadata (key, value) VALUES ('extra_data', ?)", [JSON.stringify(extraData)]);
+        }
+
+        await runAsync("COMMIT");
+
+        res.json({ success: true, last_updated: newLastUpdated });
+    } catch (err) {
+        console.error("POST /api/sync/database error:", err);
+        await runAsync("ROLLBACK").catch(() => {});
+        res.status(500).json({ error: '동기화 저장 중 오류가 발생했습니다: ' + err.message });
+    }
+});
+
+// GET /api/print-logs
+app.get('/api/print-logs', requireLogin, async (req, res) => {
+    try {
+        const logs = await allAsync("SELECT * FROM print_logs ORDER BY timestamp ASC");
+        res.json(logs);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/print-logs
+app.post('/api/print-logs', requireLogin, async (req, res) => {
+    const { ingredient_name, category, abbr, storage_location, prep_date, expire_date, staff, quantity } = req.body || {};
+    if (!ingredient_name || typeof ingredient_name !== 'string') {
+        return res.status(400).json({ error: '재료명은 필수 항목입니다.' });
+    }
+    const qty = isSafePositiveInteger(quantity) ? Number(quantity) : 1;
+    const logId = req.body.id || `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const timestamp = req.body.timestamp || new Date().toISOString();
+
+    const logEntry = {
+        id: logId,
+        ingredient_name: ingredient_name.trim(),
+        category: String(category || '').trim(),
+        abbr: String(abbr || '').trim(),
+        storage_location: String(storage_location || '').trim(),
+        prep_date: String(prep_date || '').trim(),
+        expire_date: String(expire_date || '').trim(),
+        staff: String(staff || '').trim(),
+        quantity: qty,
+        timestamp
+    };
+
+    try {
+        await runAsync(
+            `INSERT INTO print_logs (id, ingredient_name, category, abbr, storage_location, prep_date, expire_date, staff, quantity, timestamp)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [logEntry.id, logEntry.ingredient_name, logEntry.category, logEntry.abbr, logEntry.storage_location, logEntry.prep_date, logEntry.expire_date, logEntry.staff, logEntry.quantity, logEntry.timestamp]
+        );
+        res.json({ success: true, log: logEntry });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // ==========================================
@@ -728,9 +988,13 @@ app.get('/api/ingredients', requireLogin, (req, res) => {
     });
 });
 
-app.post('/api/ingredients', requireAdmin, (req, res) => {
-    const { category, name, abbr, storage } = req.body;
+app.post('/api/ingredients', requireAdmin, async (req, res) => {
+    const { category, name, abbr, storage } = req.body || {};
     if (!name || !category) return res.status(400).json({ error: '재료명과 카테고리는 필수 항목입니다.' });
+
+    const trimmedName = String(name).trim().substring(0, 100);
+    const trimmedCategory = String(category).trim().substring(0, 100);
+    const trimmedAbbr = String(abbr || '').trim().substring(0, 50);
 
     if (storage && typeof storage === 'object') {
         for (const [storageId, days] of Object.entries(storage)) {
@@ -742,48 +1006,56 @@ app.post('/api/ingredients', requireAdmin, (req, res) => {
         }
     }
 
-    db.run("INSERT INTO ingredients_v2 (name, category, abbr) VALUES (?, ?, ?)",
-        [name, category, abbr || ''], function(err) {
-            if (err) {
-                if (err.message.includes('UNIQUE')) return res.status(400).json({ error: '이미 존재하는 재료 이름입니다.' });
-                return res.status(500).json({ error: err.message });
-            }
-            // Insert storage mappings
-            if (storage && typeof storage === 'object') {
-                const entries = Object.entries(storage);
-                if (entries.length === 0) return res.status(201).json({ success: true });
+    try {
+        await runAsync("BEGIN TRANSACTION");
+        
+        await runAsync("INSERT INTO ingredients_v2 (name, category, abbr) VALUES (?, ?, ?)",
+            [trimmedName, trimmedCategory, trimmedAbbr]
+        );
 
-                const stStmt = db.prepare("INSERT INTO ingredient_storage (ingredient_name, storage_id, shelf_days) VALUES (?, ?, ?)");
-                entries.forEach(([storageId, days]) => {
-                    if (days !== null && days !== '' && days !== undefined) {
-                        stStmt.run(name, parseInt(storageId), parseInt(days));
-                    }
-                });
-                stStmt.finalize((err) => {
-                    if (err) return res.status(500).json({ error: err.message });
-                    res.status(201).json({ success: true });
-                });
-            } else {
-                res.status(201).json({ success: true });
+        if (storage && typeof storage === 'object') {
+            const stStmt = db.prepare("INSERT INTO ingredient_storage (ingredient_name, storage_id, shelf_days) VALUES (?, ?, ?)");
+            for (const [storageId, days] of Object.entries(storage)) {
+                if (days !== null && days !== '' && days !== undefined) {
+                    await new Promise((res, rej) => stStmt.run(trimmedName, parseInt(storageId), parseInt(days), err => err ? rej(err) : res()));
+                }
             }
-        });
+            await finalizeAsync(stStmt);
+        }
+
+        await runAsync("COMMIT");
+        res.status(201).json({ success: true });
+    } catch (err) {
+        await runAsync("ROLLBACK").catch(() => {});
+        if (err.message && err.message.includes('UNIQUE')) {
+            return res.status(400).json({ error: '이미 존재하는 재료 이름입니다.' });
+        }
+        sendServerError(res, err, '재료 추가 중 오류가 발생했습니다.');
+    }
 });
 
-app.delete('/api/ingredients/:name', requireAdmin, (req, res) => {
+app.delete('/api/ingredients/:name', requireAdmin, async (req, res) => {
     const name = decodeURIComponent(req.params.name);
-    db.serialize(() => {
-        db.run("DELETE FROM ingredient_storage WHERE ingredient_name = ?", [name]);
-        db.run("DELETE FROM ingredients_v2 WHERE name = ?", [name], function(err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ success: true });
-        });
-    });
+    try {
+        await runAsync("BEGIN TRANSACTION");
+        await runAsync("DELETE FROM ingredient_storage WHERE ingredient_name = ?", [name]);
+        await runAsync("DELETE FROM ingredients_v2 WHERE name = ?", [name]);
+        await runAsync("COMMIT");
+        res.json({ success: true });
+    } catch (err) {
+        await runAsync("ROLLBACK").catch(() => {});
+        sendServerError(res, err, '재료 삭제 중 오류가 발생했습니다.');
+    }
 });
 
-app.put('/api/ingredients/:oldName', requireAdmin, (req, res) => {
+app.put('/api/ingredients/:oldName', requireAdmin, async (req, res) => {
     const oldName = decodeURIComponent(req.params.oldName);
-    const { category, name, abbr, storage } = req.body;
+    const { category, name, abbr, storage } = req.body || {};
     if (!name || !category) return res.status(400).json({ error: '재료명과 카테고리는 필수 항목입니다.' });
+
+    const trimmedName = String(name).trim().substring(0, 100);
+    const trimmedCategory = String(category).trim().substring(0, 100);
+    const trimmedAbbr = String(abbr || '').trim().substring(0, 50);
 
     if (storage && typeof storage === 'object') {
         for (const [storageId, days] of Object.entries(storage)) {
@@ -795,66 +1067,64 @@ app.put('/api/ingredients/:oldName', requireAdmin, (req, res) => {
         }
     }
 
-    const nameChanged = oldName.toLowerCase() !== name.toLowerCase();
+    try {
+        await runAsync("BEGIN TRANSACTION");
 
-    db.serialize(() => {
-        const performUpdate = () => {
-            db.run("DELETE FROM ingredient_storage WHERE ingredient_name = ?", [oldName], (err) => {
-                if (err) return res.status(500).json({ error: err.message });
+        await runAsync("DELETE FROM ingredient_storage WHERE ingredient_name = ?", [oldName]);
+        await runAsync("UPDATE ingredients_v2 SET name = ?, category = ?, abbr = ? WHERE name = ?",
+            [trimmedName, trimmedCategory, trimmedAbbr, oldName]
+        );
 
-                db.run("UPDATE ingredients_v2 SET name = ?, category = ?, abbr = ? WHERE name = ?",
-                    [name, category, abbr || '', oldName], function(err) {
-                        if (err) {
-                            if (err.message.includes('UNIQUE')) return res.status(400).json({ error: '이미 존재하는 재료 이름입니다.' });
-                            return res.status(500).json({ error: err.message });
-                        }
-
-                        // Insert storage mappings
-                        if (storage && typeof storage === 'object') {
-                            const entries = Object.entries(storage);
-                            if (entries.length === 0) return res.json({ success: true });
-
-                            const stStmt = db.prepare("INSERT INTO ingredient_storage (ingredient_name, storage_id, shelf_days) VALUES (?, ?, ?)");
-                            entries.forEach(([storageId, days]) => {
-                                if (days !== null && days !== '' && days !== undefined) {
-                                    stStmt.run(name, parseInt(storageId), parseInt(days));
-                                }
-                            });
-                            stStmt.finalize((err) => {
-                                if (err) return res.status(500).json({ error: err.message });
-                                res.json({ success: true });
-                            });
-                        } else {
-                            res.json({ success: true });
-                        }
-                    });
-            });
-        };
-
-        if (nameChanged) {
-            db.get("SELECT name FROM ingredients_v2 WHERE name = ?", [name], (err, row) => {
-                if (err) return res.status(500).json({ error: err.message });
-                if (row) return res.status(400).json({ error: '이미 존재하는 재료 이름입니다.' });
-                performUpdate();
-            });
-        } else {
-            performUpdate();
+        if (storage && typeof storage === 'object') {
+            const stStmt = db.prepare("INSERT INTO ingredient_storage (ingredient_name, storage_id, shelf_days) VALUES (?, ?, ?)");
+            for (const [storageId, days] of Object.entries(storage)) {
+                if (days !== null && days !== '' && days !== undefined) {
+                    await new Promise((res, rej) => stStmt.run(trimmedName, parseInt(storageId), parseInt(days), err => err ? rej(err) : res()));
+                }
+            }
+            await finalizeAsync(stStmt);
         }
-    });
+
+        await runAsync("COMMIT");
+        res.json({ success: true });
+    } catch (err) {
+        await runAsync("ROLLBACK").catch(() => {});
+        if (err.message && err.message.includes('UNIQUE')) {
+            return res.status(400).json({ error: '이미 존재하는 재료 이름입니다.' });
+        }
+        sendServerError(res, err, '재료 수정 중 오류가 발생했습니다.');
+    }
 });
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+        const ext = path.extname(file.originalname || '').toLowerCase();
+        if (ext !== '.xlsx' && ext !== '.xls') {
+            return cb(new Error('엑셀 파일(.xlsx, .xls)만 업로드할 수 있습니다.'));
+        }
+        cb(null, true);
+    }
+});
 
 app.get('/api/ingredients/sample-excel', requireLogin, (req, res) => {
     const filePath = path.join(__dirname, 'files', 'SHELFLIFE_sample.xlsx');
     res.download(filePath, 'SHELFLIFE_sample.xlsx', (err) => {
         if (err) {
-            res.status(500).json({ error: '샘플 파일을 다운로드하는 중에 오류가 발생했습니다.' });
+            sendServerError(res, err, '샘플 파일을 다운로드하는 중에 오류가 발생했습니다.');
         }
     });
 });
 
-app.post('/api/ingredients/upload-excel', requireAdmin, upload.single('file'), (req, res) => {
+app.post('/api/ingredients/upload-excel', requireAdmin, (req, res, next) => {
+    upload.single('file')(req, res, (err) => {
+        if (err) {
+            return res.status(400).json({ error: err.message || '엑셀 파일 업로드 오류가 발생했습니다.' });
+        }
+        next();
+    });
+}, async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: '엑셀 파일을 업로드해 주세요.' });
     }
@@ -862,11 +1132,17 @@ app.post('/api/ingredients/upload-excel', requireAdmin, upload.single('file'), (
     try {
         const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
+        if (!sheetName || !workbook.Sheets[sheetName]) {
+            return res.status(400).json({ error: '유효하지 않은 엑셀 파일 형식입니다.' });
+        }
         const sheet = workbook.Sheets[sheetName];
         const rows = xlsx.utils.sheet_to_json(sheet, { header: 1 });
 
         if (!rows || rows.length < 2) {
             return res.status(400).json({ error: '유효하지 않은 엑셀 파일 형식입니다.' });
+        }
+        if (rows.length > 2000) {
+            return res.status(400).json({ error: '엑셀 행 수가 너무 많습니다. 최대 2000행까지 지원합니다.' });
         }
 
         const parsedCategories = new Set();
@@ -896,12 +1172,12 @@ app.post('/api/ingredients/upload-excel', requireAdmin, upload.single('file'), (
             const colAbbr = row[3];
 
             if (colCat) {
-                currentCategory = String(colCat).trim();
+                currentCategory = String(colCat).trim().substring(0, 100);
             }
 
             if (colName) {
-                const name = String(colName).trim();
-                const abbr = colAbbr ? String(colAbbr).trim() : '';
+                const name = String(colName).trim().substring(0, 100);
+                const abbr = colAbbr ? String(colAbbr).trim().substring(0, 50) : '';
                 const category = currentCategory || '기타';
 
                 parsedCategories.add(category);
@@ -910,19 +1186,19 @@ app.post('/api/ingredients/upload-excel', requireAdmin, upload.single('file'), (
                 if (!isTable2) {
                     if (row[4] !== null && row[4] !== undefined && row[4] !== '') {
                         const val = parseInt(row[4]);
-                        if (!isNaN(val)) storage['해동'] = val;
+                        if (!isNaN(val) && val > 0 && val <= 3650) storage['해동'] = val;
                     }
                     if (row[5] !== null && row[5] !== undefined && row[5] !== '') {
                         const val = parseInt(row[5]);
-                        if (!isNaN(val)) storage['워크인 랙산'] = val;
+                        if (!isNaN(val) && val > 0 && val <= 3650) storage['워크인 랙산'] = val;
                     }
                     if (row[6] !== null && row[6] !== undefined && row[6] !== '') {
                         const val = parseInt(row[6]);
-                        if (!isNaN(val)) storage['메이크라인'] = val;
+                        if (!isNaN(val) && val > 0 && val <= 3650) storage['메이크라인'] = val;
                     }
                     if (row[7] !== null && row[7] !== undefined && row[7] !== '') {
                         const val = parseInt(row[7]);
-                        if (!isNaN(val)) storage['소스보틀'] = val;
+                        if (!isNaN(val) && val > 0 && val <= 87600) storage['소스보틀'] = val;
                     }
                 } else {
                     const expireStr = row[5] ? String(row[5]).trim() : '';
@@ -941,7 +1217,7 @@ app.post('/api/ingredients/upload-excel', requireAdmin, upload.single('file'), (
                             }
                         } else {
                             const val = parseInt(expireStr);
-                            if (!isNaN(val)) {
+                            if (!isNaN(val) && val > 0 && val <= 87600) {
                                 if (val < 10) {
                                     storage['분할'] = val * 24;
                                 } else {
@@ -960,17 +1236,14 @@ app.post('/api/ingredients/upload-excel', requireAdmin, upload.single('file'), (
             return res.status(400).json({ error: '엑셀 파일에서 읽어온 재료 데이터가 없습니다.' });
         }
 
-        db.serialize(() => {
-            db.run("BEGIN TRANSACTION");
-            
-            // Insert missing categories
+        await runAsync("BEGIN TRANSACTION");
+        try {
             const catStmt = db.prepare("INSERT OR IGNORE INTO categories (name, sort_order) VALUES (?, (SELECT COALESCE(MAX(sort_order),0)+1 FROM categories))");
-            parsedCategories.forEach(cat => {
-                catStmt.run(cat);
-            });
-            catStmt.finalize();
+            for (const cat of parsedCategories) {
+                await new Promise((r, j) => catStmt.run(cat, err => err ? j(err) : r()));
+            }
+            await finalizeAsync(catStmt);
 
-            // Ensure storage locations exist
             const defLocations = [
                 { name: "해동", unit: "day" },
                 { name: "워크인 랙산", unit: "day" },
@@ -979,91 +1252,96 @@ app.post('/api/ingredients/upload-excel', requireAdmin, upload.single('file'), (
                 { name: "분할", unit: "hour" }
             ];
             const locStmt = db.prepare("INSERT OR IGNORE INTO storage_locations (name, sort_order, unit) VALUES (?, (SELECT COALESCE(MAX(sort_order),0)+1 FROM storage_locations), ?)");
-            defLocations.forEach(loc => {
-                locStmt.run(loc.name, loc.unit);
-            });
-            locStmt.finalize();
+            for (const loc of defLocations) {
+                await new Promise((r, j) => locStmt.run(loc.name, loc.unit, err => err ? j(err) : r()));
+            }
+            await finalizeAsync(locStmt);
 
-            // Clear active ingredients and storage mappings
-            db.run("DELETE FROM ingredient_storage");
-            db.run("DELETE FROM ingredients_v2");
+            await runAsync("DELETE FROM ingredient_storage");
+            await runAsync("DELETE FROM ingredients_v2");
 
             const ingStmt = db.prepare("INSERT INTO ingredients_v2 (name, category, abbr) VALUES (?, ?, ?)");
-            parsedIngredients.forEach(ing => {
-                ingStmt.run(ing.name, ing.category, ing.abbr);
-            });
-            ingStmt.finalize();
+            for (const ing of parsedIngredients) {
+                await new Promise((r, j) => ingStmt.run(ing.name, ing.category, ing.abbr, err => err ? j(err) : r()));
+            }
+            await finalizeAsync(ingStmt);
 
-            db.all("SELECT id, name FROM storage_locations", (err, dbLocations) => {
-                if (err) {
-                    db.run("ROLLBACK");
-                    return res.status(500).json({ error: err.message });
-                }
+            const dbLocations = await allAsync("SELECT id, name FROM storage_locations");
+            const locMap = {};
+            dbLocations.forEach(l => { locMap[l.name] = l.id; });
 
-                const locMap = {};
-                dbLocations.forEach(l => { locMap[l.name] = l.id; });
-
-                const mappingStmt = db.prepare("INSERT INTO ingredient_storage (ingredient_name, storage_id, shelf_days) VALUES (?, ?, ?)");
-                parsedIngredients.forEach(ing => {
-                    Object.entries(ing.storage).forEach(([locName, val]) => {
-                        if (locMap[locName]) {
-                            mappingStmt.run(ing.name, locMap[locName], val);
-                        }
-                    });
-                });
-
-                mappingStmt.finalize((err) => {
-                    if (err) {
-                        db.run("ROLLBACK");
-                        return res.status(500).json({ error: err.message });
+            const mappingStmt = db.prepare("INSERT INTO ingredient_storage (ingredient_name, storage_id, shelf_days) VALUES (?, ?, ?)");
+            for (const ing of parsedIngredients) {
+                for (const [locName, val] of Object.entries(ing.storage)) {
+                    if (locMap[locName]) {
+                        await new Promise((r, j) => mappingStmt.run(ing.name, locMap[locName], val, err => err ? j(err) : r()));
                     }
-                    db.run("COMMIT", (commitErr) => {
-                        if (commitErr) {
-                            return res.status(500).json({ error: commitErr.message });
-                        }
-                        res.json({ success: true, count: parsedIngredients.length });
-                    });
-                });
-            });
-        });
+                }
+            }
+            await finalizeAsync(mappingStmt);
+
+            await runAsync("COMMIT");
+            res.json({ success: true, count: parsedIngredients.length });
+        } catch (dbErr) {
+            await runAsync("ROLLBACK").catch(() => {});
+            throw dbErr;
+        }
 
     } catch (err) {
-        console.error("Excel upload parsing error:", err);
-        res.status(500).json({ error: '엑셀 파싱 및 데이터베이스 업데이트 중 오류가 발생했습니다: ' + err.message });
+        sendServerError(res, err, '엑셀 데이터 처리 중 오류가 발생했습니다.');
     }
 });
 
-app.post('/api/ingredients/reset', requireAdmin, (req, res) => {
-    db.serialize(() => {
-        db.run("DELETE FROM ingredient_storage");
-        db.run("DELETE FROM ingredients_v2");
-        db.run("DELETE FROM categories");
-        db.run("DELETE FROM storage_locations");
-        db.run("DELETE FROM label_sizes", async (err) => {
-            if (err) return res.status(500).json({ error: err.message });
-            try {
-                await seedDefaultsAsync();
-                res.json({ success: true });
-            } catch (seedErr) {
-                res.status(500).json({ error: seedErr.message });
-            }
-        });
-    });
+app.post('/api/ingredients/reset', requireAdmin, async (req, res) => {
+    try {
+        await runAsync("BEGIN TRANSACTION");
+        await runAsync("DELETE FROM ingredient_storage");
+        await runAsync("DELETE FROM ingredients_v2");
+        await runAsync("DELETE FROM categories");
+        await runAsync("DELETE FROM storage_locations");
+        await runAsync("DELETE FROM label_sizes");
+        await runAsync("COMMIT");
+
+        await seedDefaultsAsync();
+        res.json({ success: true });
+    } catch (err) {
+        await runAsync("ROLLBACK").catch(() => {});
+        sendServerError(res, err, '초기화 작업 중 오류가 발생했습니다.');
+    }
 });
 
 // ==========================================
-// Start Server
+// Start Server & Graceful Shutdown
 // ==========================================
 if (require.main === module) {
     startDatabase();
-    app.listen(PORT, () => {
+    const serverInstance = app.listen(PORT, () => {
         console.log(`Server is running at http://localhost:${PORT}`);
     });
+
+    const gracefulShutdown = (signal) => {
+        console.log(`\nReceived ${signal}. Closing server gracefully...`);
+        serverInstance.close(async () => {
+            console.log('HTTP server closed.');
+            try {
+                await closeDatabase();
+                console.log('Database connection closed.');
+                process.exit(0);
+            } catch (err) {
+                console.error('Error closing database:', err);
+                process.exit(1);
+            }
+        });
+    };
+
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 }
 
 module.exports = {
     app,
     startDatabase,
+    closeDatabase,
     isPasswordHash,
     hashPassword,
     verifyPassword,

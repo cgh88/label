@@ -5,7 +5,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'ssh_sync_service.dart';
+import 'api_sync_service.dart';
 import '../models/models.dart';
 
 class DatabaseService {
@@ -120,7 +120,7 @@ class DatabaseService {
       return Ingredient.fromJson(ingMap);
     }).toList();
 
-    users = List<Map<String, dynamic>>.from(_dbData['users'] ?? []);
+    users = [];
     printLogs = List<Map<String, dynamic>>.from(_dbData['print_logs'] ?? []);
   }
 
@@ -130,7 +130,7 @@ class DatabaseService {
     _dbData['storage_locations'] = locations.map((l) => l.toJson()).toList();
     _dbData['label_sizes'] = presets.map((p) => p.toJson()).toList();
     _dbData['ingredients_v2'] = ingredients.map((i) => i.toJson()).toList();
-    _dbData['users'] = users;
+    _dbData['users'] = [];
     _dbData['print_logs'] = printLogs;
     
     final mappingList = <Map<String, dynamic>>[];
@@ -194,6 +194,7 @@ class DatabaseService {
     final client = http.Client();
     try {
       final request = http.Request('GET', Uri.parse(url));
+      request.headers.addAll(await ApiSyncService.authHeaders());
       final response = await client.send(request);
 
       if (response.statusCode != 200) {
@@ -260,16 +261,14 @@ class DatabaseService {
     printLogs.add(newLog);
     await save();
 
-    // Try to send via HTTP POST to http://<host>:3000/api/print-logs
-    final serverHost = SshSyncService.instance.host.isNotEmpty 
-        ? SshSyncService.instance.host 
-        : 'localhost';
-    final serverUrl = 'http://$serverHost:3000/api/print-logs';
+    // Try to send via HTTP POST to /api/print-logs
+    final baseUrl = ApiSyncService.instance.apiSyncUrl;
+    final serverUrl = '$baseUrl/api/print-logs';
 
     try {
       final response = await http.post(
         Uri.parse(serverUrl),
-        headers: {'Content-Type': 'application/json'},
+        headers: await ApiSyncService.authHeaders(jsonBody: true),
         body: jsonEncode(newLog),
       );
       if (response.statusCode != 200) {

@@ -1,8 +1,18 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const path = require('node:path');
+const fs = require('node:fs');
+
+const testDbPath = path.join(__dirname, 'test_isolated.sqlite');
+process.env.DB_PATH = testDbPath;
+if (fs.existsSync(testDbPath)) {
+    try { fs.unlinkSync(testDbPath); } catch (e) {}
+}
 
 const {
     app,
+    startDatabase,
+    closeDatabase,
     isPasswordHash,
     hashPassword,
     verifyPassword,
@@ -12,6 +22,16 @@ const {
     recordLoginFailure,
     validateRuntimeSecurityConfig,
 } = require('../server');
+
+async function loginAndGetCookie(baseUrl, username = 'admin', password = 'admin') {
+    const res = await fetch(`${baseUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+    });
+    assert.equal(res.status, 200);
+    return res.headers.get('set-cookie');
+}
 
 test('password hashes are salted and verifiable', () => {
     const first = hashPassword('secret');
@@ -61,7 +81,11 @@ test('api/default-database returns default database content', async () => {
     const baseUrl = `http://127.0.0.1:${server.address().port}`;
 
     try {
-        const res = await fetch(`${baseUrl}/api/default-database`);
+        // Unauthenticated access is rejected.
+        assert.equal((await fetch(`${baseUrl}/api/default-database`)).status, 401);
+
+        const cookie = await loginAndGetCookie(baseUrl);
+        const res = await fetch(`${baseUrl}/api/default-database`, { headers: { Cookie: cookie } });
         assert.equal(res.status, 200);
         const data = await res.json();
         assert.ok(data.categories);
@@ -90,12 +114,16 @@ test('api/print-logs appends a log entry', async () => {
             quantity: 2
         };
 
+        // Unauthenticated access is rejected.
+        assert.equal((await fetch(`${baseUrl}/api/print-logs`)).status, 401);
+
+        const cookie = await loginAndGetCookie(baseUrl);
         const res = await fetch(`${baseUrl}/api/print-logs`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', Cookie: cookie },
             body: JSON.stringify(payload)
         });
-        
+
         assert.equal(res.status, 200);
         const data = await res.json();
         assert.equal(data.success, true);
@@ -103,7 +131,7 @@ test('api/print-logs appends a log entry', async () => {
         assert.equal(data.log.quantity, 2);
 
         // Verify GET returns it
-        const getRes = await fetch(`${baseUrl}/api/print-logs`);
+        const getRes = await fetch(`${baseUrl}/api/print-logs`, { headers: { Cookie: cookie } });
         assert.equal(getRes.status, 200);
         const logs = await getRes.json();
         assert.ok(logs.length > 0);
@@ -118,7 +146,11 @@ test('api/sync/database allows GET and POST', async () => {
     const baseUrl = `http://127.0.0.1:${server.address().port}`;
 
     try {
-        const getRes = await fetch(`${baseUrl}/api/sync/database`);
+        // Unauthenticated access is rejected.
+        assert.equal((await fetch(`${baseUrl}/api/sync/database`)).status, 401);
+
+        const cookie = await loginAndGetCookie(baseUrl);
+        const getRes = await fetch(`${baseUrl}/api/sync/database`, { headers: { Cookie: cookie } });
         assert.equal(getRes.status, 200);
         const dbData = await getRes.json();
         assert.ok(dbData.last_updated);
@@ -132,14 +164,14 @@ test('api/sync/database allows GET and POST', async () => {
 
         const postRes = await fetch(`${baseUrl}/api/sync/database`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', Cookie: cookie },
             body: JSON.stringify(updatedDb)
         });
         assert.equal(postRes.status, 200);
         const postResult = await postRes.json();
         assert.equal(postResult.success, true);
 
-        const getRes2 = await fetch(`${baseUrl}/api/sync/database`);
+        const getRes2 = await fetch(`${baseUrl}/api/sync/database`, { headers: { Cookie: cookie } });
         const dbData2 = await getRes2.json();
         assert.equal(dbData2.test_sync_flag, true);
     } finally {
@@ -181,5 +213,37 @@ test('production mode requires explicit default passwords', () => {
 
         if (originalStaffPassword === undefined) delete process.env.DEFAULT_STAFF_PASSWORD;
         else process.env.DEFAULT_STAFF_PASSWORD = originalStaffPassword;
+    }
+});
+
+test('api/ingredients/upload-excel rejects non-excel files', async () => {
+    const server = app.listen(0);
+    const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+    try {
+        await startDatabase();
+        const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: 'admin', password: 'admin' }),
+        });
+        const cookie = loginRes.headers.get('set-cookie');
+
+        const formData = new FormData();
+        const blob = new Blob(['fake content'], { type: 'text/plain' });
+        formData.append('file', blob, 'test.txt');
+
+        const res = await fetch(`${baseUrl}/api/ingredients/upload-excel`, {
+            method: 'POST',
+            headers: { Cookie: cookie },
+            body: formData,
+        });
+
+        assert.equal(res.status, 400);
+        const data = await res.json();
+        assert.match(data.error, /엑셀 파일/);
+    } finally {
+        await new Promise((resolve) => server.close(resolve));
+        await closeDatabase();
     }
 });

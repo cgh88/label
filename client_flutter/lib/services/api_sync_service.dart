@@ -24,6 +24,23 @@ class ApiSyncService {
     return apiSyncUrl.isNotEmpty && Uri.tryParse(apiSyncUrl)?.hasAbsolutePath == true;
   }
 
+  /// Builds request headers including the stored session cookie (set at login).
+  /// The server requires an authenticated session for the sync/print-log APIs.
+  static Future<Map<String, String>> authHeaders({bool jsonBody = false}) async {
+    final headers = <String, String>{};
+    if (jsonBody) headers['Content-Type'] = 'application/json';
+
+    final prefs = await SharedPreferences.getInstance();
+    final rawCookie = prefs.getString('session_cookie');
+    if (rawCookie != null && rawCookie.isNotEmpty) {
+      // A raw Set-Cookie value carries attributes (Path, HttpOnly, ...);
+      // send back only the leading `name=value` pair.
+      final token = rawCookie.split(';').first.trim();
+      if (token.isNotEmpty) headers['Cookie'] = token;
+    }
+    return headers;
+  }
+
   Future<SyncResult> performSync() async {
     if (!isConfigured()) {
       return SyncResult(success: false, message: '동기화 API 주소가 올바르지 않습니다.');
@@ -33,6 +50,7 @@ class ApiSyncService {
       // 1. GET current remote database content
       final getResponse = await http.get(
         Uri.parse('$apiSyncUrl/api/sync/database'),
+        headers: await authHeaders(),
       ).timeout(const Duration(seconds: 10));
 
       if (getResponse.statusCode != 200) {
@@ -77,7 +95,7 @@ class ApiSyncService {
         // Upload: local is newer, POST to remote
         final postResponse = await http.post(
           Uri.parse('$apiSyncUrl/api/sync/database'),
-          headers: {'Content-Type': 'application/json'},
+          headers: await authHeaders(jsonBody: true),
           body: localJsonContent,
         ).timeout(const Duration(seconds: 10));
 
