@@ -144,10 +144,10 @@
 
                         <div class="sticker-preview-outer">
                             <div id="sticker-preview" class="sticker-preview-content" style="padding: 4px 8px 4px 28px; gap: 0px; justify-content: center; align-items: flex-start;">
-                                <div class="sticker-line" id="sticker-line-1" style="font-size: 0.85rem; font-weight: 700; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; text-align: left;">재료명</div>
-                                <div class="sticker-line" id="sticker-line-2" style="font-size: 0.85rem; font-weight: 700; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; text-align: left;">준비일시</div>
-                                <div class="sticker-line" id="sticker-line-3" style="font-size: 0.85rem; font-weight: 700; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; text-align: left;">폐기일시</div>
-                                <div class="sticker-line" id="sticker-line-4" style="font-size: 0.5rem; font-weight: 700; color: #555555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; text-align: left;">(담당: -)</div>
+                                <div class="sticker-line" id="sticker-line-1" style="font-size: 13.6px; line-height: 1.15; font-weight: 700; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; text-align: left;">재료명</div>
+                                <div class="sticker-line" id="sticker-line-2" style="font-size: 13.6px; line-height: 1.15; font-weight: 700; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; text-align: left;">준비일시</div>
+                                <div class="sticker-line" id="sticker-line-3" style="font-size: 13.6px; line-height: 1.15; font-weight: 700; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; text-align: left;">폐기일시</div>
+                                <div class="sticker-line" id="sticker-line-4" style="font-size: 8px; line-height: 1.15; font-weight: 700; color: #555555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; text-align: left;">(담당: -)</div>
                             </div>
                         </div>
 
@@ -316,40 +316,10 @@
             <div class="modal-body">
                 <div class="modal-form">
                     <div class="form-grid">
-                        <div class="form-group">
-                            <label for="label-width">가로 크기 (Width)</label>
-                            <div style="display:flex; align-items:center; gap:8px;">
-                                <input type="number" id="label-width" min="20" max="150" value="50" step="1"
-                                    style="width:100% !important; text-align:center;">
-                                <span class="size-unit">mm</span>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="label-height">세로 크기 (Height)</label>
-                            <div style="display:flex; align-items:center; gap:8px;">
-                                <input type="number" id="label-height" min="15" max="150" value="30" step="1"
-                                    style="width:100% !important; text-align:center;">
-                                <span class="size-unit">mm</span>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>단위</label>
-                            <input type="text" value="밀리미터 (mm)" disabled
-                                style="text-align:center; background:rgba(255,255,255,0.01); border-style:dashed;">
-                        </div>
-                        <div class="form-group"
-                            style="grid-column: 1 / -1; display: flex; justify-content: flex-end; margin-top: 4px;">
-                            <button type="button" id="save-current-size-preset-btn" class="submit-new-btn"
-                                style="width: auto; padding: 6px 12px; font-size: 0.82rem; display: flex; align-items: center; gap: 4px;">
-                                <i data-lucide="plus" style="width:14px; height:14px;"></i>
-                                <span>현재 규격을 프리셋으로 등록</span>
-                            </button>
-                        </div>
-                        <div class="form-group" style="grid-column: 1 / -1; margin-top: 8px;">
-                            <label>규격 프리셋 선택</label>
-                            <div class="size-presets" id="db-size-presets">
-                                <!-- Injected dynamically from SQLite DB -->
-                            </div>
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label>라벨 규격 (고정)</label>
+                            <input type="text" value="55 × 20 mm" disabled
+                                style="text-align:center; background:rgba(255,255,255,0.01); border-style:dashed; font-weight:700;">
                         </div>
 
                         <!-- Layout Fine-Tuning Controls -->

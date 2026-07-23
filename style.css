@@ -907,7 +907,9 @@ body.light-theme .sticker-preview-outer {
     min-height: calc(var(--label-h) * 6.4px);
     flex-shrink: 0;
     background: #ffffff;
-    border: 1px solid #94a3b8;
+    /* outline (not border) so the content box is exactly label-size,
+       matching the borderless print output 1:1 */
+    outline: 1px solid #94a3b8;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
     padding: calc(var(--label-h) * 0.12px * 6.4) calc(var(--label-w) * 0.08px * 6.4);
     display: flex;
@@ -1317,17 +1319,31 @@ body.light-theme .db-table th {
     }
 
     .sticker-preview-content {
-        /* width & height are set by injected dynamic style */
+        /* width & height are set by injected dynamic style.
+           min-* must be cleared: the screen rule's px min sizes would
+           otherwise override the mm print size (min beats width/height). */
+        min-width: 0 !important;
+        min-height: 0 !important;
         border: none !important;
+        outline: none !important;
         box-shadow: none !important;
         margin: 0 !important;
+        transition: none !important;
         page-break-after: always !important;
+        break-after: page !important;
         display: flex !important;
         flex-direction: column !important;
         justify-content: space-between !important;
         background: #ffffff !important;
         color: #000000 !important;
         box-sizing: border-box !important;
+    }
+
+    /* No forced page break after the last sticker — otherwise the printer
+       feeds one extra blank label at the end of every batch. */
+    .print-only-container .sticker-preview-content:last-child {
+        page-break-after: auto !important;
+        break-after: auto !important;
     }
 
     .sticker-top-row {

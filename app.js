@@ -77,7 +77,6 @@ function renderMainDataViews() {
     renderCategoryDropdown();
     renderStorageFieldsInForm();
     renderRegisteredIngredientsTable();
-    renderPresetButtons();
 }
 
 async function reloadAndRenderMainViews() {
@@ -92,7 +91,6 @@ let state = {
     ingredients: [],
     categories: [],
     locations: [],
-    presets: [],
     user: null,            // Currently logged in user { username, role }
     selectedId: null,      // Name string of selected ingredient
     selectedStorage: null, // Name of selected storage location (e.g. "워크인 랙산")
@@ -204,7 +202,6 @@ async function loadAllData() {
     state.ingredients = await apiGet("/api/ingredients");
     state.categories = await apiGet("/api/categories");
     state.locations = await apiGet("/api/storage-locations");
-    state.presets = await apiGet("/api/label-sizes");
 }
 
 function initTabs() {
@@ -255,94 +252,9 @@ function initLabelSizeControls() {
     // Label size is fixed at 55×20mm - clear any stale saved values
     localStorage.setItem("label_width", FIXED_LABEL_W);
     localStorage.setItem("label_height", FIXED_LABEL_H);
-
-    const labelWidthInput = document.getElementById("label-width");
-    const labelHeightInput = document.getElementById("label-height");
-    if (labelWidthInput) labelWidthInput.value = FIXED_LABEL_W;
-    if (labelHeightInput) labelHeightInput.value = FIXED_LABEL_H;
-
-    // Hide preset selection UI in preview tab (not needed when size is fixed)
-    const previewPresetsWrapper = document.getElementById("preview-size-presets");
-    if (previewPresetsWrapper) {
-        const wrapperGroup = previewPresetsWrapper.closest(".form-group");
-        if (wrapperGroup) wrapperGroup.style.display = "none";
-    }
-
-    renderPresetButtons();
     updateLabelSize();
 }
 
-function renderPresetButtons() {
-    const dbContainer = document.getElementById("db-size-presets");
-    const previewContainer = document.getElementById("preview-size-presets");
-    
-    const labelWidthInput = document.getElementById("label-width");
-    const labelHeightInput = document.getElementById("label-height");
-
-    const buildButtons = (container, isSettingsModal) => {
-        if (!container) return;
-        clearElement(container);
-        
-        state.presets.forEach(p => {
-            const btn = document.createElement("button");
-            btn.type = "button";
-            btn.className = "size-preset-btn";
-            btn.dataset.w = p.width;
-            btn.dataset.h = p.height;
-            btn.dataset.id = p.id;
-            
-            const standardSizes = [[50,30], [60,40], [70,40], [80,50], [100,60], [100,70]];
-            const isStandard = p.is_default === 1 || standardSizes.some(sz => sz[0] === p.width && sz[1] === p.height);
-            
-            btn.appendChild(createTextElement("span", "", `${p.width}×${p.height}`));
-            
-            const showDelete = isSettingsModal && !isStandard;
-            if (showDelete) {
-                btn.classList.add("has-delete");
-            }
-            
-            btn.addEventListener("click", (e) => {
-                if (e.target.classList.contains("delete-preset-x")) return;
-                
-                document.querySelectorAll(".size-preset-btn").forEach(b => b.classList.remove("active"));
-                btn.classList.add("active");
-                
-                if (labelWidthInput) {
-                    labelWidthInput.value = p.width;
-                }
-                if (labelHeightInput) {
-                    labelHeightInput.value = p.height;
-                }
-                updateLabelSize();
-                saveLabelSize();
-            });
-            
-            if (showDelete) {
-                const deleteX = createTextElement("span", "delete-preset-x", "\u00d7");
-                deleteX.dataset.id = p.id;
-                btn.appendChild(deleteX);
-                deleteX.addEventListener("click", async (e) => {
-                    e.stopPropagation();
-                    if (confirm(`'${p.width}×${p.height}' 규격 프리셋을 삭제하시겠습니까?`)) {
-                        try {
-                            await apiDelete(`/api/label-sizes/${p.id}`);
-                            state.presets = await apiGet("/api/label-sizes");
-                            renderPresetButtons();
-                            updateLabelSize();
-                        } catch (err) {
-                            alert("프리셋 삭제에 실패했습니다: " + err.message);
-                        }
-                    }
-                });
-            }
-            
-            container.appendChild(btn);
-        });
-    };
-
-    buildButtons(dbContainer, true);
-    buildButtons(previewContainer, false);
-}
 
 function updateLabelSize() {
     // Size is fixed at 55×20mm
@@ -356,12 +268,6 @@ function updateLabelSize() {
     if (previewSizeLabel) {
         previewSizeLabel.textContent = `${w} × ${h}`;
     }
-}
-
-function saveLabelSize() {
-    // Size is fixed at 55×20mm
-    localStorage.setItem("label_width", FIXED_LABEL_W);
-    localStorage.setItem("label_height", FIXED_LABEL_H);
 }
 
 // Global layout settings save handler (must be global for inline HTML oninput handlers)
@@ -447,7 +353,12 @@ function applyLayoutSettings() {
         if (line.el) {
             if (line.show) {
                 line.el.style.display = "block";
-                line.el.style.fontSize = `${line.size}rem`;
+                // Use px (1 size unit = 16px = 2.5mm at the 6.4px/mm preview scale)
+                // so the preview is independent of the root font-size and matches
+                // the mm-based sizes used by triggerPrint().
+                line.el.style.fontSize = `${(line.size * 16).toFixed(2)}px`;
+                // Match the line-height forced in the print stylesheet.
+                line.el.style.lineHeight = "1.15";
             } else {
                 line.el.style.display = "none";
             }
@@ -478,31 +389,6 @@ function initLayoutSettings() {
     });
 }
 
-async function handleAddPreset() {
-    const labelWidthInput = document.getElementById("label-width");
-    const labelHeightInput = document.getElementById("label-height");
-    
-    const w = parseInt(labelWidthInput.value);
-    const h = parseInt(labelHeightInput.value);
-    
-    if (!w || !h) {
-        alert("올바른 가로, 세로 크기를 입력해 주세요.");
-        return;
-    }
-    if (w < 20 || w > 150 || h < 15 || h > 150) {
-        alert("가로 크기는 20~150mm, 세로 크기는 15~150mm 사이여야 합니다.");
-        return;
-    }
-    
-    try {
-        await apiPost("/api/label-sizes", { width: w, height: h });
-        state.presets = await apiGet("/api/label-sizes");
-        renderPresetButtons();
-        updateLabelSize();
-    } catch (err) {
-        alert("규격 등록에 실패했습니다: " + err.message);
-    }
-}
 
 function initDateTime() {
     state.prepTime = new Date();
@@ -1433,8 +1319,7 @@ async function handleResetDatabase() {
         try {
             await apiPost("/api/ingredients/reset", {});
             await reloadAndRenderMainViews();
-            renderPresetButtons();
-            
+
             if (state.ingredients.length > 0) {
                 selectIngredient(state.ingredients[0].name);
             } else {
@@ -1586,6 +1471,13 @@ function triggerPrint() {
         .print-only-container .sticker-preview-content {
             width: ${w}mm !important;
             height: ${h}mm !important;
+            /* Override the screen-preview min sizes (px) — min-width/height beat
+               width/height regardless of !important, which previously inflated
+               the printed label to screen-pixel dimensions. */
+            min-width: ${w}mm !important;
+            min-height: ${h}mm !important;
+            max-width: ${w}mm !important;
+            max-height: ${h}mm !important;
             padding: ${mmTop}mm ${mmRight}mm ${mmBottom}mm ${mmLeft}mm !important;
             gap: ${mmGap}mm !important;
             display: flex !important;
@@ -1661,7 +1553,6 @@ function triggerPrint() {
 function openSettingsModal() {
     settingsModal.style.display = "flex";
     document.body.classList.add("modal-open");
-    renderPresetButtons();
 }
 
 function closeSettingsModal() {
@@ -1804,18 +1695,12 @@ async function handleLogout() {
         state.ingredients = [];
         state.categories = [];
         state.locations = [];
-        state.presets = [];
         state.selectedId = null;
         state.selectedStorage = null;
-        
+
         if (ingredientsGrid) clearElement(ingredientsGrid);
         if (selectedIngDisplay) selectedIngDisplay.textContent = "재료를 선택해 주세요";
         if (storageOptionsContainer) clearElement(storageOptionsContainer);
-        
-        const dbContainer = document.getElementById("db-size-presets");
-        const previewContainer = document.getElementById("preview-size-presets");
-        if (dbContainer) clearElement(dbContainer);
-        if (previewContainer) clearElement(previewContainer);
     } catch (e) {
         console.error("Logout failed:", e);
         state.user = null;
