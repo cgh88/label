@@ -20,7 +20,8 @@ class ApiSyncService {
   }
 
   bool isConfigured() {
-    return apiSyncUrl.isNotEmpty && Uri.tryParse(apiSyncUrl)?.hasAbsolutePath == true;
+    final uri = Uri.tryParse(apiSyncUrl);
+    return apiSyncUrl.isNotEmpty && uri != null && uri.hasScheme && uri.host.isNotEmpty;
   }
 
   /// Builds request headers including the stored session cookie (set at login).
