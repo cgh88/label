@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import '../services/api_sync_service.dart';
 import '../services/bluetooth_service.dart';
+import '../services/layout_events.dart';
 
 class SettingsTabView extends StatefulWidget {
   const SettingsTabView({super.key});
@@ -88,6 +89,8 @@ class _SettingsTabViewState extends State<SettingsTabView> {
     } else if (value is double) {
       await prefs.setDouble(key, value);
     }
+    // Notify open previews (e.g. the print tab) to reload immediately.
+    layoutSettingsRevision.value++;
   }
 
   Future<void> _saveLabelSize(double w, double h) async {
@@ -599,7 +602,35 @@ class _SettingsTabViewState extends State<SettingsTabView> {
             ),
             
             Divider(color: isDark ? Colors.white12 : Colors.black12, height: 24),
-            
+
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF13141F) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFCBD5E1)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 16, color: Color(0xFF6366F1)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '라벨(55 × 20mm) 인쇄 프리뷰 기준 권장 글씨 크기 — 1~3행: 12.5pt, 4행: 6.25pt',
+                      style: TextStyle(
+                        color: isDark ? Colors.white70 : Colors.black54,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             _buildLineSettingsTable(),
           ],
         ),

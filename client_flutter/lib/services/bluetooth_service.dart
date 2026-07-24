@@ -90,10 +90,10 @@ class BluetoothPrintService {
     bool showLine2 = true,
     bool showLine3 = true,
     bool showLine4 = false,
-    double fontSize1 = 22.0,
-    double fontSize2 = 22.0,
-    double fontSize3 = 22.0,
-    double fontSize4 = 16.0,
+    double fontSize1 = 12.5,
+    double fontSize2 = 12.5,
+    double fontSize3 = 12.5,
+    double fontSize4 = 6.25,
     double leftPaddingPercent = 10.0,
     double verticalGapPt = 3.5,
   }) async {
@@ -186,7 +186,12 @@ class BluetoothPrintService {
     final double x = (widthDots * (leftPaddingPercent / 100.0))
         .clamp(4, (widthDots - 8).toDouble())
         .toDouble();
-    final int gap = (verticalGapPt * 2).round().clamp(2, 40);
+    // Match the on-screen preview: it renders at 6.4 px/mm with
+    // fontPx = pt * 1.734 * scale. This bitmap renders at 8 dots/mm, so multiply
+    // by 8 / 6.4 = 1.25 to reproduce the same physical size on the label.
+    final double scale = ((widthDots / 8.0) / 50.0).clamp(0.5, 2.0);
+    const double ptToDot = 1.734 * 1.25;
+    final int gap = (verticalGapPt * scale * 0.97 * 1.25).round().clamp(1, 40);
 
     ui.Paragraph buildPara(String text, double fontSize) {
       final builder = ui.ParagraphBuilder(ui.ParagraphStyle(
@@ -203,11 +208,12 @@ class BluetoothPrintService {
       return p;
     }
 
-    // Use per-line font sizes from settings for accurate print output.
+    // Use per-line font sizes (pt, from settings) for accurate print output,
+    // converted to bitmap dots the same way the preview computes its size.
     final List<ui.Paragraph> paras = [];
     for (int i = 0; i < lines.length; i++) {
-      // Convert screen pt → bitmap px (approx 2× for 8 dots/mm density)
-      final double fs = (i < lineFontSizes.length ? lineFontSizes[i] : 22.0) * 2.0;
+      final double pt = i < lineFontSizes.length ? lineFontSizes[i] : 12.5;
+      final double fs = pt * ptToDot * scale;
       paras.add(buildPara(lines[i], fs));
     }
 

@@ -193,31 +193,27 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _initializeAppServices() async {
+    final Stopwatch stopwatch = Stopwatch()..start();
+    // Minimum time the splash stays visible so it never flickers by on fast
+    // startups; real initialization below usually finishes well within this.
+    const Duration minVisible = Duration(milliseconds: 400);
+
     try {
-      // Step 1: Framework Binding (35%)
       if (mounted) {
         setState(() {
-          _progress = 0.35;
-          _statusMessage = '프레임워크 시스템 바인딩 중...';
+          _progress = 0.4;
+          _statusMessage = '데이터를 불러오는 중...';
         });
       }
-      await Future.delayed(const Duration(milliseconds: 300));
 
-      // Step 2: Database Initialization (65%)
+      // Actual initialization work (no artificial delays).
       try {
         await DatabaseService.instance.init();
       } catch (e) {
         debugPrint('Database init error caught: $e');
       }
-      if (mounted) {
-        setState(() {
-          _progress = 0.65;
-          _statusMessage = '로컬 데이터베이스 및 재료 데이터 구성 완료';
-        });
-      }
-      await Future.delayed(const Duration(milliseconds: 350));
+      if (mounted) setState(() => _progress = 0.8);
 
-      // Step 3: API & Sync Service Configuration (90%)
       try {
         await ApiSyncService.instance.loadConfig();
       } catch (e) {
@@ -225,29 +221,19 @@ class _SplashScreenState extends State<SplashScreen> {
       }
       if (mounted) {
         setState(() {
-          _progress = 0.90;
-          _statusMessage = '환경 설정 및 무선 옵션 로딩 완료';
-        });
-      }
-      await Future.delayed(const Duration(milliseconds: 350));
-
-      // Step 4: Final Sync Completion (100%)
-      if (mounted) {
-        setState(() {
           _progress = 1.0;
-          _statusMessage = '시스템 준비 완료!';
+          _statusMessage = '준비 완료';
         });
       }
 
-      await Future.delayed(const Duration(milliseconds: 350));
-      if (mounted) {
-        widget.onInitComplete();
+      final Duration remaining = minVisible - stopwatch.elapsed;
+      if (remaining > Duration.zero) {
+        await Future.delayed(remaining);
       }
+      if (mounted) widget.onInitComplete();
     } catch (e) {
       debugPrint('Overall Splash init error caught: $e');
-      if (mounted) {
-        widget.onInitComplete();
-      }
+      if (mounted) widget.onInitComplete();
     }
   }
 
