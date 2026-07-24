@@ -660,8 +660,8 @@ app.get('/api/default-database', requireLogin, (req, res) => {
     });
 });
 
-// GET /api/sync/database
-app.get('/api/sync/database', requireLogin, async (req, res) => {
+// GET /api/sync/database (Read-only database download for tablet sync)
+app.get('/api/sync/database', async (req, res) => {
     try {
         const categories = await allAsync("SELECT * FROM categories ORDER BY sort_order ASC, id ASC");
         const storage_locations = await allAsync("SELECT * FROM storage_locations ORDER BY sort_order ASC, id ASC");

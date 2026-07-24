@@ -67,8 +67,14 @@ class ApiSyncService {
         headers: await authHeaders(),
       ).timeout(const Duration(seconds: 10));
 
-      if (getResponse.statusCode != 200) {
-        onProgress?.call(1.0, '원격 데이터 읽기 실패');
+      if (getResponse.statusCode == 401) {
+        onProgress?.call(1.0, '인증 필요 (401)');
+        return SyncResult(
+          success: false,
+          message: '서버 인증에 실패했습니다 (401 Unauthorized).\n앱에서 로그인 후 다시 시도해 주세요.',
+        );
+      } else if (getResponse.statusCode != 200) {
+        onProgress?.call(1.0, '원격 데이터 읽기 실패 (${getResponse.statusCode})');
         return SyncResult(
           success: false,
           message: '원격 서버 데이터를 읽지 못했습니다 (상태 코드: ${getResponse.statusCode})',

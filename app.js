@@ -1158,7 +1158,10 @@ async function handleMgmtAddIngredient(e) {
         const locId = inp.dataset.locId;
         const val = inp.value.trim();
         if (val !== "") {
-            storage[locId] = { days: parseInt(val) };
+            // Send a plain integer (matching the edit/PUT handler and the server
+            // contract). Wrapping it as { days } made the server reject it as
+            // "양의 정수여야 합니다".
+            storage[locId] = parseInt(val);
         }
     });
     
