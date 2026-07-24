@@ -1,7 +1,10 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
+import 'package:file_picker/file_picker.dart';
 import '../services/api_sync_service.dart';
 import '../services/bluetooth_service.dart';
 import '../services/database_service.dart';
@@ -35,6 +38,9 @@ class _SettingsTabViewState extends State<SettingsTabView> {
   double _leftPadding = 10.0;
   double _verticalGap = 3.5;
 
+  ServerConnectionStatus? _serverStatus;
+  bool _isCheckingServer = false;
+
   List<BluetoothDevice> _devices = [];
   BluetoothDevice? _selectedDevice;
   bool _isBluetoothSupported = false;
@@ -46,6 +52,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
     super.initState();
     _loadSettings();
     _initBluetooth();
+    _checkServerConnection();
     BluetoothPrintService.instance.connectionRevision.addListener(
       _onConnectionChanged,
     );
@@ -248,6 +255,24 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                         color: isSuccess ? Colors.greenAccent : Colors.redAccent,
                       ),
                     ),
+                    if (!isSuccess) ...[
+                      const SizedBox(height: 14),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                          _pickAndImportDatabaseFile();
+                        },
+                        icon: const Icon(Icons.file_upload_outlined, color: Color(0xFF10B981), size: 18),
+                        label: const Text(
+                          '백업 데이터 파일(.json) 수동 업로드',
+                          style: TextStyle(color: Color(0xFF10B981), fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF10B981)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ],
                   ],
                 ],
               ),
@@ -282,6 +307,72 @@ class _SettingsTabViewState extends State<SettingsTabView> {
     progress = 1.0;
     status = syncResult.success ? '데이터 버전 확인 완료' : '동기화 오류 발생';
     dialogSetState?.call(() {});
+  }
+
+  Future<void> _checkServerConnection() async {
+    setState(() {
+      _isCheckingServer = true;
+    });
+    final status = await ApiSyncService.instance.checkServerConnection();
+    if (mounted) {
+      setState(() {
+        _serverStatus = status;
+        _isCheckingServer = false;
+      });
+    }
+  }
+
+  Future<void> _pickAndImportDatabaseFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+      String? jsonContent;
+
+      if (file.bytes != null) {
+        jsonContent = utf8.decode(file.bytes!);
+      } else if (file.path != null) {
+        jsonContent = await File(file.path!).readAsString();
+      }
+
+      if (jsonContent == null || jsonContent.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: Colors.redAccent,
+              content: Text('선택한 백업 파일을 읽을 수 없습니다.'),
+            ),
+          );
+        }
+        return;
+      }
+
+      final syncResult = await ApiSyncService.instance.importDatabaseJsonString(jsonContent);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: syncResult.success ? Colors.green : Colors.redAccent,
+            content: Text(syncResult.message),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.redAccent,
+            content: Text('파일 선택 및 업로드 오류: $e'),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _initBluetooth() async {
@@ -536,6 +627,87 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
+                      '서버 접속 상태:',
+                      style: TextStyle(
+                        color: isDark ? Colors.white70 : Colors.black87,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _serverStatus == null
+                              ? Colors.grey.withValues(alpha: 0.2)
+                              : (_serverStatus!.isReachable
+                                  ? Colors.greenAccent.withValues(alpha: 0.2)
+                                  : Colors.redAccent.withValues(alpha: 0.2)),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _serverStatus == null
+                                  ? Icons.help_outline
+                                  : (_serverStatus!.isReachable
+                                      ? Icons.check_circle_outline
+                                      : Icons.highlight_off),
+                              size: 14,
+                              color: _serverStatus == null
+                                  ? Colors.grey
+                                  : (_serverStatus!.isReachable
+                                      ? Colors.greenAccent
+                                      : Colors.redAccent),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _serverStatus == null
+                                  ? '접속 미확인'
+                                  : (_serverStatus!.isReachable ? '접속 가능' : '접속 불가'),
+                              style: TextStyle(
+                                color: _serverStatus == null
+                                    ? Colors.grey
+                                    : (_serverStatus!.isReachable
+                                        ? Colors.greenAccent
+                                        : Colors.redAccent),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _isCheckingServer ? null : _checkServerConnection,
+                        icon: _isCheckingServer
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.wifi_find, size: 16),
+                        label: const Text('서버 접속 상태 확인', style: TextStyle(fontSize: 12)),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
                       '데이터 버전:',
                       style: TextStyle(
                         color: isDark ? Colors.white70 : Colors.black87,
@@ -592,7 +764,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: _saveApiSettings,
                   style: ElevatedButton.styleFrom(
@@ -619,6 +791,22 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     side: const BorderSide(color: Color(0xFF6366F1), width: 1.2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _pickAndImportDatabaseFile,
+                  icon: const Icon(Icons.folder_open, color: Color(0xFF10B981)),
+                  label: const Text(
+                    '백업 데이터 파일(.json) 직접 업로드',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: const BorderSide(color: Color(0xFF10B981), width: 1.2),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),

@@ -46,6 +46,7 @@ dependencies:
   cp949_codec: ^1.0.2
   google_fonts: ^6.3.2
   http: ^1.2.0
+  file_picker: ^8.1.4
 
 dev_dependencies:
   flutter_test:

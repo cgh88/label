@@ -134,6 +134,79 @@ class ApiSyncService {
       return SyncResult(success: false, message: '동기화 중 오류가 발생했습니다: $e');
     }
   }
+
+  /// Checks whether the configured remote API server is reachable.
+  Future<ServerConnectionStatus> checkServerConnection() async {
+    if (!isConfigured()) {
+      return ServerConnectionStatus(
+        isReachable: false,
+        message: '서버 주소가 설정되지 않았습니다.',
+      );
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$apiSyncUrl/api/sync/database'),
+        headers: await authHeaders(),
+      ).timeout(const Duration(seconds: 3));
+
+      if (response.statusCode == 200) {
+        return ServerConnectionStatus(
+          isReachable: true,
+          message: '원격 서버 접속 가능 (상태: OK 200)',
+          statusCode: 200,
+        );
+      } else {
+        return ServerConnectionStatus(
+          isReachable: false,
+          message: '서버 응답 오류 (상태 코드: ${response.statusCode})',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ServerConnectionStatus(
+        isReachable: false,
+        message: '서버 접속 불가 (네트워크 미연결 또는 서버 오프라인)',
+      );
+    }
+  }
+
+  /// Imports database JSON content provided manually as a backup file.
+  Future<SyncResult> importDatabaseJsonString(String jsonContent) async {
+    try {
+      final decoded = jsonDecode(jsonContent);
+      if (decoded is! Map<String, dynamic>) {
+        return SyncResult(success: false, message: '올바른 JSON 형식의 데이터 파일이 아닙니다.');
+      }
+      if (!decoded.containsKey('ingredients_v2') && !decoded.containsKey('categories')) {
+        return SyncResult(
+          success: false,
+          message: '라벨 프리셋 데이터베이스 포맷이 일치하지 않는 파일입니다.',
+        );
+      }
+
+      await DatabaseService.instance.replaceDatabaseContent(jsonContent);
+      final newVersion = DatabaseService.instance.dataVersionDisplay;
+      return SyncResult(
+        success: true,
+        message: '제공된 백업 파일이 성공적으로 적용되었습니다.\n(버전: $newVersion)',
+      );
+    } catch (e) {
+      return SyncResult(success: false, message: '파일 구조 해석 오류: $e');
+    }
+  }
+}
+
+class ServerConnectionStatus {
+  final bool isReachable;
+  final String message;
+  final int? statusCode;
+
+  ServerConnectionStatus({
+    required this.isReachable,
+    required this.message,
+    this.statusCode,
+  });
 }
 
 class SyncResult {
