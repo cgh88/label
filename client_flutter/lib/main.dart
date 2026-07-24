@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_sync_service.dart';
+import 'services/bluetooth_service.dart';
 import 'services/database_service.dart';
 import 'views/login_view.dart';
 import 'views/print_tab_view.dart';
@@ -191,35 +192,54 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _initializeAppServices() async {
     final Stopwatch stopwatch = Stopwatch()..start();
-    // Minimum time the splash stays visible so it never flickers by on fast
-    // startups; real initialization below usually finishes well within this.
-    const Duration minVisible = Duration(milliseconds: 400);
+    // Guarantee minimum splash display time (1200ms) so the user sees a smooth loading screen
+    // with step-by-step progress instead of an instant flicker.
+    const Duration minVisible = Duration(milliseconds: 1200);
 
     try {
       if (mounted) {
         setState(() {
-          _progress = 0.4;
-          _statusMessage = '데이터를 불러오는 중...';
+          _progress = 0.2;
+          _statusMessage = '로컬 데이터베이스 초기화 중...';
         });
       }
 
-      // Actual initialization work (no artificial delays).
       try {
         await DatabaseService.instance.init();
       } catch (e) {
         debugPrint('Database init error caught: $e');
       }
-      if (mounted) setState(() => _progress = 0.8);
+
+      if (mounted) {
+        setState(() {
+          _progress = 0.55;
+          _statusMessage = '서버 설정 로드 중...';
+        });
+      }
 
       try {
         await ApiSyncService.instance.loadConfig();
       } catch (e) {
         debugPrint('Config load error caught: $e');
       }
+
+      if (mounted) {
+        setState(() {
+          _progress = 0.8;
+          _statusMessage = '프린터 연결 확인 중...';
+        });
+      }
+
+      try {
+        await BluetoothPrintService.instance.autoConnect();
+      } catch (e) {
+        debugPrint('Bluetooth autoConnect error caught: $e');
+      }
+
       if (mounted) {
         setState(() {
           _progress = 1.0;
-          _statusMessage = '준비 완료';
+          _statusMessage = '시스템 준비 완료';
         });
       }
 
