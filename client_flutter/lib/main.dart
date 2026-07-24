@@ -213,14 +213,17 @@ class _SplashScreenState extends State<SplashScreen> {
       if (mounted) {
         setState(() {
           _progress = 0.55;
-          _statusMessage = '서버 설정 로드 중...';
+          _statusMessage = '서버 데이터 동기화 중...';
         });
       }
 
       try {
         await ApiSyncService.instance.loadConfig();
+        if (ApiSyncService.instance.isConfigured()) {
+          await ApiSyncService.instance.performSync();
+        }
       } catch (e) {
-        debugPrint('Config load error caught: $e');
+        debugPrint('Config load and sync error caught: $e');
       }
 
       if (mounted) {

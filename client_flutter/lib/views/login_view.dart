@@ -81,6 +81,13 @@ class _LoginViewState extends State<LoginView> {
           await prefs.setString('session_cookie', rawCookie);
         }
 
+        // Perform initial sync after login to ensure client has latest server data
+        try {
+          await ApiSyncService.instance.performSync();
+        } catch (e) {
+          debugPrint('Initial sync error after login: $e');
+        }
+
         if (mounted) {
           setState(() {
             _isLoading = false;
