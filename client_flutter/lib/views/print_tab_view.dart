@@ -11,7 +11,12 @@ import '../services/bluetooth_service.dart';
 
 class PrintTabView extends StatefulWidget {
   final int activeTabIndex;
-  const PrintTabView({super.key, required this.activeTabIndex});
+  final VoidCallback? onNavigateToSettings;
+  const PrintTabView({
+    super.key,
+    required this.activeTabIndex,
+    this.onNavigateToSettings,
+  });
 
   @override
   State<PrintTabView> createState() => _PrintTabViewState();
@@ -204,6 +209,21 @@ class _PrintTabViewState extends State<PrintTabView> {
 
     // Check if Bluetooth printer is connected to print via TSPL commands directly
     final bluetoothPrintService = BluetoothPrintService.instance;
+
+    // If no printer is connected, guide the user to the Bluetooth settings
+    // screen to connect one instead of silently exporting a PDF.
+    if (!bluetoothPrintService.isConnected) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('블루투스 프린터가 연결되어 있지 않습니다. 설정에서 프린터를 연결해 주세요.'),
+          ),
+        );
+      }
+      widget.onNavigateToSettings?.call();
+      return;
+    }
+
     if (bluetoothPrintService.isConnected) {
       final qty = int.tryParse(_qtyController.text) ?? 1;
       final storage = _selectedStorage;

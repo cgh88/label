@@ -89,7 +89,11 @@ class BluetoothPrintService {
     bool showLine1 = true,
     bool showLine2 = true,
     bool showLine3 = true,
-    bool showLine4 = true,
+    bool showLine4 = false,
+    double fontSize1 = 22.0,
+    double fontSize2 = 22.0,
+    double fontSize3 = 22.0,
+    double fontSize4 = 16.0,
     double leftPaddingPercent = 10.0,
     double verticalGapPt = 3.5,
   }) async {
@@ -103,14 +107,23 @@ class BluetoothPrintService {
       final String storageDisplay = storage == '입고' ? '입고' : '$storage 보관';
 
       final List<String> visibleLines = [];
+      final List<double> lineFontSizes = [];
       if (showLine1) {
         visibleLines.add('[$storageDisplay] $name${abbr.isNotEmpty ? " ($abbr)" : ""}');
+        lineFontSizes.add(fontSize1);
       }
-      if (showLine2) visibleLines.add('준비: $prepDate');
+      if (showLine2) {
+        visibleLines.add('준비: $prepDate');
+        lineFontSizes.add(fontSize2);
+      }
       if (showLine3) {
         visibleLines.add('폐기: ${expDate.isEmpty ? "상시 보관" : expDate}');
+        lineFontSizes.add(fontSize3);
       }
-      if (showLine4) visibleLines.add('(담당: $staff)');
+      if (showLine4) {
+        visibleLines.add('(담당: $staff)');
+        lineFontSizes.add(fontSize4);
+      }
 
       // Render the label to a 1-bit bitmap so Hangul no longer depends on any
       // printer-internal font. The previous TEXT "K" font does not exist on this
@@ -120,6 +133,7 @@ class BluetoothPrintService {
         widthDots: widthDots,
         heightDots: heightDots,
         lines: visibleLines,
+        lineFontSizes: lineFontSizes,
         leftPaddingPercent: leftPaddingPercent,
         verticalGapPt: verticalGapPt,
       );
@@ -151,6 +165,7 @@ class BluetoothPrintService {
     required int widthDots,
     required int heightDots,
     required List<String> lines,
+    required List<double> lineFontSizes,
     required double leftPaddingPercent,
     required double verticalGapPt,
   }) async {
@@ -188,10 +203,11 @@ class BluetoothPrintService {
       return p;
     }
 
-    // Last line (staff) is rendered a little smaller, matching the preview.
+    // Use per-line font sizes from settings for accurate print output.
     final List<ui.Paragraph> paras = [];
     for (int i = 0; i < lines.length; i++) {
-      final double fs = (i == lines.length - 1 && lines.length > 1) ? 16.0 : 22.0;
+      // Convert screen pt → bitmap px (approx 2× for 8 dots/mm density)
+      final double fs = (i < lineFontSizes.length ? lineFontSizes[i] : 22.0) * 2.0;
       paras.add(buildPara(lines[i], fs));
     }
 
