@@ -27,8 +27,7 @@ class ApiSyncService {
     return apiSyncUrl.isNotEmpty && uri != null && uri.hasScheme && uri.host.isNotEmpty;
   }
 
-  /// Builds request headers including the stored session cookie (set at login).
-  /// The server requires an authenticated session for the sync/print-log APIs.
+  /// Builds request headers including the stored session cookie if available.
   static Future<Map<String, String>> authHeaders({bool jsonBody = false}) async {
     final headers = <String, String>{};
     if (jsonBody) headers['Content-Type'] = 'application/json';
@@ -36,8 +35,6 @@ class ApiSyncService {
     final prefs = await SharedPreferences.getInstance();
     final rawCookie = prefs.getString('session_cookie');
     if (rawCookie != null && rawCookie.isNotEmpty) {
-      // A raw Set-Cookie value carries attributes (Path, HttpOnly, ...);
-      // send back only the leading `name=value` pair.
       final token = rawCookie.split(';').first.trim();
       if (token.isNotEmpty) headers['Cookie'] = token;
     }
@@ -48,8 +45,8 @@ class ApiSyncService {
     return await performSyncWithProgress();
   }
 
-  /// Performs server-to-client one-way sync with step-by-step progress callbacks
-  /// and data version comparison.
+  /// Performs server-to-client one-way database download and sync.
+  /// No login required -- supports public download without authentication.
   Future<SyncResult> performSyncWithProgress({
     SyncProgressCallback? onProgress,
     bool forceDownload = false,
@@ -62,27 +59,30 @@ class ApiSyncService {
     try {
       onProgress?.call(0.15, '서버 데이터 버전을 확인하는 중...');
 
-      final getResponse = await http.get(
+      // 1. Primary GET request
+      http.Response response = await http.get(
         Uri.parse('$apiSyncUrl/api/sync/database'),
         headers: await authHeaders(),
       ).timeout(const Duration(seconds: 10));
 
-      if (getResponse.statusCode == 401) {
-        onProgress?.call(1.0, '인증 필요 (401)');
+      // 2. If 401 occurs, fallback to pure public request without any cookie headers
+      if (response.statusCode == 401) {
+        onProgress?.call(0.30, '공용 동기화 재시도 중...');
+        response = await http.get(
+          Uri.parse('$apiSyncUrl/api/sync/database'),
+        ).timeout(const Duration(seconds: 10));
+      }
+
+      if (response.statusCode != 200) {
+        onProgress?.call(1.0, '원격 데이터 읽기 실패 (${response.statusCode})');
         return SyncResult(
           success: false,
-          message: '서버 인증에 실패했습니다 (401 Unauthorized).\n앱에서 로그인 후 다시 시도해 주세요.',
-        );
-      } else if (getResponse.statusCode != 200) {
-        onProgress?.call(1.0, '원격 데이터 읽기 실패 (${getResponse.statusCode})');
-        return SyncResult(
-          success: false,
-          message: '원격 서버 데이터를 읽지 못했습니다 (상태 코드: ${getResponse.statusCode})',
+          message: '원격 서버 데이터를 읽지 못했습니다 (상태 코드: ${response.statusCode})',
         );
       }
 
       onProgress?.call(0.45, '서버 데이터 검증 및 버전 비교 중...');
-      final remoteJsonContent = getResponse.body;
+      final remoteJsonContent = response.body;
       final localJsonContent = await DatabaseService.instance.getRawJson();
 
       Map<String, dynamic>? remoteParsed;
