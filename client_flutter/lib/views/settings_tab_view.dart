@@ -164,6 +164,126 @@ class _SettingsTabViewState extends State<SettingsTabView> {
     }
   }
 
+  Future<void> _performVersionUpdate() async {
+    double progress = 0.05;
+    String status = '업데이트 준비 중...';
+    bool isDone = false;
+    SyncResult? syncResult;
+    StateSetter? dialogSetState;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            dialogSetState = setDialogState;
+            final isDarkDialog = Theme.of(context).brightness == Brightness.dark;
+            final bool isSuccess = syncResult?.success ?? false;
+
+            return AlertDialog(
+              backgroundColor: isDarkDialog ? const Color(0xFF1E2030) : Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  Icon(
+                    isDone
+                        ? (isSuccess ? Icons.check_circle : Icons.error)
+                        : Icons.system_update_alt,
+                    color: isDone
+                        ? (isSuccess ? Colors.greenAccent : Colors.redAccent)
+                        : const Color(0xFF6366F1),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text('서버 데이터 버전 업데이트', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    status,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDarkDialog ? Colors.white70 : Colors.black87,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 10,
+                      backgroundColor: isDarkDialog ? Colors.white12 : Colors.black12,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        isDone
+                            ? (isSuccess ? Colors.greenAccent : Colors.redAccent)
+                            : const Color(0xFF6366F1),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      '${(progress * 100).toInt()}%',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isDone
+                            ? (isSuccess ? Colors.greenAccent : Colors.redAccent)
+                            : const Color(0xFF6366F1),
+                      ),
+                    ),
+                  ),
+                  if (isDone && syncResult != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      syncResult.message,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isSuccess ? Colors.greenAccent : Colors.redAccent,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              actions: isDone
+                  ? [
+                      ElevatedButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6366F1),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: const Text('확인'),
+                      ),
+                    ]
+                  : null,
+            );
+          },
+        );
+      },
+    );
+
+    syncResult = await ApiSyncService.instance.performSyncWithProgress(
+      onProgress: (p, msg) {
+        progress = p;
+        status = msg;
+        dialogSetState?.call(() {});
+      },
+    );
+
+    isDone = true;
+    progress = 1.0;
+    status = syncResult.success ? '데이터 버전 확인 완료' : '동기화 오류 발생';
+    dialogSetState?.call(() {});
+  }
+
   Future<void> _initBluetooth() async {
     final bool isAndroid =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
@@ -486,6 +606,22 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                   child: const Text(
                     '설정 저장',
                     style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _performVersionUpdate,
+                  icon: const Icon(Icons.system_update_alt, color: Color(0xFF6366F1)),
+                  label: const Text(
+                    '최신 데이터 버전 업데이트',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6366F1)),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: const BorderSide(color: Color(0xFF6366F1), width: 1.2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ],
