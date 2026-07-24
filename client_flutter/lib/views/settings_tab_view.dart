@@ -26,11 +26,9 @@ class _SettingsTabViewState extends State<SettingsTabView> {
   bool _showLine1 = true;
   bool _showLine2 = true;
   bool _showLine3 = true;
-  bool _showLine4 = true;
   double _fontSize1 = 12.5;
   double _fontSize2 = 12.5;
   double _fontSize3 = 12.5;
-  double _fontSize4 = 6.25;
   double _leftPadding = 10.0;
   double _verticalGap = 3.5;
 
@@ -67,11 +65,9 @@ class _SettingsTabViewState extends State<SettingsTabView> {
       _showLine1 = prefs.getBool('layout_show_line_1') ?? true;
       _showLine2 = prefs.getBool('layout_show_line_2') ?? true;
       _showLine3 = prefs.getBool('layout_show_line_3') ?? true;
-      _showLine4 = false;
       _fontSize1 = prefs.getDouble('layout_font_size_1') ?? 12.5;
       _fontSize2 = prefs.getDouble('layout_font_size_2') ?? 12.5;
       _fontSize3 = prefs.getDouble('layout_font_size_3') ?? 12.5;
-      _fontSize4 = prefs.getDouble('layout_font_size_4') ?? 6.25;
       _leftPadding = prefs.getDouble('layout_left_padding') ?? 10.0;
       _verticalGap = prefs.getDouble('layout_vertical_gap') ?? 3.5;
     });
@@ -93,20 +89,6 @@ class _SettingsTabViewState extends State<SettingsTabView> {
     layoutSettingsRevision.value++;
   }
 
-  Future<void> _saveLabelSize(double w, double h) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble('label_width', w);
-    await prefs.setDouble('label_height', h);
-    setState(() {
-      _selectedWidth = w;
-      _selectedHeight = h;
-      _widthController.text = w.toString();
-      _heightController.text = h.toString();
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('라벨 규격 설정이 저장되었습니다.')),
-    );
-  }
 
   Future<void> _saveApiSettings() async {
     final url = _apiUrlController.text.trim();
@@ -134,9 +116,11 @@ class _SettingsTabViewState extends State<SettingsTabView> {
 
     await ApiSyncService.instance.saveConfig(url);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('API 동기화 서버 주소가 저장되었습니다.')),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('API 동기화 서버 주소가 저장되었습니다.')),
+      );
+    }
   }
 
   Future<void> _initBluetooth() async {
@@ -180,9 +164,11 @@ class _SettingsTabViewState extends State<SettingsTabView> {
 
     if (BluetoothPrintService.instance.isConnected) {
       await BluetoothPrintService.instance.disconnect();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('블루투스 프린터 연결을 해제했습니다.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('블루투스 프린터 연결을 해제했습니다.')),
+        );
+      }
     } else {
       final isPaired = await BluetoothPrintService.instance.isDevicePaired(_selectedDevice!.address);
       if (!isPaired) {
@@ -202,17 +188,19 @@ class _SettingsTabViewState extends State<SettingsTabView> {
       }
 
       final success = await BluetoothPrintService.instance.connect(_selectedDevice!);
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${_selectedDevice!.name} 프린터에 연결되었습니다.')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: Colors.redAccent,
-            content: Text('프린터 연결에 실패했습니다. 전원 및 페어링 상태를 확인해 주세요.'),
-          ),
-        );
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${_selectedDevice!.name} 프린터에 연결되었습니다.')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: Colors.redAccent,
+              content: Text('프린터 연결에 실패했습니다. 전원 및 페어링 상태를 확인해 주세요.'),
+            ),
+          );
+        }
       }
     }
 
@@ -234,7 +222,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
           shadowColor: Colors.black12,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: isDark ? Colors.white.withOpacity(0.18) : const Color(0xFFCBD5E1), width: 1.2),
+            side: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.18) : const Color(0xFFCBD5E1), width: 1.2),
           ),
           child: Padding(
             padding: const EdgeInsets.all(20.0),
@@ -266,7 +254,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF13141F) : const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.greenAccent.withOpacity(0.5), width: 1.2),
+                    border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.5), width: 1.2),
                   ),
                   child: Row(
                     children: [
@@ -309,7 +297,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
           shadowColor: Colors.black12,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: isDark ? Colors.white.withOpacity(0.18) : const Color(0xFFCBD5E1), width: 1.2),
+            side: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.18) : const Color(0xFFCBD5E1), width: 1.2),
           ),
           child: Padding(
             padding: const EdgeInsets.all(20.0),
@@ -359,7 +347,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
           shadowColor: Colors.black12,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: isDark ? Colors.white.withOpacity(0.18) : const Color(0xFFCBD5E1), width: 1.2),
+            side: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.18) : const Color(0xFFCBD5E1), width: 1.2),
           ),
           child: Padding(
             padding: const EdgeInsets.all(20.0),
@@ -381,9 +369,9 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.04),
+                      color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.04),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
+                      border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
                     ),
                     child: Text(
                       '블루투스 직결 인쇄는 Android 모바일 기기에서만 작동합니다.\n데스크톱 및 웹 환경에서는 시스템 인쇄 대화상자를 사용하여 라벨 프린터로 인쇄하실 수 있습니다.',
@@ -417,8 +405,8 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: BluetoothPrintService.instance.isConnected
-                                ? Colors.greenAccent.withOpacity(0.2)
-                                : Colors.redAccent.withOpacity(0.2),
+                                ? Colors.greenAccent.withValues(alpha: 0.2)
+                                : Colors.redAccent.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -479,7 +467,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                           label: const Text('기기 갱신', overflow: TextOverflow.ellipsis),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: isDark ? Colors.white70 : Colors.black87,
-                            side: BorderSide(color: isDark ? Colors.white.withOpacity(0.2) : const Color(0xFFCBD5E1)),
+                            side: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.2) : const Color(0xFFCBD5E1)),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                         ),
@@ -556,7 +544,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
       shadowColor: Colors.black12,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: isDark ? Colors.white.withOpacity(0.18) : const Color(0xFFCBD5E1), width: 1.2),
+        side: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.18) : const Color(0xFFCBD5E1), width: 1.2),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20.0),

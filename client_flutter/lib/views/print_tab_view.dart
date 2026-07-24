@@ -196,10 +196,6 @@ class _PrintTabViewState extends State<PrintTabView> {
     return DateFormat('yyyy-MM-dd (\'$weekday\') HH:mm').format(dt);
   }
 
-  String _formatShortDateTime(DateTime dt) {
-    return DateFormat('yy.MM.dd HH:mm').format(dt);
-  }
-
   Future<void> _printLabel() async {
     if (_selectedIngredient == null) return;
 
@@ -264,7 +260,7 @@ class _PrintTabViewState extends State<PrintTabView> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('블루투스 프린터로 ${qty}장의 라벨을 전송했습니다.')),
+            SnackBar(content: Text('블루투스 프린터로 $qty장의 라벨을 전송했습니다.')),
           );
         }
         return;
@@ -288,20 +284,13 @@ class _PrintTabViewState extends State<PrintTabView> {
 
     // Load PDF-compatible Korean fonts from local TTF assets (no CDN dependency)
     // NOTE: Must use TTF format - CFF-based OTF files cause "invalid characters" errors
-    pw.Font font;
     pw.Font fontBold;
-    pw.Font outfitFont;
     try {
       final fontData = await rootBundle.load('fonts/NotoSansKR-VF.ttf');
-      final outfitData = await rootBundle.load('fonts/Outfit-Black.ttf');
-      font = pw.Font.ttf(fontData);
       fontBold = pw.Font.ttf(fontData);
-      outfitFont = pw.Font.ttf(outfitData);
     } catch (e) {
       debugPrint('Font load failed, using built-in Helvetica: $e');
-      font = pw.Font.helvetica();
       fontBold = pw.Font.helveticaBold();
-      outfitFont = pw.Font.helveticaBold();
     }
     
     final qty = int.tryParse(_qtyController.text) ?? 1;
@@ -328,8 +317,16 @@ class _PrintTabViewState extends State<PrintTabView> {
             final double pdfLeftPadding = widthPt * (_leftPadding / 100.0);
             final double pdfVerticalGap = _verticalGap * scale * 0.43; // Map spacing proportionally
 
+            final double pdfAvailWidth = widthPt - pdfLeftPadding - 6.0;
             final String storageDisplay = storage == '입고' ? '입고' : '$storage 보관';
-            final String line1 = '[$storageDisplay] $name${abbr.isNotEmpty ? " ($abbr)" : ""}';
+            final String fullLine1 = '[$storageDisplay] $name${abbr.isNotEmpty ? " ($abbr)" : ""}';
+            double estWidth = 0;
+            for (final char in fullLine1.runes) {
+              estWidth += (char > 128 ? pdfFontSize1 * 0.85 : pdfFontSize1 * 0.55);
+            }
+            final String line1 = (abbr.isNotEmpty && estWidth > pdfAvailWidth)
+                ? '[$storageDisplay] $abbr'
+                : fullLine1;
             final String line2 = '준비: ${_formatDateTime(_prepTime)}';
             
             final String expStr = storage == '입고'
@@ -471,14 +468,14 @@ class _PrintTabViewState extends State<PrintTabView> {
                     style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                     decoration: InputDecoration(
                       hintText: '재료명 또는 약어 초성 입력...',
-                      hintStyle: TextStyle(color: isDark ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.4)),
+                      hintStyle: TextStyle(color: isDark ? Colors.white.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.4)),
                       prefixIcon: const Icon(Icons.search, color: Color(0xFF6366F1)),
                       filled: true,
                       fillColor: isDark ? const Color(0xFF13141F) : const Color(0xFFFFFFFF),
                       contentPadding: const EdgeInsets.symmetric(vertical: 14.0),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08)),
+                        borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08)),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -525,20 +522,20 @@ class _PrintTabViewState extends State<PrintTabView> {
                                 border: Border.all(
                                   color: isSelected
                                       ? Colors.transparent
-                                      : (isDark ? Colors.white.withOpacity(0.2) : const Color(0xFFCBD5E1)),
+                                      : (isDark ? Colors.white.withValues(alpha: 0.2) : const Color(0xFFCBD5E1)),
                                   width: isSelected ? 0 : 1.2,
                                 ),
                                 boxShadow: isSelected
                                     ? [
                                         BoxShadow(
-                                          color: const Color(0xFF6366F1).withOpacity(0.35),
+                                          color: const Color(0xFF6366F1).withValues(alpha: 0.35),
                                           blurRadius: 8,
                                           offset: const Offset(0, 2),
                                         )
                                       ]
                                     : [
                                         BoxShadow(
-                                          color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+                                          color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
                                           blurRadius: 4,
                                           offset: const Offset(0, 2),
                                         )
@@ -569,7 +566,7 @@ class _PrintTabViewState extends State<PrintTabView> {
                         ? Center(
                             child: Text(
                               '해당하는 재료가 없습니다.',
-                              style: TextStyle(color: isDark ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.4), fontSize: 16, fontWeight: FontWeight.w600),
+                              style: TextStyle(color: isDark ? Colors.white.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.4), fontSize: 16, fontWeight: FontWeight.w600),
                             ),
                           )
                         : GridView.builder(
@@ -593,26 +590,26 @@ class _PrintTabViewState extends State<PrintTabView> {
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
                                     color: isSelected
-                                        ? (isDark ? const Color(0xFF6366F1).withOpacity(0.22) : const Color(0xFFEEF2FF))
+                                        ? (isDark ? const Color(0xFF6366F1).withValues(alpha: 0.22) : const Color(0xFFEEF2FF))
                                         : (isDark ? const Color(0xFF1E2030) : Colors.white),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                       color: isSelected
                                           ? (isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5))
-                                          : catColor.withOpacity(isDark ? 0.55 : 0.75),
+                                          : catColor.withValues(alpha: isDark ? 0.55 : 0.75),
                                       width: isSelected ? 2.5 : 1.6,
                                     ),
                                     boxShadow: isSelected
                                         ? [
                                             BoxShadow(
-                                              color: const Color(0xFF6366F1).withOpacity(isDark ? 0.4 : 0.3),
+                                              color: const Color(0xFF6366F1).withValues(alpha: isDark ? 0.4 : 0.3),
                                               blurRadius: 10,
                                               offset: const Offset(0, 3),
                                             )
                                           ]
                                         : [
                                             BoxShadow(
-                                              color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                                              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
                                               blurRadius: 5,
                                               offset: const Offset(0, 2),
                                             )
@@ -646,7 +643,7 @@ class _PrintTabViewState extends State<PrintTabView> {
                                           child: Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
                                             decoration: BoxDecoration(
-                                              color: isDark ? Colors.white.withOpacity(0.15) : const Color(0xFFE2E8F0),
+                                              color: isDark ? Colors.white.withValues(alpha: 0.15) : const Color(0xFFE2E8F0),
                                               borderRadius: BorderRadius.circular(4),
                                             ),
                                             child: Text(
@@ -691,7 +688,7 @@ class _PrintTabViewState extends State<PrintTabView> {
             ),
           ),
 
-          Container(width: 1, color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08)),
+          Container(width: 1, color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08)),
 
           Expanded(
             flex: 2,
@@ -699,7 +696,7 @@ class _PrintTabViewState extends State<PrintTabView> {
                 ? Center(
                     child: Text(
                       '인쇄할 재료를 선택해 주세요.',
-                      style: TextStyle(color: isDark ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.4), fontSize: 16, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: isDark ? Colors.white.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.4), fontSize: 16, fontWeight: FontWeight.w600),
                     ),
                   )
                 : Column(
@@ -761,7 +758,7 @@ class _PrintTabViewState extends State<PrintTabView> {
                                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                                           enabledBorder: OutlineInputBorder(
                                             borderRadius: BorderRadius.circular(8),
-                                            borderSide: BorderSide(color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08)),
+                                            borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08)),
                                           ),
                                           focusedBorder: OutlineInputBorder(
                                             borderRadius: BorderRadius.circular(8),
@@ -833,13 +830,13 @@ class _PrintTabViewState extends State<PrintTabView> {
                           color: isDark ? const Color(0xFF0F111A) : Colors.white,
                           border: Border(
                             top: BorderSide(
-                              color: isDark ? Colors.white.withOpacity(0.12) : const Color(0xFFCBD5E1),
+                              color: isDark ? Colors.white.withValues(alpha: 0.12) : const Color(0xFFCBD5E1),
                               width: 1.2,
                             ),
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(isDark ? 0.35 : 0.08),
+                              color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
                               blurRadius: 10,
                               offset: const Offset(0, -3),
                             ),
@@ -920,7 +917,7 @@ class _PrintTabViewState extends State<PrintTabView> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isDark ? Colors.white.withOpacity(0.2) : const Color(0xFFCBD5E1),
+              color: isDark ? Colors.white.withValues(alpha: 0.2) : const Color(0xFFCBD5E1),
               width: 1.2,
             ),
           ),
@@ -948,12 +945,12 @@ class _PrintTabViewState extends State<PrintTabView> {
           border: Border.all(
             color: isSelected
                 ? Colors.transparent
-                : (isDark ? Colors.white.withOpacity(0.2) : const Color(0xFFCBD5E1)),
+                : (isDark ? Colors.white.withValues(alpha: 0.2) : const Color(0xFFCBD5E1)),
             width: isSelected ? 0 : 1.2,
           ),
           boxShadow: isSelected
-              ? [BoxShadow(color: const Color(0xFFFF1E1E).withOpacity(0.35), blurRadius: 8, offset: const Offset(0, 2))]
-              : [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.04), blurRadius: 4, offset: const Offset(0, 2))],
+              ? [BoxShadow(color: const Color(0xFFFF1E1E).withValues(alpha: 0.35), blurRadius: 8, offset: const Offset(0, 2))]
+              : [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04), blurRadius: 4, offset: const Offset(0, 2))],
         ),
         child: Text(
           loc,
@@ -975,9 +972,13 @@ class _PrintTabViewState extends State<PrintTabView> {
     final ing = _selectedIngredient!;
     final List<LabelLine> lines = [];
     if (_showLine1) {
+      final String storageDisplay = _selectedStorage == '입고' ? '입고' : '$_selectedStorage 보관';
+      final String line1Text = '[$storageDisplay] ${ing.name}${ing.abbr.isNotEmpty ? " (${ing.abbr})" : ""}';
+      final String? fallbackText = ing.abbr.isNotEmpty ? '[$storageDisplay] ${ing.abbr}' : null;
       lines.add(LabelLine(
-        '[${_selectedStorage == '입고' ? '입고' : '$_selectedStorage 보관'}] ${ing.name}${ing.abbr.isNotEmpty ? " (${ing.abbr})" : ""}',
+        line1Text,
         _fontSize1,
+        fallbackText: fallbackText,
       ));
     }
     if (_showLine2) {

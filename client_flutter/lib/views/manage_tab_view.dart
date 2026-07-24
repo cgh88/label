@@ -263,7 +263,7 @@ class _ManageTabViewState extends State<ManageTabView> {
                   const SizedBox(height: 8),
                   Text(
                     '* 분할/소스보틀: 시간 단위 입력 (예: 24)\n* 해동/메이크라인/랙산: 일 단위 입력 (예: 7)',
-                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
                   ),
                   const SizedBox(height: 16),
                   ...DatabaseService.instance.locations.map((loc) {
@@ -540,7 +540,7 @@ class _ManageTabViewState extends State<ManageTabView> {
               shadowColor: Colors.black12,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: const Color(0xFFFF1E1E).withOpacity(0.4), width: 1.5),
+                side: BorderSide(color: const Color(0xFFFF1E1E).withValues(alpha: 0.4), width: 1.5),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
@@ -571,7 +571,7 @@ class _ManageTabViewState extends State<ManageTabView> {
                           const SizedBox(height: 4),
                           Text(
                             '마지막 로컬 업데이트: ${DatabaseService.instance.lastUpdated}',
-                            style: TextStyle(color: isDark ? Colors.white.withOpacity(0.5) : Colors.black45, fontSize: 11),
+                            style: TextStyle(color: isDark ? Colors.white.withValues(alpha: 0.5) : Colors.black45, fontSize: 11),
                           )
                         ],
                       ),
@@ -611,7 +611,7 @@ class _ManageTabViewState extends State<ManageTabView> {
                     shadowColor: Colors.black12,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(color: isDark ? Colors.white.withOpacity(0.18) : const Color(0xFFCBD5E1), width: 1.2),
+                      side: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.18) : const Color(0xFFCBD5E1), width: 1.2),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -635,7 +635,7 @@ class _ManageTabViewState extends State<ManageTabView> {
                                 onDeleted: isAdmin ? () => _deleteCategory(c.id) : null,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
-                                  side: BorderSide(color: isDark ? Colors.white.withOpacity(0.15) : const Color(0xFFCBD5E1)),
+                                  side: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.15) : const Color(0xFFCBD5E1)),
                                 ),
                               );
                             }).toList(),
@@ -688,7 +688,7 @@ class _ManageTabViewState extends State<ManageTabView> {
                     shadowColor: Colors.black12,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(color: isDark ? Colors.white.withOpacity(0.18) : const Color(0xFFCBD5E1), width: 1.2),
+                      side: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.18) : const Color(0xFFCBD5E1), width: 1.2),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -712,7 +712,7 @@ class _ManageTabViewState extends State<ManageTabView> {
                                 onDeleted: isAdmin ? () => _deleteLocation(l.id) : null,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
-                                  side: BorderSide(color: isDark ? Colors.white.withOpacity(0.15) : const Color(0xFFCBD5E1)),
+                                  side: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.15) : const Color(0xFFCBD5E1)),
                                 ),
                               );
                             }).toList(),
@@ -818,11 +818,11 @@ class _ManageTabViewState extends State<ManageTabView> {
                   fillColor: isDark ? const Color(0xFF1E2030) : Colors.white,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: isDark ? Colors.white.withOpacity(0.18) : const Color(0xFFCBD5E1), width: 1.2),
+                    borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.18) : const Color(0xFFCBD5E1), width: 1.2),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: isDark ? Colors.white.withOpacity(0.18) : const Color(0xFFCBD5E1), width: 1.2),
+                    borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.18) : const Color(0xFFCBD5E1), width: 1.2),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -840,7 +840,7 @@ class _ManageTabViewState extends State<ManageTabView> {
               shadowColor: Colors.black12,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: isDark ? Colors.white.withOpacity(0.18) : const Color(0xFFCBD5E1), width: 1.2),
+                side: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.18) : const Color(0xFFCBD5E1), width: 1.2),
               ),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,

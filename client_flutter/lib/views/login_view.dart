@@ -132,12 +132,12 @@ class _LoginViewState extends State<LoginView> {
                     color: isDark ? const Color(0xFF16161A) : Colors.white,
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+                      color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
                       width: 1.5,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(isDark ? 0.5 : 0.08),
+                        color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.08),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
@@ -155,8 +155,8 @@ class _LoginViewState extends State<LoginView> {
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               color: isDark
-                                  ? Colors.white.withOpacity(0.08)
-                                  : const Color(0xFF0F172A).withOpacity(0.08),
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : const Color(0xFF0F172A).withValues(alpha: 0.08),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
@@ -183,7 +183,7 @@ class _LoginViewState extends State<LoginView> {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 14,
-                            color: isDark ? Colors.white.withOpacity(0.6) : const Color(0xFF64748B),
+                            color: isDark ? Colors.white.withValues(alpha: 0.6) : const Color(0xFF64748B),
                           ),
                         ),
                         const SizedBox(height: 32),
@@ -198,7 +198,7 @@ class _LoginViewState extends State<LoginView> {
                           decoration: InputDecoration(
                             labelText: '서버 주소 (예: http://192.168.0.25:3000)',
                             labelStyle: isDark
-                                ? TextStyle(color: Colors.white.withOpacity(0.6))
+                                ? TextStyle(color: Colors.white.withValues(alpha: 0.6))
                                 : const TextStyle(color: Color(0xFF64748B)),
                             prefixIcon: Icon(
                               Icons.dns_outlined,
@@ -209,7 +209,7 @@ class _LoginViewState extends State<LoginView> {
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide(
-                                color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFE2E8F0),
+                                color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFE2E8F0),
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
@@ -237,7 +237,7 @@ class _LoginViewState extends State<LoginView> {
                           decoration: InputDecoration(
                             labelText: '사용자 ID',
                             labelStyle: isDark
-                                ? TextStyle(color: Colors.white.withOpacity(0.6))
+                                ? TextStyle(color: Colors.white.withValues(alpha: 0.6))
                                 : const TextStyle(color: Color(0xFF64748B)),
                             prefixIcon: Icon(
                               Icons.person_outline,
@@ -248,7 +248,7 @@ class _LoginViewState extends State<LoginView> {
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide(
-                                color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFE2E8F0),
+                                color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFE2E8F0),
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
@@ -277,7 +277,7 @@ class _LoginViewState extends State<LoginView> {
                           decoration: InputDecoration(
                             labelText: '비밀번호',
                             labelStyle: isDark
-                                ? TextStyle(color: Colors.white.withOpacity(0.6))
+                                ? TextStyle(color: Colors.white.withValues(alpha: 0.6))
                                 : const TextStyle(color: Color(0xFF64748B)),
                             prefixIcon: Icon(
                               Icons.lock_outline,
@@ -288,7 +288,7 @@ class _LoginViewState extends State<LoginView> {
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide(
-                                color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFE2E8F0),
+                                color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFE2E8F0),
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(

@@ -1,10 +1,13 @@
 import 'dart:ui' as ui;
 
-/// One text line of a label: the text plus its font size in points.
+/// One text line of a label: the text plus its font size in points,
+/// and an optional fallback text if the main text exceeds available width.
 class LabelLine {
   final String text;
   final double sizePt;
-  const LabelLine(this.text, this.sizePt);
+  final String? fallbackText;
+
+  const LabelLine(this.text, this.sizePt, {this.fallbackText});
 }
 
 /// Draws a label onto [canvas] at [pxPerMm] pixels (or printer dots) per mm.
@@ -44,17 +47,33 @@ void paintLabel(
 
   final List<ui.Paragraph> paras = [];
   for (final line in lines) {
-    final builder = ui.ParagraphBuilder(ui.ParagraphStyle(
-      textAlign: ui.TextAlign.left,
-      fontSize: line.sizePt * 1.734 * scale * density,
-      fontWeight: ui.FontWeight.bold,
-      maxLines: 1,
-      ellipsis: '…',
-    ))
-      ..pushStyle(ui.TextStyle(color: const ui.Color(0xFF000000)))
-      ..addText(line.text);
-    final p = builder.build()
-      ..layout(ui.ParagraphConstraints(width: availWidth));
+    final double fontSize = line.sizePt * 1.734 * scale * density;
+
+    ui.Paragraph buildParagraph(String textStr) {
+      final builder = ui.ParagraphBuilder(ui.ParagraphStyle(
+        textAlign: ui.TextAlign.left,
+        fontSize: fontSize,
+        fontWeight: ui.FontWeight.bold,
+        maxLines: 1,
+        ellipsis: '…',
+      ))
+        ..pushStyle(ui.TextStyle(color: const ui.Color(0xFF000000)))
+        ..addText(textStr);
+      final p = builder.build()
+        ..layout(ui.ParagraphConstraints(width: availWidth));
+      return p;
+    }
+
+    ui.Paragraph p = buildParagraph(line.text);
+
+    // If line text exceeds available width and fallbackText is provided,
+    // fallback (e.g. omit product name and show code/abbr only).
+    if (line.fallbackText != null && line.fallbackText!.isNotEmpty) {
+      if (p.didExceedMaxLines || p.maxIntrinsicWidth > (availWidth + 0.1)) {
+        p = buildParagraph(line.fallbackText!);
+      }
+    }
+
     paras.add(p);
   }
 

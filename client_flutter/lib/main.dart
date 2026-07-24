@@ -6,7 +6,6 @@ import 'services/api_sync_service.dart';
 import 'services/database_service.dart';
 import 'views/login_view.dart';
 import 'views/print_tab_view.dart';
-import 'views/manage_tab_view.dart';
 import 'views/settings_tab_view.dart';
 
 void main() {
@@ -52,7 +51,6 @@ class _MyAppState extends State<MyApp> {
           primary: Color(0xFFFF1E1E),
           secondary: Color(0xFFFF1E1E),
           surface: Color(0xFFFFFFFF),
-          background: Color(0xFFF1F5F9),
         ),
         fontFamily: 'NotoSansKR',
         scaffoldBackgroundColor: const Color(0xFFF1F5F9),
@@ -107,7 +105,6 @@ class _MyAppState extends State<MyApp> {
           primary: Color(0xFFFF1E1E),
           secondary: Color(0xFFFF1E1E),
           surface: Color(0xFF161826),
-          background: Color(0xFF0F111A),
         ),
         fontFamily: 'NotoSansKR',
         textTheme: const TextTheme(
@@ -288,9 +285,9 @@ class _SplashScreenState extends State<SplashScreen> {
                     constraints: const BoxConstraints(maxWidth: 380),
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B).withOpacity(0.7),
+                      color: const Color(0xFF1E293B).withValues(alpha: 0.7),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withOpacity(0.12), width: 1.2),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 1.2),
                       boxShadow: const [
                         BoxShadow(
                           color: Colors.black38,
@@ -477,7 +474,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         elevation: 0,
         shape: Border(
           bottom: BorderSide(
-            color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08),
+            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08),
             width: 1,
           ),
         ),
@@ -502,7 +499,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: _userRole == 'admin' ? Colors.redAccent.withOpacity(0.2) : Colors.blueAccent.withOpacity(0.2),
+                color: _userRole == 'admin' ? Colors.redAccent.withValues(alpha: 0.2) : Colors.blueAccent.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
@@ -593,7 +590,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         decoration: BoxDecoration(
           border: Border(
             top: BorderSide(
-              color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08),
+              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08),
               width: 1,
             ),
           ),

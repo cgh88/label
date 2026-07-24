@@ -107,23 +107,20 @@ class BluetoothPrintService {
 
       final String storageDisplay = storage == '입고' ? '입고' : '$storage 보관';
 
-      final List<String> visibleLines = [];
-      final List<double> lineFontSizes = [];
+      final List<LabelLine> labelLines = [];
       if (showLine1) {
-        visibleLines.add('[$storageDisplay] $name${abbr.isNotEmpty ? " ($abbr)" : ""}');
-        lineFontSizes.add(fontSize1);
+        final String line1Text = '[$storageDisplay] $name${abbr.isNotEmpty ? " ($abbr)" : ""}';
+        final String? fallbackText = abbr.isNotEmpty ? '[$storageDisplay] $abbr' : null;
+        labelLines.add(LabelLine(line1Text, fontSize1, fallbackText: fallbackText));
       }
       if (showLine2) {
-        visibleLines.add('준비: $prepDate');
-        lineFontSizes.add(fontSize2);
+        labelLines.add(LabelLine('준비: $prepDate', fontSize2));
       }
       if (showLine3) {
-        visibleLines.add('폐기: ${expDate.isEmpty ? "상시 보관" : expDate}');
-        lineFontSizes.add(fontSize3);
+        labelLines.add(LabelLine('폐기: ${expDate.isEmpty ? "상시 보관" : expDate}', fontSize3));
       }
       if (showLine4) {
-        visibleLines.add('(담당: $staff)');
-        lineFontSizes.add(fontSize4);
+        labelLines.add(LabelLine('(담당: $staff)', fontSize4));
       }
 
       // Render the label to a 1-bit bitmap so Hangul no longer depends on any
@@ -133,8 +130,7 @@ class BluetoothPrintService {
         widthBytes: widthBytes,
         widthDots: widthDots,
         heightDots: heightDots,
-        lines: visibleLines,
-        lineFontSizes: lineFontSizes,
+        lines: labelLines,
         leftPaddingPercent: leftPaddingPercent,
         verticalGapPt: verticalGapPt,
       );
@@ -165,8 +161,7 @@ class BluetoothPrintService {
     required int widthBytes,
     required int widthDots,
     required int heightDots,
-    required List<String> lines,
-    required List<double> lineFontSizes,
+    required List<LabelLine> lines,
     required double leftPaddingPercent,
     required double verticalGapPt,
   }) async {
@@ -186,15 +181,11 @@ class BluetoothPrintService {
 
     // Draw with the exact same renderer the on-screen preview uses, at the
     // printer's 8 dots/mm, so the printed label matches the preview 1:1.
-    final List<LabelLine> labelLines = [
-      for (int i = 0; i < lines.length; i++)
-        LabelLine(lines[i], i < lineFontSizes.length ? lineFontSizes[i] : 12.5),
-    ];
     paintLabel(
       canvas,
       widthMm: widthDots / 8.0,
       heightMm: heightDots / 8.0,
-      lines: labelLines,
+      lines: lines,
       leftPaddingPercent: leftPaddingPercent,
       verticalGapPt: verticalGapPt,
       pxPerMm: 8.0,
