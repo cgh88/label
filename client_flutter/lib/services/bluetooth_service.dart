@@ -1,12 +1,16 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'label_renderer.dart';
 
 class BluetoothPrintService {
-  BluetoothPrintService._privateConstructor();
+  BluetoothPrintService._privateConstructor() {
+    _initAutoReconnectListener();
+  }
   static final BluetoothPrintService instance = BluetoothPrintService._privateConstructor();
 
   final BlueThermalPrinter _bluetooth = BlueThermalPrinter.instance;
@@ -14,8 +18,54 @@ class BluetoothPrintService {
   bool _isConnected = false;
   bool get isConnected => _isConnected;
 
+  bool _isAutoConnecting = false;
+  bool get isAutoConnecting => _isAutoConnecting;
+
   BluetoothDevice? _connectedDevice;
   BluetoothDevice? get connectedDevice => _connectedDevice;
+
+  static const String _prefLastAddress = 'last_bluetooth_printer_address';
+  static const String _prefLastName = 'last_bluetooth_printer_name';
+
+  void _initAutoReconnectListener() {
+    try {
+      _bluetooth.onStateChanged().listen((state) {
+        // state 12 = STATE_ON, 10 = STATE_OFF, 13 = STATE_TURNING_OFF, 11 = STATE_TURNING_ON
+        if (state == 12) {
+          debugPrint('Bluetooth hardware turned ON - triggering autoConnect...');
+          autoConnect();
+        } else if (state == 10 || state == 13) {
+          _isConnected = false;
+          _connectedDevice = null;
+        }
+      });
+    } catch (e) {
+      debugPrint('Error setting up bluetooth state listener: $e');
+    }
+  }
+
+  Future<void> _saveLastDevice(BluetoothDevice device) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (device.address != null) {
+        await prefs.setString(_prefLastAddress, device.address!);
+      }
+      if (device.name != null) {
+        await prefs.setString(_prefLastName, device.name!);
+      }
+    } catch (e) {
+      debugPrint('Failed to save last bluetooth device: $e');
+    }
+  }
+
+  Future<String?> getLastSavedAddress() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_prefLastAddress);
+    } catch (e) {
+      return null;
+    }
+  }
 
   Future<List<BluetoothDevice>> getPairedDevices() async {
     try {
@@ -40,18 +90,28 @@ class BluetoothPrintService {
         debugPrint('Device ${device.name} is not paired in system settings.');
         return false;
       }
-      if (_isConnected) {
+
+      final bool? currentlyConnected = await _bluetooth.isConnected;
+      if (currentlyConnected == true && _connectedDevice?.address == device.address) {
+        _isConnected = true;
+        return true;
+      }
+
+      if (currentlyConnected == true) {
         await disconnect();
       }
+
       final bool? result = await _bluetooth.connect(device);
       if (result == true) {
         _isConnected = true;
         _connectedDevice = device;
+        await _saveLastDevice(device);
         return true;
       }
       return false;
     } catch (e) {
       debugPrint('Error connecting to Bluetooth printer: $e');
+      _isConnected = false;
       return false;
     }
   }
@@ -77,6 +137,85 @@ class BluetoothPrintService {
     }
   }
 
+  /// Automatically connects to the last saved printer or an available paired printer.
+  Future<bool> autoConnect() async {
+    if (_isAutoConnecting) return _isConnected;
+    _isAutoConnecting = true;
+
+    try {
+      // 1. Check if already connected cleanly
+      final bool? isConn = await _bluetooth.isConnected;
+      if (isConn == true && _connectedDevice != null) {
+        _isConnected = true;
+        _isAutoConnecting = false;
+        return true;
+      }
+
+      // 2. Check if Bluetooth hardware is available and ON
+      final bool avail = await checkBluetoothAvailable();
+      if (!avail) {
+        _isConnected = false;
+        _isAutoConnecting = false;
+        return false;
+      }
+
+      // 3. Get paired devices
+      final List<BluetoothDevice> bonded = await getPairedDevices();
+      if (bonded.isEmpty) {
+        _isConnected = false;
+        _isAutoConnecting = false;
+        return false;
+      }
+
+      BluetoothDevice? targetDevice;
+
+      // Check for saved last address
+      final String? lastAddr = await getLastSavedAddress();
+      if (lastAddr != null && lastAddr.isNotEmpty) {
+        targetDevice = bonded.firstWhere(
+          (d) => d.address == lastAddr,
+          orElse: () => bonded.first,
+        );
+      }
+
+      // If no valid target from last address
+      if (targetDevice == null) {
+        if (_connectedDevice != null && bonded.any((d) => d.address == _connectedDevice!.address)) {
+          targetDevice = _connectedDevice;
+        } else if (bonded.length == 1) {
+          targetDevice = bonded.first;
+        } else {
+          // Look for printer keywords
+          targetDevice = bonded.firstWhere(
+            (d) {
+              final n = (d.name ?? '').toLowerCase();
+              return n.contains('printer') ||
+                  n.contains('label') ||
+                  n.contains('xprinter') ||
+                  n.contains('pos') ||
+                  n.contains('tspl') ||
+                  n.contains('bt');
+            },
+            orElse: () => bonded.first,
+          );
+        }
+      }
+
+      if (targetDevice != null) {
+        debugPrint('Attempting autoConnect to printer: ${targetDevice.name} (${targetDevice.address})');
+        final bool success = await connect(targetDevice);
+        _isAutoConnecting = false;
+        return success;
+      }
+    } catch (e) {
+      debugPrint('Auto-connect exception: $e');
+    }
+
+    _isConnected = false;
+    _isAutoConnecting = false;
+    return false;
+  }
+
   Future<bool> printTsplLabel({
     required double width,
     required double height,
@@ -98,60 +237,136 @@ class BluetoothPrintService {
     double leftPaddingPercent = 10.0,
     double verticalGapPt = 3.5,
   }) async {
-    if (!_isConnected) return false;
+    // 1. Check connection status and auto-connect if disconnected
+    final bool? isConn = await _bluetooth.isConnected;
+    if (!_isConnected || isConn != true) {
+      debugPrint('Bluetooth not connected before printing, attempting autoConnect...');
+      final bool autoOk = await autoConnect();
+      if (!autoOk) return false;
+    }
 
     try {
-      final int widthDots = (width * 8).round(); // 8 dots/mm
-      final int heightDots = (height * 8).round();
-      final int widthBytes = (widthDots + 7) ~/ 8;
-
-      final String storageDisplay = storage == '입고' ? '입고' : '$storage 보관';
-
-      final List<LabelLine> labelLines = [];
-      if (showLine1) {
-        final String line1Text = '[$storageDisplay] $name${abbr.isNotEmpty ? " ($abbr)" : ""}';
-        final String? fallbackText = abbr.isNotEmpty ? '[$storageDisplay] $abbr' : null;
-        labelLines.add(LabelLine(line1Text, fontSize1, fallbackText: fallbackText));
-      }
-      if (showLine2) {
-        labelLines.add(LabelLine('준비: $prepDate', fontSize2));
-      }
-      if (showLine3) {
-        labelLines.add(LabelLine('폐기: ${expDate.isEmpty ? "상시 보관" : expDate}', fontSize3));
-      }
-      if (showLine4) {
-        labelLines.add(LabelLine('(담당: $staff)', fontSize4));
-      }
-
-      // Render the label to a 1-bit bitmap so Hangul no longer depends on any
-      // printer-internal font. The previous TEXT "K" font does not exist on this
-      // model, so text never rendered and the label came out blank.
-      final Uint8List bitmap = await _renderLabelMonochrome(
-        widthBytes: widthBytes,
-        widthDots: widthDots,
-        heightDots: heightDots,
-        lines: labelLines,
+      return await _executeTsplPrint(
+        width: width,
+        height: height,
+        name: name,
+        abbr: abbr,
+        storage: storage,
+        prepDate: prepDate,
+        expDate: expDate,
+        staff: staff,
+        quantity: quantity,
+        showLine1: showLine1,
+        showLine2: showLine2,
+        showLine3: showLine3,
+        showLine4: showLine4,
+        fontSize1: fontSize1,
+        fontSize2: fontSize2,
+        fontSize3: fontSize3,
+        fontSize4: fontSize4,
         leftPaddingPercent: leftPaddingPercent,
         verticalGapPt: verticalGapPt,
       );
-
-      // TSPL command: ASCII header + binary BITMAP payload + PRINT.
-      final BytesBuilder out = BytesBuilder();
-      final String header = 'SIZE ${width.toInt()} mm, ${height.toInt()} mm\r\n'
-          'GAP 2 mm, 0 mm\r\n'
-          'DIRECTION 1\r\n'
-          'CLS\r\n'
-          'BITMAP 0,0,$widthBytes,$heightDots,0,';
-      out.add(ascii.encode(header));
-      out.add(bitmap);
-      out.add(ascii.encode('\r\nPRINT $quantity\r\n'));
-
-      await _bluetooth.writeBytes(out.toBytes());
-      return true;
     } catch (e) {
-      debugPrint('Error writing TSPL to Bluetooth printer: $e');
+      debugPrint('Error writing TSPL to Bluetooth printer, attempting auto-reconnect retry: $e');
+      _isConnected = false;
+      final bool reconnected = await autoConnect();
+      if (reconnected) {
+        try {
+          return await _executeTsplPrint(
+            width: width,
+            height: height,
+            name: name,
+            abbr: abbr,
+            storage: storage,
+            prepDate: prepDate,
+            expDate: expDate,
+            staff: staff,
+            quantity: quantity,
+            showLine1: showLine1,
+            showLine2: showLine2,
+            showLine3: showLine3,
+            showLine4: showLine4,
+            fontSize1: fontSize1,
+            fontSize2: fontSize2,
+            fontSize3: fontSize3,
+            fontSize4: fontSize4,
+            leftPaddingPercent: leftPaddingPercent,
+            verticalGapPt: verticalGapPt,
+          );
+        } catch (retryErr) {
+          debugPrint('Retry write failed after autoConnect: $retryErr');
+        }
+      }
       return false;
     }
+  }
+
+  Future<bool> _executeTsplPrint({
+    required double width,
+    required double height,
+    required String name,
+    required String abbr,
+    required String storage,
+    required String prepDate,
+    required String expDate,
+    required String staff,
+    required int quantity,
+    required bool showLine1,
+    required bool showLine2,
+    required bool showLine3,
+    required bool showLine4,
+    required double fontSize1,
+    required double fontSize2,
+    required double fontSize3,
+    required double fontSize4,
+    required double leftPaddingPercent,
+    required double verticalGapPt,
+  }) async {
+    final int widthDots = (width * 8).round(); // 8 dots/mm
+    final int heightDots = (height * 8).round();
+    final int widthBytes = (widthDots + 7) ~/ 8;
+
+    final String storageDisplay = storage == '입고' ? '입고' : '$storage 보관';
+
+    final List<LabelLine> labelLines = [];
+    if (showLine1) {
+      final String line1Text = '[$storageDisplay] $name${abbr.isNotEmpty ? " ($abbr)" : ""}';
+      final String? fallbackText = abbr.isNotEmpty ? '[$storageDisplay] $abbr' : null;
+      labelLines.add(LabelLine(line1Text, fontSize1, fallbackText: fallbackText));
+    }
+    if (showLine2) {
+      labelLines.add(LabelLine('준비: $prepDate', fontSize2));
+    }
+    if (showLine3) {
+      labelLines.add(LabelLine('폐기: ${expDate.isEmpty ? "상시 보관" : expDate}', fontSize3));
+    }
+    if (showLine4) {
+      labelLines.add(LabelLine('(담당: $staff)', fontSize4));
+    }
+
+    final Uint8List bitmap = await _renderLabelMonochrome(
+      widthBytes: widthBytes,
+      widthDots: widthDots,
+      heightDots: heightDots,
+      lines: labelLines,
+      leftPaddingPercent: leftPaddingPercent,
+      verticalGapPt: verticalGapPt,
+    );
+
+    final BytesBuilder out = BytesBuilder();
+    final String header = 'SIZE ${width.toInt()} mm, ${height.toInt()} mm\r\n'
+        'GAP 2 mm, 0 mm\r\n'
+        'DIRECTION 1\r\n'
+        'CLS\r\n'
+        'BITMAP 0,0,$widthBytes,$heightDots,0,';
+    out.add(ascii.encode(header));
+    out.add(bitmap);
+    out.add(ascii.encode('\r\nPRINT $quantity\r\n'));
+
+    await _bluetooth.writeBytes(out.toBytes());
+    _isConnected = true;
+    return true;
   }
 
   /// Renders the label text to a packed 1-bit-per-pixel bitmap for TSPL BITMAP.

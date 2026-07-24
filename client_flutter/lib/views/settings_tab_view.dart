@@ -130,10 +130,15 @@ class _SettingsTabViewState extends State<SettingsTabView> {
     try {
       final isAvail = await BluetoothPrintService.instance.checkBluetoothAvailable();
       if (isAvail) {
-        setState(() {
-          _isBluetoothSupported = true;
-        });
-        _loadBluetoothDevices();
+        if (mounted) {
+          setState(() {
+            _isBluetoothSupported = true;
+          });
+        }
+        await BluetoothPrintService.instance.autoConnect();
+        if (mounted) {
+          _loadBluetoothDevices();
+        }
       }
     } catch (e) {
       debugPrint('Bluetooth init failed: $e');

@@ -202,18 +202,20 @@ class _PrintTabViewState extends State<PrintTabView> {
     // Check if Bluetooth printer is connected to print via TSPL commands directly
     final bluetoothPrintService = BluetoothPrintService.instance;
 
-    // If no printer is connected, guide the user to the Bluetooth settings
-    // screen to connect one instead of silently exporting a PDF.
+    // If not connected, attempt automatic connection first.
     if (!bluetoothPrintService.isConnected) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('블루투스 프린터가 연결되어 있지 않습니다. 설정에서 프린터를 연결해 주세요.'),
-          ),
-        );
+      final autoOk = await bluetoothPrintService.autoConnect();
+      if (!autoOk) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('블루투스 프린터가 연결되어 있지 않습니다. 설정에서 프린터를 연결해 주세요.'),
+            ),
+          );
+        }
+        widget.onNavigateToSettings?.call();
+        return;
       }
-      widget.onNavigateToSettings?.call();
-      return;
     }
 
     if (bluetoothPrintService.isConnected) {
