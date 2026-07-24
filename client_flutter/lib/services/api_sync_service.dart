@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'database_service.dart';
@@ -68,49 +67,12 @@ class ApiSyncService {
         return SyncResult(success: true, message: '이미 최신 상태로 동기화되어 있습니다.');
       }
 
-      // Compare timestamps
-      Map<String, dynamic> localData;
-      Map<String, dynamic> remoteData;
-      try {
-        localData = jsonDecode(localJsonContent) as Map<String, dynamic>;
-        remoteData = jsonDecode(remoteJsonContent) as Map<String, dynamic>;
-      } catch (e) {
-        return SyncResult(success: false, message: '데이터 파싱 오류: $e');
-      }
-
-      final localTimeStr = localData['last_updated'] as String? ?? '1970-01-01T00:00:00Z';
-      final remoteTimeStr = remoteData['last_updated'] as String? ?? '1970-01-01T00:00:00Z';
-
-      final localTime = DateTime.parse(localTimeStr);
-      final remoteTime = DateTime.parse(remoteTimeStr);
-
-      if (remoteTime.isAfter(localTime)) {
-        // Download: remote is newer, replace local
-        await DatabaseService.instance.replaceDatabaseContent(remoteJsonContent);
-        return SyncResult(
-          success: true,
-          message: '원격 서버의 최신 데이터를 로컬로 다운로드했습니다.\n(원격: $remoteTimeStr, 로컬: $localTimeStr)',
-        );
-      } else {
-        // Upload: local is newer, POST to remote
-        final postResponse = await http.post(
-          Uri.parse('$apiSyncUrl/api/sync/database'),
-          headers: await authHeaders(jsonBody: true),
-          body: localJsonContent,
-        ).timeout(const Duration(seconds: 10));
-
-        if (postResponse.statusCode == 200) {
-          return SyncResult(
-            success: true,
-            message: '로컬의 최신 데이터를 원격 서버로 업로드했습니다.\n(로컬: $localTimeStr, 원격: $remoteTimeStr)',
-          );
-        } else {
-          return SyncResult(
-            success: false,
-            message: '원격 서버 업로드에 실패했습니다 (상태 코드: ${postResponse.statusCode})',
-          );
-        }
-      }
+      // Always download remote database content to local (Server is master)
+      await DatabaseService.instance.replaceDatabaseContent(remoteJsonContent);
+      return SyncResult(
+        success: true,
+        message: '원격 서버의 최신 데이터를 로컬로 다운로드했습니다.',
+      );
     } catch (e) {
       return SyncResult(success: false, message: '동기화 중 오류가 발생했습니다: $e');
     }
