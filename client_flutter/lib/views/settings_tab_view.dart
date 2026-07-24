@@ -36,20 +36,29 @@ class _SettingsTabViewState extends State<SettingsTabView> {
   BluetoothDevice? _selectedDevice;
   bool _isBluetoothSupported = false;
   bool _isConnecting = false;
+  bool _autoConnect = true;
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
     _initBluetooth();
+    BluetoothPrintService.instance.connectionRevision.addListener(_onConnectionChanged);
   }
 
   @override
   void dispose() {
+    BluetoothPrintService.instance.connectionRevision.removeListener(_onConnectionChanged);
     _widthController.dispose();
     _heightController.dispose();
     _apiUrlController.dispose();
     super.dispose();
+  }
+
+  void _onConnectionChanged() {
+    if (mounted) {
+      _loadBluetoothDevices();
+    }
   }
 
   Future<void> _loadSettings() async {
@@ -71,6 +80,13 @@ class _SettingsTabViewState extends State<SettingsTabView> {
       _leftPadding = prefs.getDouble('layout_left_padding') ?? 10.0;
       _verticalGap = prefs.getDouble('layout_vertical_gap') ?? 3.5;
     });
+
+    final autoConn = await BluetoothPrintService.instance.isAutoConnectEnabled();
+    if (mounted) {
+      setState(() {
+        _autoConnect = autoConn;
+      });
+    }
 
     await ApiSyncService.instance.loadConfig();
     setState(() {
@@ -147,17 +163,21 @@ class _SettingsTabViewState extends State<SettingsTabView> {
 
   Future<void> _loadBluetoothDevices() async {
     final list = await BluetoothPrintService.instance.getPairedDevices();
-    setState(() {
-      _devices = list;
-      if (list.isNotEmpty) {
-        final conn = BluetoothPrintService.instance.connectedDevice;
+    final conn = BluetoothPrintService.instance.connectedDevice;
+    if (mounted) {
+      setState(() {
+        _devices = list;
         if (conn != null) {
-          _selectedDevice = list.firstWhere((d) => d.address == conn.address, orElse: () => list.first);
-        } else {
+          try {
+            _selectedDevice = list.firstWhere((d) => d.address == conn.address);
+          } catch (_) {
+            _selectedDevice = conn;
+          }
+        } else if (list.isNotEmpty) {
           _selectedDevice = list.first;
         }
-      }
-    });
+      });
+    }
   }
 
   Future<void> _toggleBluetoothConnection() async {
@@ -398,6 +418,41 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                     child: const Text('블루투스 재시도'),
                   ),
                 ] else ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '프린터 자동 연결',
+                              style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '앱 실행 및 인쇄 시 저장된 프린터로 자동 연결',
+                              style: TextStyle(color: isDark ? Colors.white60 : Colors.black54, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: _autoConnect,
+                        activeColor: const Color(0xFF6366F1),
+                        onChanged: (val) async {
+                          setState(() {
+                            _autoConnect = val;
+                          });
+                          await BluetoothPrintService.instance.setAutoConnectEnabled(val);
+                          if (val) {
+                            _initBluetooth();
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [

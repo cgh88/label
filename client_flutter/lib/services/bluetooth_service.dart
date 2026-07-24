@@ -24,8 +24,16 @@ class BluetoothPrintService {
   BluetoothDevice? _connectedDevice;
   BluetoothDevice? get connectedDevice => _connectedDevice;
 
+  /// Notifier for UI components to listen to Bluetooth connection state changes.
+  final ValueNotifier<int> connectionRevision = ValueNotifier<int>(0);
+
   static const String _prefLastAddress = 'last_bluetooth_printer_address';
   static const String _prefLastName = 'last_bluetooth_printer_name';
+  static const String _prefAutoConnect = 'pref_auto_connect_bt';
+
+  void _notifyConnectionChange() {
+    connectionRevision.value++;
+  }
 
   void _initAutoReconnectListener() {
     try {
@@ -37,10 +45,29 @@ class BluetoothPrintService {
         } else if (state == 10 || state == 13) {
           _isConnected = false;
           _connectedDevice = null;
+          _notifyConnectionChange();
         }
       });
     } catch (e) {
       debugPrint('Error setting up bluetooth state listener: $e');
+    }
+  }
+
+  Future<bool> isAutoConnectEnabled() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(_prefAutoConnect) ?? true;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  Future<void> setAutoConnectEnabled(bool enabled) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_prefAutoConnect, enabled);
+    } catch (e) {
+      debugPrint('Failed to save autoConnect preference: $e');
     }
   }
 
@@ -94,6 +121,7 @@ class BluetoothPrintService {
       final bool? currentlyConnected = await _bluetooth.isConnected;
       if (currentlyConnected == true && _connectedDevice?.address == device.address) {
         _isConnected = true;
+        _notifyConnectionChange();
         return true;
       }
 
@@ -106,12 +134,14 @@ class BluetoothPrintService {
         _isConnected = true;
         _connectedDevice = device;
         await _saveLastDevice(device);
+        _notifyConnectionChange();
         return true;
       }
       return false;
     } catch (e) {
       debugPrint('Error connecting to Bluetooth printer: $e');
       _isConnected = false;
+      _notifyConnectionChange();
       return false;
     }
   }
@@ -119,10 +149,12 @@ class BluetoothPrintService {
   Future<void> disconnect() async {
     try {
       await _bluetooth.disconnect();
-      _isConnected = false;
-      _connectedDevice = null;
     } catch (e) {
       debugPrint('Error disconnecting Bluetooth printer: $e');
+    } finally {
+      _isConnected = false;
+      _connectedDevice = null;
+      _notifyConnectionChange();
     }
   }
 
@@ -140,6 +172,13 @@ class BluetoothPrintService {
   /// Automatically connects to the last saved printer or an available paired printer.
   Future<bool> autoConnect() async {
     if (_isAutoConnecting) return _isConnected;
+
+    final bool enabled = await isAutoConnectEnabled();
+    if (!enabled) {
+      debugPrint('Bluetooth autoConnect is disabled in settings.');
+      return false;
+    }
+
     _isAutoConnecting = true;
 
     try {
@@ -148,6 +187,7 @@ class BluetoothPrintService {
       if (isConn == true && _connectedDevice != null) {
         _isConnected = true;
         _isAutoConnecting = false;
+        _notifyConnectionChange();
         return true;
       }
 
@@ -156,6 +196,7 @@ class BluetoothPrintService {
       if (!avail) {
         _isConnected = false;
         _isAutoConnecting = false;
+        _notifyConnectionChange();
         return false;
       }
 
@@ -164,6 +205,7 @@ class BluetoothPrintService {
       if (bonded.isEmpty) {
         _isConnected = false;
         _isAutoConnecting = false;
+        _notifyConnectionChange();
         return false;
       }
 
@@ -172,10 +214,11 @@ class BluetoothPrintService {
       // Check for saved last address
       final String? lastAddr = await getLastSavedAddress();
       if (lastAddr != null && lastAddr.isNotEmpty) {
-        targetDevice = bonded.firstWhere(
-          (d) => d.address == lastAddr,
-          orElse: () => bonded.first,
-        );
+        try {
+          targetDevice = bonded.firstWhere((d) => d.address == lastAddr);
+        } catch (_) {
+          targetDevice = null;
+        }
       }
 
       // If no valid target from last address
@@ -186,8 +229,8 @@ class BluetoothPrintService {
           targetDevice = bonded.first;
         } else {
           // Look for printer keywords
-          targetDevice = bonded.firstWhere(
-            (d) {
+          try {
+            targetDevice = bonded.firstWhere((d) {
               final n = (d.name ?? '').toLowerCase();
               return n.contains('printer') ||
                   n.contains('label') ||
@@ -195,9 +238,10 @@ class BluetoothPrintService {
                   n.contains('pos') ||
                   n.contains('tspl') ||
                   n.contains('bt');
-            },
-            orElse: () => bonded.first,
-          );
+            });
+          } catch (_) {
+            targetDevice = bonded.first;
+          }
         }
       }
 
@@ -213,6 +257,7 @@ class BluetoothPrintService {
 
     _isConnected = false;
     _isAutoConnecting = false;
+    _notifyConnectionChange();
     return false;
   }
 
@@ -270,6 +315,7 @@ class BluetoothPrintService {
     } catch (e) {
       debugPrint('Error writing TSPL to Bluetooth printer, attempting auto-reconnect retry: $e');
       _isConnected = false;
+      _notifyConnectionChange();
       final bool reconnected = await autoConnect();
       if (reconnected) {
         try {
@@ -366,6 +412,7 @@ class BluetoothPrintService {
 
     await _bluetooth.writeBytes(out.toBytes());
     _isConnected = true;
+    _notifyConnectionChange();
     return true;
   }
 
