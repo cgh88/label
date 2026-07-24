@@ -524,9 +524,10 @@ class _ManageTabViewState extends State<ManageTabView> {
   @override
   Widget build(BuildContext context) {
     final isAdmin = widget.userRole == 'admin';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0C20),
+      backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -534,10 +535,12 @@ class _ManageTabViewState extends State<ManageTabView> {
           children: [
             // SSH Sync Header Card
             Card(
-              color: const Color(0xFF1C1936),
+              color: isDark ? const Color(0xFF1E2030) : Colors.white,
+              elevation: 3,
+              shadowColor: Colors.black12,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: const Color(0xFFFF1E1E).withOpacity(0.2)),
+                side: BorderSide(color: const Color(0xFFFF1E1E).withOpacity(0.4), width: 1.5),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
@@ -547,10 +550,10 @@ class _ManageTabViewState extends State<ManageTabView> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             '서버 데이터베이스 동기화',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: isDark ? Colors.white : Colors.black87,
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
                             ),
@@ -558,7 +561,7 @@ class _ManageTabViewState extends State<ManageTabView> {
                           const SizedBox(height: 6),
                           Row(
                             children: [
-                              const Text('동기화 상태: ', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                              Text('동기화 상태: ', style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 13)),
                               Text(
                                 _syncStatus,
                                 style: TextStyle(color: _syncStatusColor, fontSize: 13, fontWeight: FontWeight.bold),
@@ -568,7 +571,7 @@ class _ManageTabViewState extends State<ManageTabView> {
                           const SizedBox(height: 4),
                           Text(
                             '마지막 로컬 업데이트: ${DatabaseService.instance.lastUpdated}',
-                            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11),
+                            style: TextStyle(color: isDark ? Colors.white.withOpacity(0.5) : Colors.black45, fontSize: 11),
                           )
                         ],
                       ),
@@ -603,16 +606,21 @@ class _ManageTabViewState extends State<ManageTabView> {
                 // Category Card
                 Expanded(
                   child: Card(
-                    color: const Color(0xFF1C1936),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    color: isDark ? const Color(0xFF1E2030) : Colors.white,
+                    elevation: 3,
+                    shadowColor: Colors.black12,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: isDark ? Colors.white.withOpacity(0.18) : const Color(0xFFCBD5E1), width: 1.2),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Text(
+                          Text(
                             '카테고리 관리',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                            style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold, fontSize: 15),
                           ),
                           const SizedBox(height: 12),
                           Wrap(
@@ -621,13 +629,13 @@ class _ManageTabViewState extends State<ManageTabView> {
                             children: DatabaseService.instance.categories.map((c) {
                               return Chip(
                                 label: Text('${c.emoji} ${c.name}'),
-                                backgroundColor: const Color(0xFF252147),
-                                labelStyle: const TextStyle(color: Colors.white, fontSize: 13),
+                                backgroundColor: isDark ? const Color(0xFF2B2D42) : const Color(0xFFF1F5F9),
+                                labelStyle: TextStyle(color: isDark ? Colors.white : const Color(0xFF1E293B), fontSize: 13, fontWeight: FontWeight.bold),
                                 deleteIconColor: Colors.redAccent,
                                 onDeleted: isAdmin ? () => _deleteCategory(c.id) : null,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
-                                  side: BorderSide(color: Colors.white.withOpacity(0.05)),
+                                  side: BorderSide(color: isDark ? Colors.white.withOpacity(0.15) : const Color(0xFFCBD5E1)),
                                 ),
                               );
                             }).toList(),
@@ -640,26 +648,26 @@ class _ManageTabViewState extends State<ManageTabView> {
                                   width: 60,
                                   child: TextField(
                                     controller: _newCategoryEmojiController,
-                                    decoration: const InputDecoration(
+                                    decoration: InputDecoration(
                                       hintText: '이모지',
-                                      hintStyle: TextStyle(color: Colors.white30, fontSize: 12),
+                                      hintStyle: TextStyle(color: isDark ? Colors.white30 : Colors.black38, fontSize: 12),
                                     ),
-                                    style: const TextStyle(color: Colors.white),
+                                    style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: TextField(
                                     controller: _newCategoryController,
-                                    decoration: const InputDecoration(
+                                    decoration: InputDecoration(
                                       hintText: '새 카테고리명',
-                                      hintStyle: TextStyle(color: Colors.white30, fontSize: 12),
+                                      hintStyle: TextStyle(color: isDark ? Colors.white30 : Colors.black38, fontSize: 12),
                                     ),
-                                    style: const TextStyle(color: Colors.white),
+                                    style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.add, color: Color(0xFFB388FF)),
+                                  icon: const Icon(Icons.add, color: Color(0xFF6366F1)),
                                   onPressed: _addCategory,
                                 ),
                               ],
@@ -675,16 +683,21 @@ class _ManageTabViewState extends State<ManageTabView> {
                 // Location Card
                 Expanded(
                   child: Card(
-                    color: const Color(0xFF1C1936),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    color: isDark ? const Color(0xFF1E2030) : Colors.white,
+                    elevation: 3,
+                    shadowColor: Colors.black12,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: isDark ? Colors.white.withOpacity(0.18) : const Color(0xFFCBD5E1), width: 1.2),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Text(
+                          Text(
                             '보관위치 관리',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                            style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold, fontSize: 15),
                           ),
                           const SizedBox(height: 12),
                           Wrap(
@@ -693,13 +706,13 @@ class _ManageTabViewState extends State<ManageTabView> {
                             children: DatabaseService.instance.locations.map((l) {
                               return Chip(
                                 label: Text(l.name),
-                                backgroundColor: const Color(0xFF252147),
-                                labelStyle: const TextStyle(color: Colors.white, fontSize: 13),
+                                backgroundColor: isDark ? const Color(0xFF2B2D42) : const Color(0xFFF1F5F9),
+                                labelStyle: TextStyle(color: isDark ? Colors.white : const Color(0xFF1E293B), fontSize: 13, fontWeight: FontWeight.bold),
                                 deleteIconColor: Colors.redAccent,
                                 onDeleted: isAdmin ? () => _deleteLocation(l.id) : null,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
-                                  side: BorderSide(color: Colors.white.withOpacity(0.05)),
+                                  side: BorderSide(color: isDark ? Colors.white.withOpacity(0.15) : const Color(0xFFCBD5E1)),
                                 ),
                               );
                             }).toList(),
@@ -711,15 +724,15 @@ class _ManageTabViewState extends State<ManageTabView> {
                                 Expanded(
                                   child: TextField(
                                     controller: _newLocationController,
-                                    decoration: const InputDecoration(
+                                    decoration: InputDecoration(
                                       hintText: '새 보관위치명',
-                                      hintStyle: TextStyle(color: Colors.white30, fontSize: 12),
+                                      hintStyle: TextStyle(color: isDark ? Colors.white30 : Colors.black38, fontSize: 12),
                                     ),
-                                    style: const TextStyle(color: Colors.white),
+                                    style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.add, color: Color(0xFFB388FF)),
+                                  icon: const Icon(Icons.add, color: Color(0xFF6366F1)),
                                   onPressed: _addLocation,
                                 ),
                               ],
@@ -738,10 +751,10 @@ class _ManageTabViewState extends State<ManageTabView> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   '등록 재료 목록',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: isDark ? Colors.white : Colors.black87,
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
                   ),
@@ -764,7 +777,7 @@ class _ManageTabViewState extends State<ManageTabView> {
                         icon: const Icon(Icons.add),
                         label: const Text('재료 등록'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF7C4DFF),
+                          backgroundColor: const Color(0xFF6366F1),
                           foregroundColor: Colors.white,
                         ),
                       ),
@@ -779,7 +792,7 @@ class _ManageTabViewState extends State<ManageTabView> {
               padding: const EdgeInsets.only(bottom: 12.0),
               child: TextField(
                 controller: _searchController,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                 onChanged: (value) {
                   setState(() {
                     _searchQuery = value;
@@ -787,11 +800,11 @@ class _ManageTabViewState extends State<ManageTabView> {
                 },
                 decoration: InputDecoration(
                   hintText: '카테고리, 재료명 또는 약어로 검색...',
-                  hintStyle: const TextStyle(color: Colors.white30, fontSize: 13),
-                  prefixIcon: const Icon(Icons.search, color: Colors.white54, size: 20),
+                  hintStyle: TextStyle(color: isDark ? Colors.white30 : Colors.black38, fontSize: 13),
+                  prefixIcon: Icon(Icons.search, color: isDark ? Colors.white54 : Colors.black54, size: 20),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear, color: Colors.white54, size: 18),
+                          icon: Icon(Icons.clear, color: isDark ? Colors.white54 : Colors.black54, size: 18),
                           onPressed: () {
                             setState(() {
                               _searchController.clear();
@@ -802,14 +815,14 @@ class _ManageTabViewState extends State<ManageTabView> {
                       : null,
                   contentPadding: const EdgeInsets.symmetric(vertical: 10),
                   filled: true,
-                  fillColor: const Color(0xFF1E1F29),
+                  fillColor: isDark ? const Color(0xFF1E2030) : Colors.white,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    borderSide: BorderSide(color: isDark ? Colors.white.withOpacity(0.18) : const Color(0xFFCBD5E1), width: 1.2),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: Colors.white.withOpacity(0.05)),
+                    borderSide: BorderSide(color: isDark ? Colors.white.withOpacity(0.18) : const Color(0xFFCBD5E1), width: 1.2),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -822,8 +835,13 @@ class _ManageTabViewState extends State<ManageTabView> {
 
             // Ingredients DataTable Card
             Card(
-              color: const Color(0xFF1C1936),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              color: isDark ? const Color(0xFF1E2030) : Colors.white,
+              elevation: 3,
+              shadowColor: Colors.black12,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: isDark ? Colors.white.withOpacity(0.18) : const Color(0xFFCBD5E1), width: 1.2),
+              ),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
@@ -831,7 +849,7 @@ class _ManageTabViewState extends State<ManageTabView> {
                   sortAscending: _sortAscending,
                   columns: [
                     DataColumn(
-                      label: const Text('카테고리', style: TextStyle(color: Colors.white70)),
+                      label: Text('카테고리', style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontWeight: FontWeight.bold)),
                       onSort: (columnIndex, ascending) {
                         setState(() {
                           _sortColumnIndex = columnIndex;
@@ -840,7 +858,7 @@ class _ManageTabViewState extends State<ManageTabView> {
                       },
                     ),
                     DataColumn(
-                      label: const Text('재료명', style: TextStyle(color: Colors.white70)),
+                      label: Text('재료명', style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontWeight: FontWeight.bold)),
                       onSort: (columnIndex, ascending) {
                         setState(() {
                           _sortColumnIndex = columnIndex;
@@ -849,7 +867,7 @@ class _ManageTabViewState extends State<ManageTabView> {
                       },
                     ),
                     DataColumn(
-                      label: const Text('약어', style: TextStyle(color: Colors.white70)),
+                      label: Text('약어', style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontWeight: FontWeight.bold)),
                       onSort: (columnIndex, ascending) {
                         setState(() {
                           _sortColumnIndex = columnIndex;
@@ -857,8 +875,8 @@ class _ManageTabViewState extends State<ManageTabView> {
                         });
                       },
                     ),
-                    const DataColumn(label: Text('보관 규정 기준', style: TextStyle(color: Colors.white70))),
-                    const DataColumn(label: Text('관리', style: TextStyle(color: Colors.white70))),
+                    DataColumn(label: Text('보관 규정 기준', style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontWeight: FontWeight.bold))),
+                    DataColumn(label: Text('관리', style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontWeight: FontWeight.bold))),
                   ],
                   rows: _getFilteredAndSortedIngredients().map((ing) {
                     final limitsText = ing.storage.entries.map((e) {
@@ -868,10 +886,10 @@ class _ManageTabViewState extends State<ManageTabView> {
 
                     return DataRow(
                       cells: [
-                        DataCell(Text(ing.category, style: const TextStyle(color: Colors.white))),
-                        DataCell(Text(ing.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
-                        DataCell(Text(ing.abbr, style: const TextStyle(color: Color(0xFFB388FF)))),
-                        DataCell(Text(limitsText.isEmpty ? '미정' : limitsText, style: const TextStyle(color: Colors.white70))),
+                        DataCell(Text(ing.category, style: TextStyle(color: isDark ? Colors.white : Colors.black87))),
+                        DataCell(Text(ing.name, style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold))),
+                        DataCell(Text(ing.abbr, style: const TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold))),
+                        DataCell(Text(limitsText.isEmpty ? '미정' : limitsText, style: TextStyle(color: isDark ? Colors.white70 : Colors.black54))),
                         DataCell(
                           Row(
                             mainAxisSize: MainAxisSize.min,

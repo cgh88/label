@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_sync_service.dart';
 import 'services/database_service.dart';
 import 'views/login_view.dart';
@@ -51,19 +53,23 @@ class _MyAppState extends State<MyApp> {
         scaffoldBackgroundColor: const Color(0xFFF1F5F9),
         cardTheme: CardTheme(
           color: Colors.white,
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 3,
+          shadowColor: Colors.black12,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
+          ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+            borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
@@ -78,25 +84,29 @@ class _MyAppState extends State<MyApp> {
         colorScheme: const ColorScheme.dark(
           primary: Color(0xFFFF1E1E),
           secondary: Color(0xFFFF1E1E),
-          surface: Color(0xFF13141F),
+          surface: Color(0xFF161826),
           background: Color(0xFF0F111A),
         ),
         fontFamily: 'NotoSansKR',
         cardTheme: CardTheme(
-          color: const Color(0xFF13141F),
+          color: const Color(0xFF161826),
           elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shadowColor: Colors.black54,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: Colors.white.withOpacity(0.18), width: 1.2),
+          ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: const Color(0xFF1E1F29),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+            borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: Colors.white.withOpacity(0.05)),
+            borderSide: BorderSide(color: Colors.white.withOpacity(0.15)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
@@ -120,9 +130,52 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  String? _currentUser;
-  String? _userRole;
+  String? _currentUser = '테스트 관리자';
+  String? _userRole = 'admin';
   int _activeTabIndex = 0;
+  String _orientationMode = 'auto';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOrientationPreference();
+  }
+
+  Future<void> _loadOrientationPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final mode = prefs.getString('app_orientation_mode') ?? 'auto';
+    _applyOrientation(mode, save: false);
+  }
+
+  Future<void> _applyOrientation(String mode, {bool save = true}) async {
+    setState(() {
+      _orientationMode = mode;
+    });
+
+    if (mode == 'landscape') {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else if (mode == 'portrait') {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+    } else {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    }
+
+    if (save) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('app_orientation_mode', mode);
+    }
+  }
 
   void _onLoginSuccess(String username, String role) {
     setState(() {
@@ -193,6 +246,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
         actions: [
+          PopupMenuButton<String>(
+            icon: Icon(
+              _orientationMode == 'landscape'
+                  ? Icons.stay_current_landscape
+                  : (_orientationMode == 'portrait' ? Icons.stay_current_portrait : Icons.screen_rotation),
+              color: _orientationMode == 'auto'
+                  ? (isDark ? Colors.white70 : Colors.black87)
+                  : Colors.amberAccent,
+            ),
+            tooltip: '화면 방향 설정 (가로/세로 고정)',
+            onSelected: (mode) => _applyOrientation(mode),
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'landscape',
+                child: Row(
+                  children: [
+                    Icon(Icons.stay_current_landscape, size: 20, color: _orientationMode == 'landscape' ? Colors.amberAccent : null),
+                    const SizedBox(width: 8),
+                    Text('🖥️ 가로 모드 고정', style: TextStyle(fontWeight: _orientationMode == 'landscape' ? FontWeight.bold : FontWeight.normal)),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'portrait',
+                child: Row(
+                  children: [
+                    Icon(Icons.stay_current_portrait, size: 20, color: _orientationMode == 'portrait' ? Colors.amberAccent : null),
+                    const SizedBox(width: 8),
+                    Text('📱 세로 모드 고정', style: TextStyle(fontWeight: _orientationMode == 'portrait' ? FontWeight.bold : FontWeight.normal)),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'auto',
+                child: Row(
+                  children: [
+                    Icon(Icons.screen_rotation, size: 20, color: _orientationMode == 'auto' ? Colors.amberAccent : null),
+                    const SizedBox(width: 8),
+                    Text('🔄 자동 회전', style: TextStyle(fontWeight: _orientationMode == 'auto' ? FontWeight.bold : FontWeight.normal)),
+                  ],
+                ),
+              ),
+            ],
+          ),
           IconButton(
             icon: Icon(
               widget.themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode,

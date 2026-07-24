@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
-import '../models/models.dart';
-import '../services/database_service.dart';
 import '../services/api_sync_service.dart';
 import '../services/bluetooth_service.dart';
 
@@ -221,8 +219,10 @@ class _SettingsTabViewState extends State<SettingsTabView> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0C20),
+      backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Row(
@@ -234,20 +234,25 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Card(
-                    color: const Color(0xFF1C1936),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    color: isDark ? const Color(0xFF1E2030) : Colors.white,
+                    elevation: 3,
+                    shadowColor: Colors.black12,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: isDark ? Colors.white.withOpacity(0.18) : const Color(0xFFCBD5E1), width: 1.2),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Row(
+                          Row(
                             children: [
-                              Icon(Icons.crop_free, color: Color(0xFFFF1E1E)),
-                              SizedBox(width: 8),
+                              const Icon(Icons.crop_free, color: Color(0xFFFF1E1E)),
+                              const SizedBox(width: 8),
                               Text(
                                 '라벨 규격 설정',
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold, fontSize: 16),
                               ),
                             ],
                           ),
@@ -256,7 +261,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                           // Active preset indicator
                           Text(
                             '현재 선택 규격: ${_selectedWidth.toInt()}mm × ${_selectedHeight.toInt()}mm',
-                            style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.w600),
+                            style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 20),
 
@@ -264,9 +269,9 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF0F0C20),
+                              color: isDark ? const Color(0xFF13141F) : const Color(0xFFF1F5F9),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.greenAccent.withOpacity(0.4)),
+                              border: Border.all(color: Colors.greenAccent.withOpacity(0.5), width: 1.2),
                             ),
                             child: Row(
                               children: [
@@ -282,7 +287,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                                     const SizedBox(height: 4),
                                     Text(
                                       '55mm × 20mm (변경 불가)',
-                                      style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
+                                      style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 13),
                                     ),
                                   ],
                                 ),
@@ -305,32 +310,37 @@ class _SettingsTabViewState extends State<SettingsTabView> {
               child: Column(
                 children: [
                   Card(
-                    color: const Color(0xFF1C1936),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    color: isDark ? const Color(0xFF1E2030) : Colors.white,
+                    elevation: 3,
+                    shadowColor: Colors.black12,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: isDark ? Colors.white.withOpacity(0.18) : const Color(0xFFCBD5E1), width: 1.2),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Row(
+                          Row(
                             children: [
-                              Icon(Icons.sync_alt, color: Color(0xFFFF1E1E)),
-                              SizedBox(width: 8),
+                              const Icon(Icons.sync_alt, color: Color(0xFFFF1E1E)),
+                              const SizedBox(width: 8),
                               Text(
                                 'API 동기화 서버 설정',
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold, fontSize: 16),
                               ),
                             ],
                           ),
                           const SizedBox(height: 20),
                           TextField(
                             controller: _apiUrlController,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: const InputDecoration(
+                            style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                            decoration: InputDecoration(
                               labelText: 'API 서버 주소 (예: http://192.168.0.15:3000)',
-                              labelStyle: TextStyle(color: Colors.white60),
+                              labelStyle: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
                               hintText: 'http://localhost:3000',
-                              hintStyle: TextStyle(color: Colors.white30),
+                              hintStyle: TextStyle(color: isDark ? Colors.white30 : Colors.black38),
                             ),
                           ),
                           const SizedBox(height: 28),
@@ -350,20 +360,25 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                   ),
                   const SizedBox(height: 24),
                   Card(
-                    color: const Color(0xFF1C1936),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    color: isDark ? const Color(0xFF1E2030) : Colors.white,
+                    elevation: 3,
+                    shadowColor: Colors.black12,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: isDark ? Colors.white.withOpacity(0.18) : const Color(0xFFCBD5E1), width: 1.2),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Row(
+                          Row(
                             children: [
-                              Icon(Icons.bluetooth, color: Color(0xFFB388FF)),
-                              SizedBox(width: 8),
+                              const Icon(Icons.bluetooth, color: Color(0xFF6366F1)),
+                              const SizedBox(width: 8),
                               Text(
                                 '블루투스 프린터 설정',
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold, fontSize: 16),
                               ),
                             ],
                           ),
@@ -372,13 +387,13 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.04),
+                                color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.04),
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                                border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
                               ),
-                              child: const Text(
+                              child: Text(
                                 '블루투스 직결 인쇄는 Android 모바일 기기에서만 작동합니다.\n데스크톱 및 웹 환경에서는 시스템 인쇄 대화상자를 사용하여 라벨 프린터로 인쇄하실 수 있습니다.',
-                                style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.5),
+                                style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 12, height: 1.5),
                               ),
                             ),
                           ] else if (!_isBluetoothSupported) ...[
@@ -390,7 +405,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                             ElevatedButton(
                               onPressed: _initBluetooth,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF252147),
+                                backgroundColor: const Color(0xFF6366F1),
                                 foregroundColor: Colors.white,
                               ),
                               child: const Text('블루투스 재시도'),
@@ -399,9 +414,9 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text(
+                                Text(
                                   '연결 상태:',
-                                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                                  style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 13),
                                 ),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -428,21 +443,21 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                             ),
                             const SizedBox(height: 16),
                             if (_devices.isEmpty)
-                              const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 10.0),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 10.0),
                                 child: Text(
                                   '페어링된 블루투스 기기가 없습니다. 스마트폰 설정에서 프린터를 페어링해 주세요.',
-                                  style: TextStyle(color: Colors.white60, fontSize: 12),
+                                  style: TextStyle(color: isDark ? Colors.white60 : Colors.black54, fontSize: 12),
                                 ),
                               )
                             else
                               DropdownButtonFormField<BluetoothDevice>(
-                                dropdownColor: const Color(0xFF1C1936),
+                                dropdownColor: isDark ? const Color(0xFF1E2030) : Colors.white,
                                 value: _selectedDevice,
-                                style: const TextStyle(color: Colors.white),
-                                decoration: const InputDecoration(
+                                style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                                decoration: InputDecoration(
                                   labelText: '프린터 선택',
-                                  labelStyle: TextStyle(color: Colors.white60),
+                                  labelStyle: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
                                 ),
                                 items: _devices.map((device) {
                                   return DropdownMenuItem<BluetoothDevice>(
@@ -465,8 +480,8 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                                     icon: const Icon(Icons.refresh),
                                     label: const Text('기기 갱신'),
                                     style: OutlinedButton.styleFrom(
-                                      foregroundColor: Colors.white70,
-                                      side: BorderSide(color: Colors.white.withOpacity(0.15)),
+                                      foregroundColor: isDark ? Colors.white70 : Colors.black87,
+                                      side: BorderSide(color: isDark ? Colors.white.withOpacity(0.2) : const Color(0xFFCBD5E1)),
                                       padding: const EdgeInsets.symmetric(vertical: 14),
                                     ),
                                   ),
@@ -488,7 +503,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: BluetoothPrintService.instance.isConnected
                                           ? Colors.redAccent
-                                          : const Color(0xFF7C4DFF),
+                                          : const Color(0xFF6366F1),
                                       foregroundColor: Colors.white,
                                       padding: const EdgeInsets.symmetric(vertical: 14),
                                     ),
@@ -511,21 +526,27 @@ class _SettingsTabViewState extends State<SettingsTabView> {
   }
 
   Widget _buildLayoutSettingsCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
-      color: const Color(0xFF1C1936),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: isDark ? const Color(0xFF1E2030) : Colors.white,
+      elevation: 3,
+      shadowColor: Colors.black12,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: isDark ? Colors.white.withOpacity(0.18) : const Color(0xFFCBD5E1), width: 1.2),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.layers, color: Color(0xFFFF1E1E)),
-                SizedBox(width: 8),
+                const Icon(Icons.layers, color: Color(0xFFFF1E1E)),
+                const SizedBox(width: 8),
                 Text(
                   '라벨 레이아웃 상세 설정',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                  style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ],
             ),
@@ -557,7 +578,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
               },
             ),
             
-            const Divider(color: Colors.white12, height: 24),
+            Divider(color: isDark ? Colors.white12 : Colors.black12, height: 24),
             
             _buildLineSettingsTable(),
           ],
@@ -575,13 +596,14 @@ class _SettingsTabViewState extends State<SettingsTabView> {
     required String displayValue,
     required ValueChanged<double> onChanged,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+            Text(label, style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 13, fontWeight: FontWeight.w600)),
             Text(displayValue, style: const TextStyle(color: Colors.greenAccent, fontSize: 13, fontWeight: FontWeight.bold)),
           ],
         ),
@@ -591,7 +613,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
           max: max,
           divisions: divisions,
           activeColor: const Color(0xFFFF1E1E),
-          inactiveColor: const Color(0xFF252147),
+          inactiveColor: isDark ? const Color(0xFF252147) : const Color(0xFFE2E8F0),
           onChanged: onChanged,
         ),
         const SizedBox(height: 8),
@@ -600,6 +622,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
   }
 
   Widget _buildLineSettingsTable() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Table(
       columnWidths: const {
         0: FlexColumnWidth(2.5),
@@ -608,12 +631,12 @@ class _SettingsTabViewState extends State<SettingsTabView> {
       },
       defaultVerticalAlignment: TableCellVerticalAlignment.middle,
       children: [
-        const TableRow(
-          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white12, width: 1))),
+        TableRow(
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: isDark ? Colors.white12 : Colors.black12, width: 1))),
           children: [
-            Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('인쇄 행 (Line)', style: TextStyle(color: Colors.white54, fontSize: 12))),
-            Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Center(child: Text('표기 여부', style: TextStyle(color: Colors.white54, fontSize: 12)))),
-            Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Center(child: Text('글씨 크기 (pt)', style: TextStyle(color: Colors.white54, fontSize: 12)))),
+            Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text('인쇄 행 (Line)', style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 12, fontWeight: FontWeight.bold))),
+            Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Center(child: Text('표기 여부', style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 12, fontWeight: FontWeight.bold)))),
+            Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Center(child: Text('글씨 크기 (pt)', style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 12, fontWeight: FontWeight.bold)))),
           ],
         ),
         _buildLineRow(
@@ -689,12 +712,13 @@ class _SettingsTabViewState extends State<SettingsTabView> {
     required ValueChanged<bool> onShowChanged,
     required ValueChanged<double> onSizeChanged,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return TableRow(
-      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white10, width: 0.5))),
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: isDark ? Colors.white10 : Colors.black12, width: 0.5))),
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 13)),
+          child: Text(label, style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13, fontWeight: FontWeight.w600)),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -717,7 +741,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.remove, color: Colors.white54, size: 14),
+                  icon: Icon(Icons.remove, color: isDark ? Colors.white54 : Colors.black54, size: 14),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () {
@@ -728,11 +752,11 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                 const SizedBox(width: 4),
                 Text(
                   size.toStringAsFixed(1),
-                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 12, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(width: 4),
                 IconButton(
-                  icon: const Icon(Icons.add, color: Colors.white54, size: 14),
+                  icon: Icon(Icons.add, color: isDark ? Colors.white54 : Colors.black54, size: 14),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () {

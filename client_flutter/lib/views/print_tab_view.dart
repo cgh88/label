@@ -286,9 +286,6 @@ class _PrintTabViewState extends State<PrintTabView> {
     
     final qty = int.tryParse(_qtyController.text) ?? 1;
     final storage = _selectedStorage;
-    final String storageDisplay = storage == '입고' ? '입고' : '$storage 보관';
-    final String prepLabel = storage == '입고' ? '입고일시' : '준비일시';
-    final bool isTiny = _labelHeight <= 22; // 초소형 라벨 모드 (≤22mm)
 
     for (int i = 0; i < qty; i++) {
       doc.addPage(
@@ -479,7 +476,7 @@ class _PrintTabViewState extends State<PrintTabView> {
                   const SizedBox(height: 16),
 
                   SizedBox(
-                    height: 42,
+                    height: 46,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       itemCount: categoriesList.length + 1,
@@ -499,7 +496,7 @@ class _PrintTabViewState extends State<PrintTabView> {
                             },
                             borderRadius: BorderRadius.circular(10),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                               decoration: BoxDecoration(
                                 gradient: isSelected
                                     ? const LinearGradient(
@@ -510,14 +507,29 @@ class _PrintTabViewState extends State<PrintTabView> {
                                     : null,
                                 color: isSelected
                                     ? null
-                                    : (isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.03)),
+                                    : (isDark ? const Color(0xFF1E2030) : Colors.white),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
                                   color: isSelected
                                       ? Colors.transparent
-                                      : (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08)),
-                                  width: 1,
+                                      : (isDark ? Colors.white.withOpacity(0.2) : const Color(0xFFCBD5E1)),
+                                  width: isSelected ? 0 : 1.2,
                                 ),
+                                boxShadow: isSelected
+                                    ? [
+                                        BoxShadow(
+                                          color: const Color(0xFF6366F1).withOpacity(0.35),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        )
+                                      ]
+                                    : [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        )
+                                      ],
                               ),
                               child: Center(
                                 child: Text(
@@ -525,9 +537,9 @@ class _PrintTabViewState extends State<PrintTabView> {
                                   style: TextStyle(
                                     color: isSelected
                                         ? Colors.white
-                                        : (isDark ? Colors.white70 : Colors.black87),
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                                    fontSize: 13,
+                                        : (isDark ? Colors.white : const Color(0xFF1E293B)),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
                                   ),
                                 ),
                               ),
@@ -544,15 +556,15 @@ class _PrintTabViewState extends State<PrintTabView> {
                         ? Center(
                             child: Text(
                               '해당하는 재료가 없습니다.',
-                              style: TextStyle(color: isDark ? Colors.white.withOpacity(0.3) : Colors.black.withOpacity(0.3), fontSize: 15),
+                              style: TextStyle(color: isDark ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.4), fontSize: 16, fontWeight: FontWeight.w600),
                             ),
                           )
                         : GridView.builder(
                             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: 140,
-                              mainAxisExtent: 90,
-                              crossAxisSpacing: 10,
-                              mainAxisSpacing: 10,
+                              maxCrossAxisExtent: 165,
+                              mainAxisExtent: 110,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
                             ),
                             itemCount: _filteredIngredients.length,
                             itemBuilder: (context, index) {
@@ -562,27 +574,36 @@ class _PrintTabViewState extends State<PrintTabView> {
                               
                               return InkWell(
                                 onTap: () => _selectIngredient(ing),
-                                child: Container(
-                                  padding: const EdgeInsets.all(10),
+                                borderRadius: BorderRadius.circular(12),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 150),
+                                  padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
                                     color: isSelected
-                                        ? const Color(0xFF6366F1).withOpacity(0.08)
-                                        : (isDark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.02)),
-                                    borderRadius: BorderRadius.circular(10),
+                                        ? (isDark ? const Color(0xFF6366F1).withOpacity(0.22) : const Color(0xFFEEF2FF))
+                                        : (isDark ? const Color(0xFF1E2030) : Colors.white),
+                                    borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                       color: isSelected
-                                          ? const Color(0xFF6366F1)
-                                          : (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08)),
-                                      width: isSelected ? 1.5 : 1.0,
+                                          ? (isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5))
+                                          : (isDark ? Colors.white.withOpacity(0.18) : const Color(0xFFCBD5E1)),
+                                      width: isSelected ? 2.5 : 1.2,
                                     ),
                                     boxShadow: isSelected
                                         ? [
                                             BoxShadow(
-                                              color: const Color(0xFF6366F1).withOpacity(0.25),
+                                              color: const Color(0xFF6366F1).withOpacity(isDark ? 0.4 : 0.3),
                                               blurRadius: 10,
+                                              offset: const Offset(0, 3),
                                             )
                                           ]
-                                        : null,
+                                        : [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                                              blurRadius: 5,
+                                              offset: const Offset(0, 2),
+                                            )
+                                          ],
                                   ),
                                   child: Stack(
                                     children: [
@@ -590,16 +611,17 @@ class _PrintTabViewState extends State<PrintTabView> {
                                         top: 0,
                                         left: 0,
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                                           decoration: BoxDecoration(
-                                            color: catColor.withOpacity(0.15),
-                                            borderRadius: BorderRadius.circular(4),
+                                            color: catColor.withOpacity(isDark ? 0.25 : 0.15),
+                                            borderRadius: BorderRadius.circular(5),
+                                            border: Border.all(color: catColor.withOpacity(0.4), width: 0.8),
                                           ),
                                           child: Text(
                                             ing.category,
                                             style: TextStyle(
-                                              color: catColor,
-                                              fontSize: 9,
+                                              color: isDark ? catColor.computeLuminance() < 0.5 ? Colors.white : catColor : catColor,
+                                              fontSize: 11,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
@@ -610,16 +632,16 @@ class _PrintTabViewState extends State<PrintTabView> {
                                           top: 0,
                                           right: 0,
                                           child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
                                             decoration: BoxDecoration(
-                                              color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
-                                              borderRadius: BorderRadius.circular(3),
+                                              color: isDark ? Colors.white.withOpacity(0.15) : const Color(0xFFE2E8F0),
+                                              borderRadius: BorderRadius.circular(4),
                                             ),
                                             child: Text(
                                               ing.abbr,
                                               style: TextStyle(
-                                                color: isDark ? Colors.white70 : Colors.black87,
-                                                fontSize: 9,
+                                                color: isDark ? Colors.white : const Color(0xFF1E293B),
+                                                fontSize: 11,
                                                 fontWeight: FontWeight.w800,
                                               ),
                                             ),
@@ -629,13 +651,14 @@ class _PrintTabViewState extends State<PrintTabView> {
                                         child: Align(
                                           alignment: Alignment.bottomCenter,
                                           child: Padding(
-                                            padding: const EdgeInsets.only(top: 20.0),
+                                            padding: const EdgeInsets.only(top: 26.0),
                                             child: Text(
                                               ing.name,
                                               style: TextStyle(
-                                                color: isDark ? Colors.white : Colors.black,
-                                                fontSize: 12,
+                                                color: isDark ? Colors.white : Colors.black87,
+                                                fontSize: 14,
                                                 fontWeight: FontWeight.bold,
+                                                height: 1.25,
                                               ),
                                               maxLines: 2,
                                               overflow: TextOverflow.ellipsis,
@@ -664,365 +687,412 @@ class _PrintTabViewState extends State<PrintTabView> {
                 ? Center(
                     child: Text(
                       '인쇄할 재료를 선택해 주세요.',
-                      style: TextStyle(color: isDark ? Colors.white.withOpacity(0.3) : Colors.black.withOpacity(0.3), fontSize: 15),
+                      style: TextStyle(color: isDark ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.4), fontSize: 16, fontWeight: FontWeight.w600),
                     ),
                   )
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          '보관위치',
-                          style: TextStyle(
-                            color: isDark ? Colors.white : Colors.black,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            ..._selectedIngredient!.storage.keys.map((loc) {
-                              final isSelected = _selectedStorage == loc;
-                              return ChoiceChip(
-                                label: Text(loc),
-                                selected: isSelected,
-                                onSelected: (val) {
-                                  if (val) {
-                                    setState(() {
-                                      _selectedStorage = loc;
-                                    });
-                                  }
-                                },
-                                backgroundColor: isDark ? const Color(0xFF13141F) : const Color(0xFFFFFFFF),
-                                selectedColor: const Color(0xFFFF1E1E),
-                                labelStyle: TextStyle(
-                                  color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                : Column(
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                '보관위치',
+                                style: TextStyle(
+                                  color: isDark ? Colors.white : Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
                                 ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  side: BorderSide(
-                                    color: isSelected
-                                        ? Colors.transparent
-                                        : (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08)),
+                              ),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  ..._selectedIngredient!.storage.keys.map((loc) {
+                                    final isSelected = _selectedStorage == loc;
+                                    return ChoiceChip(
+                                      label: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                        child: Text(loc),
+                                      ),
+                                      selected: isSelected,
+                                      onSelected: (val) {
+                                        if (val) {
+                                          setState(() {
+                                            _selectedStorage = loc;
+                                          });
+                                        }
+                                      },
+                                      backgroundColor: isDark ? const Color(0xFF1E2030) : Colors.white,
+                                      selectedColor: const Color(0xFFFF1E1E),
+                                      labelStyle: TextStyle(
+                                        color: isSelected ? Colors.white : (isDark ? Colors.white : const Color(0xFF1E293B)),
+                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        side: BorderSide(
+                                          color: isSelected
+                                              ? Colors.transparent
+                                              : (isDark ? Colors.white.withOpacity(0.2) : const Color(0xFFCBD5E1)),
+                                          width: isSelected ? 0 : 1.2,
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                  ChoiceChip(
+                                    label: const Padding(
+                                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                      child: Text('입고'),
+                                    ),
+                                    selected: _selectedStorage == '입고',
+                                    onSelected: (val) {
+                                      if (val) {
+                                        setState(() {
+                                          _selectedStorage = '입고';
+                                        });
+                                      }
+                                    },
+                                    backgroundColor: isDark ? const Color(0xFF1E2030) : Colors.white,
+                                    selectedColor: const Color(0xFFFF1E1E),
+                                    labelStyle: TextStyle(
+                                      color: _selectedStorage == '입고' ? Colors.white : (isDark ? Colors.white : const Color(0xFF1E293B)),
+                                      fontWeight: _selectedStorage == '입고' ? FontWeight.bold : FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      side: BorderSide(
+                                        color: _selectedStorage == '입고'
+                                            ? Colors.transparent
+                                            : (isDark ? Colors.white.withOpacity(0.2) : const Color(0xFFCBD5E1)),
+                                        width: _selectedStorage == '입고' ? 0 : 1.2,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              );
-                            }),
-                            ChoiceChip(
-                              label: const Text('입고'),
-                              selected: _selectedStorage == '입고',
-                              onSelected: (val) {
-                                if (val) {
-                                  setState(() {
-                                    _selectedStorage = '입고';
-                                  });
-                                }
-                              },
-                              backgroundColor: isDark ? const Color(0xFF13141F) : const Color(0xFFFFFFFF),
-                              selectedColor: const Color(0xFFFF1E1E),
-                              labelStyle: TextStyle(
-                                color: _selectedStorage == '입고' ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
-                                fontWeight: _selectedStorage == '입고' ? FontWeight.bold : FontWeight.normal,
+                                ],
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                side: BorderSide(
-                                  color: _selectedStorage == '입고'
-                                      ? Colors.transparent
-                                      : (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08)),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
+                              const SizedBox(height: 24),
 
-                        Text(
-                          '준비일시 설정',
-                          style: TextStyle(
-                            color: isDark ? Colors.white : Colors.black,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                                decoration: BoxDecoration(
-                                  color: isDark ? const Color(0xFF13141F) : const Color(0xFFFFFFFF),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08)),
-                                ),
-                                child: Text(
-                                  _formatDateTime(_prepTime),
-                                  style: TextStyle(
-                                    color: isDark ? Colors.white : Colors.black87,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              Text(
+                                '준비일시 설정',
+                                style: TextStyle(
+                                  color: isDark ? Colors.white : Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            ElevatedButton(
-                              onPressed: () async {
-                                final date = await showDatePicker(
-                                  context: context,
-                                  initialDate: _prepTime,
-                                  firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                                  lastDate: DateTime.now().add(const Duration(days: 365)),
-                                );
-                                if (date != null) {
-                                  final time = await showTimePicker(
-                                    context: context,
-                                    initialTime: TimeOfDay.fromDateTime(_prepTime),
-                                  );
-                                  if (time != null) {
-                                    setState(() {
-                                      _prepTime = DateTime(
-                                        date.year,
-                                        date.month,
-                                        date.day,
-                                        time.hour,
-                                        time.minute,
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? const Color(0xFF13141F) : const Color(0xFFFFFFFF),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08)),
+                                      ),
+                                      child: Text(
+                                        _formatDateTime(_prepTime),
+                                        style: TextStyle(
+                                          color: isDark ? Colors.white : Colors.black87,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      final date = await showDatePicker(
+                                        context: context,
+                                        initialDate: _prepTime,
+                                        firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                                        lastDate: DateTime.now().add(const Duration(days: 365)),
                                       );
-                                    });
-                                  }
-                                }
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFFF1E1E),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      if (date != null) {
+                                        final time = await showTimePicker(
+                                          context: context,
+                                          initialTime: TimeOfDay.fromDateTime(_prepTime),
+                                        );
+                                        if (time != null) {
+                                          setState(() {
+                                            _prepTime = DateTime(
+                                              date.year,
+                                              date.month,
+                                              date.day,
+                                              time.hour,
+                                              time.minute,
+                                            );
+                                          });
+                                        }
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFFF1E1E),
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                    child: const Icon(Icons.calendar_month, color: Colors.white),
+                                  ),
+                                ],
                               ),
-                              child: const Icon(Icons.calendar_month, color: Colors.white),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(child: _buildTimeAdjustButton('-1일', () => setState(() => _prepTime = _prepTime.subtract(const Duration(days: 1))))),
-                            const SizedBox(width: 4),
-                            Expanded(child: _buildTimeAdjustButton('+1일', () => setState(() => _prepTime = _prepTime.add(const Duration(days: 1))))),
-                            const SizedBox(width: 4),
-                            Expanded(child: _buildTimeAdjustButton('-1시간', () => setState(() => _prepTime = _prepTime.subtract(const Duration(hours: 1))))),
-                            const SizedBox(width: 4),
-                            Expanded(child: _buildTimeAdjustButton('+1시간', () => setState(() => _prepTime = _prepTime.add(const Duration(hours: 1))))),
-                            const SizedBox(width: 4),
-                            Expanded(child: _buildTimeAdjustButton('현재', () => setState(() => _prepTime = DateTime.now()))),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              const SizedBox(height: 12),
+                              Row(
                                 children: [
-                                  Text(
-                                    '담당자',
-                                    style: TextStyle(
-                                      color: isDark ? Colors.white : Colors.black,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextField(
-                                    controller: _staffController,
-                                    style: TextStyle(color: isDark ? Colors.white : Colors.black87),
-                                    decoration: InputDecoration(
-                                      filled: true,
-                                      fillColor: isDark ? const Color(0xFF13141F) : const Color(0xFFFFFFFF),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide(color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08)),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: const BorderSide(color: Color(0xFF6366F1)),
-                                      ),
-                                    ),
-                                    onChanged: _saveStaffName,
-                                  ),
+                                  Expanded(child: _buildTimeAdjustButton('-1일', () => setState(() => _prepTime = _prepTime.subtract(const Duration(days: 1))))),
+                                  const SizedBox(width: 4),
+                                  Expanded(child: _buildTimeAdjustButton('+1일', () => setState(() => _prepTime = _prepTime.add(const Duration(days: 1))))),
+                                  const SizedBox(width: 4),
+                                  Expanded(child: _buildTimeAdjustButton('-1시간', () => setState(() => _prepTime = _prepTime.subtract(const Duration(hours: 1))))),
+                                  const SizedBox(width: 4),
+                                  Expanded(child: _buildTimeAdjustButton('+1시간', () => setState(() => _prepTime = _prepTime.add(const Duration(hours: 1))))),
+                                  const SizedBox(width: 4),
+                                  Expanded(child: _buildTimeAdjustButton('현재', () => setState(() => _prepTime = DateTime.now()))),
                                 ],
                               ),
-                            ),
-                            const SizedBox(width: 16),
-                            SizedBox(
-                              width: 100,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '출력수량',
-                                    style: TextStyle(
-                                      color: isDark ? Colors.white : Colors.black,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextField(
-                                    controller: _qtyController,
-                                    keyboardType: TextInputType.number,
-                                    style: TextStyle(color: isDark ? Colors.white : Colors.black87),
-                                    decoration: InputDecoration(
-                                      filled: true,
-                                      fillColor: isDark ? const Color(0xFF13141F) : const Color(0xFFFFFFFF),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide(color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08)),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: const BorderSide(color: Color(0xFF6366F1)),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 32),
+                              const SizedBox(height: 24),
 
-                        Text(
-                          '출력 라벨 프리뷰',
-                          style: TextStyle(
-                            color: isDark ? Colors.white : Colors.black,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Center(
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              width: _labelWidth * 6.4,
-                              height: _labelHeight * 6.4,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 0.0,
-                                vertical: 4.5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                border: Border.all(color: const Color(0xFF94A3B8), width: 1),
-                                borderRadius: BorderRadius.circular(4),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black12,
-                                    blurRadius: 15,
-                                    offset: Offset(0, 4),
-                                  )
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '담당자',
+                                          style: TextStyle(
+                                            color: isDark ? Colors.white : Colors.black,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        TextField(
+                                          controller: _staffController,
+                                          style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                                          decoration: InputDecoration(
+                                            filled: true,
+                                            fillColor: isDark ? const Color(0xFF13141F) : const Color(0xFFFFFFFF),
+                                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                            enabledBorder: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: BorderSide(color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08)),
+                                            ),
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: const BorderSide(color: Color(0xFF6366F1)),
+                                            ),
+                                          ),
+                                          onChanged: _saveStaffName,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  SizedBox(
+                                    width: 100,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '출력수량',
+                                          style: TextStyle(
+                                            color: isDark ? Colors.white : Colors.black,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        TextField(
+                                          controller: _qtyController,
+                                          keyboardType: TextInputType.number,
+                                          style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                                          decoration: InputDecoration(
+                                            filled: true,
+                                            fillColor: isDark ? const Color(0xFF13141F) : const Color(0xFFFFFFFF),
+                                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                            enabledBorder: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: BorderSide(color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08)),
+                                            ),
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: const BorderSide(color: Color(0xFF6366F1)),
+                                            ),
+                                          ),
+                                          onChanged: (_) {
+                                            setState(() {});
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ],
                               ),
-                              child: Padding(
-                                padding: EdgeInsets.only(
-                                  left: _labelWidth * (_leftPadding / 100.0) * 6.4,
-                                  right: 13.5,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    if (_showLine1) ...[
-                                      Text(
-                                        '[${_selectedStorage == '입고' ? '입고' : '$_selectedStorage 보관'}] ${_selectedIngredient!.name}${_selectedIngredient!.abbr.isNotEmpty ? " (${_selectedIngredient!.abbr})" : ""}',
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontSize: screenFontSize1,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                    if (_showLine1 && (_showLine2 || _showLine3 || _showLine4))
-                                      SizedBox(height: screenVerticalGap),
-                                    if (_showLine2) ...[
-                                      Text(
-                                        '준비: ${_formatDateTime(_prepTime)}',
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontSize: screenFontSize2,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                    if (_showLine2 && (_showLine3 || _showLine4))
-                                      SizedBox(height: screenVerticalGap),
-                                    if (_showLine3) ...[
-                                      Text(
-                                        '폐기: ${_selectedStorage == '입고' ? '상시 보관' : _formatDateTime(_computeExpiration(_selectedIngredient!, _selectedStorage))}',
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontSize: screenFontSize3,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                    if (_showLine3 && _showLine4)
-                                      SizedBox(height: screenVerticalGap),
-                                    if (_showLine4) ...[
-                                      Text(
-                                        '(담당: ${_staffController.text.isEmpty ? '-' : _staffController.text})',
-                                        style: TextStyle(
-                                          color: Colors.black54,
-                                          fontSize: screenFontSize4,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ],
+                              const SizedBox(height: 32),
+
+                              Text(
+                                '출력 라벨 프리뷰',
+                                style: TextStyle(
+                                  color: isDark ? Colors.white : Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
                                 ),
                               ),
-                            ),
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Center(
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    width: _labelWidth * 6.4,
+                                    height: _labelHeight * 6.4,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 0.0,
+                                      vertical: 4.5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      border: Border.all(color: const Color(0xFF94A3B8), width: 1),
+                                      borderRadius: BorderRadius.circular(4),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Colors.black12,
+                                          blurRadius: 15,
+                                          offset: Offset(0, 4),
+                                        )
+                                      ],
+                                    ),
+                                    child: Padding(
+                                      padding: EdgeInsets.only(
+                                        left: _labelWidth * (_leftPadding / 100.0) * 6.4,
+                                        right: 13.5,
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          if (_showLine1) ...[
+                                            Text(
+                                              '[${_selectedStorage == '입고' ? '입고' : '$_selectedStorage 보관'}] ${_selectedIngredient!.name}${_selectedIngredient!.abbr.isNotEmpty ? " (${_selectedIngredient!.abbr})" : ""}',
+                                              style: TextStyle(
+                                                color: Colors.black,
+                                                fontSize: screenFontSize1,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                          if (_showLine1 && (_showLine2 || _showLine3 || _showLine4))
+                                            SizedBox(height: screenVerticalGap),
+                                          if (_showLine2) ...[
+                                            Text(
+                                              '준비: ${_formatDateTime(_prepTime)}',
+                                              style: TextStyle(
+                                                color: Colors.black,
+                                                fontSize: screenFontSize2,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                          if (_showLine2 && (_showLine3 || _showLine4))
+                                            SizedBox(height: screenVerticalGap),
+                                          if (_showLine3) ...[
+                                            Text(
+                                              '폐기: ${_selectedStorage == '입고' ? '상시 보관' : _formatDateTime(_computeExpiration(_selectedIngredient!, _selectedStorage))}',
+                                              style: TextStyle(
+                                                color: Colors.black,
+                                                fontSize: screenFontSize3,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                          if (_showLine3 && _showLine4)
+                                            SizedBox(height: screenVerticalGap),
+                                          if (_showLine4) ...[
+                                            Text(
+                                              '(담당: ${_staffController.text.isEmpty ? '-' : _staffController.text})',
+                                              style: TextStyle(
+                                                color: Colors.black54,
+                                                fontSize: screenFontSize4,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 24),
+                      ),
 
-                        ElevatedButton.icon(
-                          onPressed: _printLabel,
-                          icon: const Icon(Icons.print, color: Colors.white),
-                          label: const Text('라벨 출력하기', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF1E1E),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                      // Fixed Sticky Bottom Bar with Print Button
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF0F111A) : Colors.white,
+                          border: Border(
+                            top: BorderSide(
+                              color: isDark ? Colors.white.withOpacity(0.12) : const Color(0xFFCBD5E1),
+                              width: 1.2,
                             ),
-                            elevation: 4,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(isDark ? 0.35 : 0.08),
+                              blurRadius: 10,
+                              offset: const Offset(0, -3),
+                            ),
+                          ],
+                        ),
+                        child: SafeArea(
+                          top: false,
+                          child: ElevatedButton.icon(
+                            onPressed: _printLabel,
+                            icon: const Icon(Icons.print, color: Colors.white, size: 24),
+                            label: Text(
+                              '${_selectedIngredient!.name} 라벨 출력하기 (${int.tryParse(_qtyController.text) ?? 1}장)',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF1E1E),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 4,
+                            ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
           ),
         ],
@@ -1035,16 +1105,20 @@ class _PrintTabViewState extends State<PrintTabView> {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: isDark ? const Color(0xFF13141F) : const Color(0xFFFFFFFF),
-        foregroundColor: isDark ? Colors.white70 : Colors.black87,
+        backgroundColor: isDark ? const Color(0xFF1E2030) : Colors.white,
+        foregroundColor: isDark ? Colors.white : const Color(0xFF1E293B),
         padding: const EdgeInsets.symmetric(vertical: 14),
-        elevation: 0,
+        elevation: 1,
+        shadowColor: Colors.black12,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08)),
+          side: BorderSide(
+            color: isDark ? Colors.white.withOpacity(0.2) : const Color(0xFFCBD5E1),
+            width: 1.2,
+          ),
         ),
       ),
-      child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+      child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
     );
   }
 }

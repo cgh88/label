@@ -99,7 +99,7 @@ class _LoginViewState extends State<LoginView> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = '서버 연결 실패: 로그인하려면 서버 연결이 필요합니다.';
+          _errorMessage = '서버 연결에 실패했습니다. 아래 [서버 없이 바로 테스트] 버튼을 터치하여 바로 사용해 보세요.';
         });
       }
     }
@@ -354,6 +354,60 @@ class _LoginViewState extends State<LoginView> {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        Row(
+                          children: [
+                            Expanded(child: Divider(color: isDark ? Colors.white24 : Colors.black12)),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              child: Text(
+                                '오프라인 / 테스트 모드',
+                                style: TextStyle(
+                                  color: isDark ? Colors.white54 : Colors.black45,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            Expanded(child: Divider(color: isDark ? Colors.white24 : Colors.black12)),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Offline Test Mode Direct Start Button
+                        OutlinedButton.icon(
+                          onPressed: () => widget.onLoginSuccess('테스트 관리자', 'admin'),
+                          icon: const Icon(Icons.flash_on, color: Colors.amberAccent, size: 20),
+                          label: const Text(
+                            '서버 없이 바로 테스트 (관리자)',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: isDark ? Colors.white : const Color(0xFF0F172A),
+                            side: BorderSide(
+                              color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                              width: 1.5,
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        TextButton(
+                          onPressed: () => widget.onLoginSuccess('테스트 스태프', 'staff'),
+                          child: Text(
+                            '서버 없이 일반 사용자 모드로 테스트',
+                            style: TextStyle(
+                              color: isDark ? Colors.white60 : Colors.black54,
+                              fontSize: 13,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
                         ),
                       ],
                     ),
