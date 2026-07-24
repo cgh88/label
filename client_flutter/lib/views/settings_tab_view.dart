@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import '../services/api_sync_service.dart';
 import '../services/bluetooth_service.dart';
+import '../services/database_service.dart';
 import '../services/layout_events.dart';
 
 class SettingsTabView extends StatefulWidget {
@@ -44,11 +45,13 @@ class _SettingsTabViewState extends State<SettingsTabView> {
     _loadSettings();
     _initBluetooth();
     BluetoothPrintService.instance.connectionRevision.addListener(_onConnectionChanged);
+    DatabaseService.instance.dataRevision.addListener(_onDataChanged);
   }
 
   @override
   void dispose() {
     BluetoothPrintService.instance.connectionRevision.removeListener(_onConnectionChanged);
+    DatabaseService.instance.dataRevision.removeListener(_onDataChanged);
     _widthController.dispose();
     _heightController.dispose();
     _apiUrlController.dispose();
@@ -58,6 +61,12 @@ class _SettingsTabViewState extends State<SettingsTabView> {
   void _onConnectionChanged() {
     if (mounted) {
       _loadBluetoothDevices();
+    }
+  }
+
+  void _onDataChanged() {
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -339,7 +348,37 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '데이터 버전:',
+                      style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.3)),
+                        ),
+                        child: Text(
+                          DatabaseService.instance.dataVersionDisplay,
+                          style: const TextStyle(
+                            color: Color(0xFF6366F1),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'monospace',
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
                 TextField(
                   controller: _apiUrlController,
                   style: TextStyle(color: isDark ? Colors.white : Colors.black87),

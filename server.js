@@ -287,6 +287,12 @@ function allAsync(sql, params = []) {
     });
 }
 
+async function touchDbLastUpdatedAsync() {
+    const nowIso = new Date().toISOString();
+    await runAsync("INSERT OR REPLACE INTO db_metadata (key, value) VALUES ('last_updated', ?)", [nowIso]);
+    return nowIso;
+}
+
 async function seedDefaultsAsync() {
     await runAsync("BEGIN TRANSACTION");
     try {
@@ -1023,6 +1029,7 @@ app.post('/api/ingredients', requireAdmin, async (req, res) => {
             await finalizeAsync(stStmt);
         }
 
+        await touchDbLastUpdatedAsync();
         await runAsync("COMMIT");
         res.status(201).json({ success: true });
     } catch (err) {
@@ -1040,6 +1047,7 @@ app.delete('/api/ingredients/:name', requireAdmin, async (req, res) => {
         await runAsync("BEGIN TRANSACTION");
         await runAsync("DELETE FROM ingredient_storage WHERE ingredient_name = ?", [name]);
         await runAsync("DELETE FROM ingredients_v2 WHERE name = ?", [name]);
+        await touchDbLastUpdatedAsync();
         await runAsync("COMMIT");
         res.json({ success: true });
     } catch (err) {
@@ -1085,6 +1093,7 @@ app.put('/api/ingredients/:oldName', requireAdmin, async (req, res) => {
             await finalizeAsync(stStmt);
         }
 
+        await touchDbLastUpdatedAsync();
         await runAsync("COMMIT");
         res.json({ success: true });
     } catch (err) {
@@ -1280,6 +1289,7 @@ app.post('/api/ingredients/upload-excel', requireAdmin, (req, res, next) => {
             }
             await finalizeAsync(mappingStmt);
 
+            await touchDbLastUpdatedAsync();
             await runAsync("COMMIT");
             res.json({ success: true, count: parsedIngredients.length });
         } catch (dbErr) {
@@ -1300,6 +1310,7 @@ app.post('/api/ingredients/reset', requireAdmin, async (req, res) => {
         await runAsync("DELETE FROM categories");
         await runAsync("DELETE FROM storage_locations");
         await runAsync("DELETE FROM label_sizes");
+        await touchDbLastUpdatedAsync();
         await runAsync("COMMIT");
 
         await seedDefaultsAsync();

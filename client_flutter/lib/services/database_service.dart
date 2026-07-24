@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io' show File;
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,6 +22,24 @@ class DatabaseService {
   List<Map<String, dynamic>> users = [];
   List<Map<String, dynamic>> printLogs = [];
   String lastUpdated = "";
+
+  final ValueNotifier<int> dataRevision = ValueNotifier<int>(0);
+
+  String get dataVersionDisplay {
+    if (lastUpdated.isEmpty) return '기본 버전';
+    try {
+      final dt = DateTime.parse(lastUpdated).toLocal();
+      final y = dt.year;
+      final m = dt.month.toString().padLeft(2, '0');
+      final d = dt.day.toString().padLeft(2, '0');
+      final hh = dt.hour.toString().padLeft(2, '0');
+      final mm = dt.minute.toString().padLeft(2, '0');
+      final ss = dt.second.toString().padLeft(2, '0');
+      return 'v$y.$m.$d $hh:$mm:$ss';
+    } catch (_) {
+      return 'v$lastUpdated';
+    }
+  }
 
   Future<void> init() async {
     if (kIsWeb) {
@@ -156,6 +174,7 @@ class DatabaseService {
       }
     }
     lastUpdated = _dbData['last_updated'];
+    dataRevision.value++;
   }
 
   Future<void> replaceDatabaseContent(String jsonContent) async {
@@ -169,6 +188,7 @@ class DatabaseService {
         await loadLocalDatabase();
       }
     }
+    dataRevision.value++;
   }
 
   Future<String> getRawJson() async {
