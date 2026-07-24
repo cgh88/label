@@ -1,1075 +1,1116 @@
 {
-  "categories": [
-    {
-      "id": 1,
-      "name": "도우",
-      "emoji": "🍞",
-      "sort_order": 1
-    },
-    {
-      "id": 2,
-      "name": "미트",
-      "emoji": "🍖",
-      "sort_order": 2
-    },
-    {
-      "id": 3,
-      "name": "야채",
-      "emoji": "🥬",
-      "sort_order": 3
-    },
-    {
-      "id": 4,
-      "name": "치즈",
-      "emoji": "🧀",
-      "sort_order": 4
-    },
-    {
-      "id": 5,
-      "name": "소스",
-      "emoji": "🏺",
-      "sort_order": 5
-    },
-    {
-      "id": 6,
-      "name": "캔",
-      "emoji": "🥫",
-      "sort_order": 6
-    },
-    {
-      "id": 7,
-      "name": "기타",
-      "emoji": "🍕",
-      "sort_order": 7
-    }
-  ],
-  "storage_locations": [
-    {
-      "id": 1,
-      "name": "해동",
-      "sort_order": 1
-    },
-    {
-      "id": 2,
-      "name": "워크인 랙산",
-      "sort_order": 2
-    },
-    {
-      "id": 3,
-      "name": "메이크라인",
-      "sort_order": 3
-    },
-    {
-      "id": 4,
-      "name": "소스보틀",
-      "sort_order": 4
-    },
-    {
-      "id": 5,
-      "name": "분할",
-      "sort_order": 5
-    }
-  ],
-  "label_sizes": [
-    {
-      "id": 1,
-      "width": 55,
-      "height": 20,
-      "is_default": 1
-    }
-  ],
-  "ingredients_v2": [
-    {
-      "category": "도우",
-      "name": "크루아상",
-      "abbr": "CRO"
-    },
-    {
-      "category": "미트",
-      "name": "그릴드치킨",
-      "abbr": "E"
-    },
-    {
-      "category": "미트",
-      "name": "베이컨",
-      "abbr": "K"
-    },
-    {
-      "category": "미트",
-      "name": "햄",
-      "abbr": "H"
-    },
-    {
-      "category": "미트",
-      "name": "페페로니",
-      "abbr": "P"
-    },
-    {
-      "category": "미트",
-      "name": "불고기",
-      "abbr": "L"
-    },
-    {
-      "category": "미트",
-      "name": "비프",
-      "abbr": "B"
-    },
-    {
-      "category": "미트",
-      "name": "바베큐 립",
-      "abbr": ""
-    },
-    {
-      "category": "미트",
-      "name": "이탈리안 소시지",
-      "abbr": "I"
-    },
-    {
-      "category": "미트",
-      "name": "치킨스트립",
-      "abbr": "CSHM"
-    },
-    {
-      "category": "미트",
-      "name": "파파스윙",
-      "abbr": "10WG"
-    },
-    {
-      "category": "야채",
-      "name": "양송이 버섯",
-      "abbr": "M"
-    },
-    {
-      "category": "야채",
-      "name": "양파",
-      "abbr": "O"
-    },
-    {
-      "category": "야채",
-      "name": "청피망",
-      "abbr": "G"
-    },
-    {
-      "category": "야채",
-      "name": "토마토",
-      "abbr": "T"
-    },
-    {
-      "category": "치즈",
-      "name": "2 블랜드치즈",
-      "abbr": "2BX"
-    },
-    {
-      "category": "치즈",
-      "name": "3 블랜드치즈",
-      "abbr": "3BX"
-    },
-    {
-      "category": "치즈",
-      "name": "스트링 치즈",
-      "abbr": ""
-    },
-    {
-      "category": "치즈",
-      "name": "체다스트링 치즈",
-      "abbr": "CC"
-    },
-    {
-      "category": "치즈",
-      "name": "스파이시 갈릭치즈롤",
-      "abbr": "SG"
-    },
-    {
-      "category": "치즈",
-      "name": "체다 치즈",
-      "abbr": "CD"
-    },
-    {
-      "category": "치즈",
-      "name": "치즈",
-      "abbr": "X"
-    },
-    {
-      "category": "치즈",
-      "name": "치즈(템퍼링)",
-      "abbr": "X"
-    },
-    {
-      "category": "소스",
-      "name": "페퍼 BBQ 소스",
-      "abbr": "Z"
-    },
-    {
-      "category": "소스",
-      "name": "갈릭 랜치 소스",
-      "abbr": "GR"
-    },
-    {
-      "category": "소스",
-      "name": "갈릭 소스",
-      "abbr": "A"
-    },
-    {
-      "category": "소스",
-      "name": "맥앤치즈 소스",
-      "abbr": ""
-    },
-    {
-      "category": "소스",
-      "name": "불고기 소스",
-      "abbr": ""
-    },
-    {
-      "category": "소스",
-      "name": "알프레도 소스",
-      "abbr": "AL"
-    },
-    {
-      "category": "소스",
-      "name": "제스티버거소스",
-      "abbr": "ZB"
-    },
-    {
-      "category": "캔",
-      "name": "블랙 올리브",
-      "abbr": "R"
-    },
-    {
-      "category": "캔",
-      "name": "파인애플",
-      "abbr": "N"
-    },
-    {
-      "category": "캔",
-      "name": "콘",
-      "abbr": "C"
-    },
-    {
-      "category": "캔",
-      "name": "할라페뇨",
-      "abbr": "J"
-    },
-    {
-      "category": "캔",
-      "name": "피자소스",
-      "abbr": "PS"
-    },
-    {
-      "category": "기타",
-      "name": "고구마 무스",
-      "abbr": "SM"
-    },
-    {
-      "category": "기타",
-      "name": "브라우니",
-      "abbr": ""
-    },
-    {
-      "category": "기타",
-      "name": "솔티드 카라멜",
-      "abbr": ""
-    },
-    {
-      "category": "기타",
-      "name": "초코칩 쿠키",
-      "abbr": ""
-    },
-    {
-      "category": "기타",
-      "name": "큰새우",
-      "abbr": ""
-    },
-    {
-      "category": "기타",
-      "name": "포데이토 청크",
-      "abbr": "U"
-    },
-    {
-      "category": "기타",
-      "name": "피클",
-      "abbr": ""
-    },
-    {
-      "category": "기타",
-      "name": "더스티네이터",
-      "abbr": ""
-    },
-    {
-      "category": "기타",
-      "name": "새니타이저",
-      "abbr": ""
-    },
-    {
-      "category": "기타",
-      "name": "피자소스 배달(소분)",
-      "abbr": ""
-    },
-    {
-      "category": "기타",
-      "name": "이탈리안 허브",
-      "abbr": ""
-    },
-    {
-      "category": "기타",
-      "name": "레드 페퍼",
-      "abbr": ""
-    },
-    {
-      "category": "기타",
-      "name": "후레쉬 파프리카 피클",
-      "abbr": ""
-    },
-    {
-      "category": "도우",
-      "name": "레귤러 분할 3일차",
-      "abbr": "R(3D)"
-    },
-    {
-      "category": "도우",
-      "name": "레귤러 분할 4일차",
-      "abbr": "R(4D)"
-    },
-    {
-      "category": "도우",
-      "name": "레귤러 분할 5일차",
-      "abbr": "R(5D)"
-    },
-    {
-      "category": "도우",
-      "name": "레귤러 분할 6일차",
-      "abbr": "R(6D)"
-    },
-    {
-      "category": "도우",
-      "name": "레귤러 분할 7일차",
-      "abbr": "R(7D)"
-    },
-    {
-      "category": "도우",
-      "name": "라지 분할 3일차",
-      "abbr": "L(3D)"
-    },
-    {
-      "category": "도우",
-      "name": "라지 분할 4일차",
-      "abbr": "L(4D)"
-    },
-    {
-      "category": "도우",
-      "name": "라지 분할 5일차",
-      "abbr": "L(5D)"
-    },
-    {
-      "category": "도우",
-      "name": "라지 분할 6일차",
-      "abbr": "L(6D)"
-    },
-    {
-      "category": "도우",
-      "name": "라지 분할 7일차",
-      "abbr": "L(7D)"
-    },
-    {
-      "category": "도우",
-      "name": "패밀리 분할 3일차",
-      "abbr": "F(3D)"
-    },
-    {
-      "category": "도우",
-      "name": "패밀리 분할 4일차",
-      "abbr": "F(4D)"
-    },
-    {
-      "category": "도우",
-      "name": "패밀리 분할 5일차",
-      "abbr": "F(5D)"
-    },
-    {
-      "category": "도우",
-      "name": "패밀리 분할 6일차",
-      "abbr": "F(6D)"
-    },
-    {
-      "category": "도우",
-      "name": "패밀리 분할 7일차",
-      "abbr": "F(7D)"
-    },
-    {
-      "category": "도우",
-      "name": "파티 분할 3일차",
-      "abbr": "P(3D)"
-    },
-    {
-      "category": "도우",
-      "name": "파티 분할 4일차",
-      "abbr": "P(4D)"
-    },
-    {
-      "category": "도우",
-      "name": "파티 분할 5일차",
-      "abbr": "P(5D)"
-    },
-    {
-      "category": "도우",
-      "name": "파티 분할 6일차",
-      "abbr": "P(6D)"
-    },
-    {
-      "category": "도우",
-      "name": "파티 분할 7일차",
-      "abbr": "P(7D)"
-    }
-  ],
-  "ingredient_storage": [
-    {
-      "ingredient_name": "크루아상",
-      "storage_id": 1,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "그릴드치킨",
-      "storage_id": 1,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "그릴드치킨",
-      "storage_id": 2,
-      "shelf_days": 3
-    },
-    {
-      "ingredient_name": "그릴드치킨",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "베이컨",
-      "storage_id": 1,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "베이컨",
-      "storage_id": 2,
-      "shelf_days": 3
-    },
-    {
-      "ingredient_name": "베이컨",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "햄",
-      "storage_id": 1,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "햄",
-      "storage_id": 2,
-      "shelf_days": 3
-    },
-    {
-      "ingredient_name": "햄",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "페페로니",
-      "storage_id": 1,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "페페로니",
-      "storage_id": 2,
-      "shelf_days": 3
-    },
-    {
-      "ingredient_name": "페페로니",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "불고기",
-      "storage_id": 1,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "불고기",
-      "storage_id": 2,
-      "shelf_days": 3
-    },
-    {
-      "ingredient_name": "불고기",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "비프",
-      "storage_id": 1,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "비프",
-      "storage_id": 2,
-      "shelf_days": 3
-    },
-    {
-      "ingredient_name": "비프",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "바베큐 립",
-      "storage_id": 1,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "바베큐 립",
-      "storage_id": 2,
-      "shelf_days": 3
-    },
-    {
-      "ingredient_name": "바베큐 립",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "이탈리안 소시지",
-      "storage_id": 1,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "이탈리안 소시지",
-      "storage_id": 2,
-      "shelf_days": 3
-    },
-    {
-      "ingredient_name": "이탈리안 소시지",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "치킨스트립",
-      "storage_id": 1,
-      "shelf_days": 5
-    },
-    {
-      "ingredient_name": "치킨스트립",
-      "storage_id": 2,
-      "shelf_days": 3
-    },
-    {
-      "ingredient_name": "치킨스트립",
-      "storage_id": 3,
-      "shelf_days": 1
-    },
-    {
-      "ingredient_name": "파파스윙",
-      "storage_id": 1,
-      "shelf_days": 5
-    },
-    {
-      "ingredient_name": "파파스윙",
-      "storage_id": 2,
-      "shelf_days": 3
-    },
-    {
-      "ingredient_name": "파파스윙",
-      "storage_id": 3,
-      "shelf_days": 1
-    },
-    {
-      "ingredient_name": "양송이 버섯",
-      "storage_id": 2,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "양송이 버섯",
-      "storage_id": 3,
-      "shelf_days": 1
-    },
-    {
-      "ingredient_name": "양파",
-      "storage_id": 2,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "양파",
-      "storage_id": 3,
-      "shelf_days": 1
-    },
-    {
-      "ingredient_name": "청피망",
-      "storage_id": 2,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "청피망",
-      "storage_id": 3,
-      "shelf_days": 1
-    },
-    {
-      "ingredient_name": "토마토",
-      "storage_id": 2,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "토마토",
-      "storage_id": 3,
-      "shelf_days": 1
-    },
-    {
-      "ingredient_name": "2 블랜드치즈",
-      "storage_id": 1,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "2 블랜드치즈",
-      "storage_id": 2,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "2 블랜드치즈",
-      "storage_id": 3,
-      "shelf_days": 1
-    },
-    {
-      "ingredient_name": "3 블랜드치즈",
-      "storage_id": 1,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "3 블랜드치즈",
-      "storage_id": 2,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "3 블랜드치즈",
-      "storage_id": 3,
-      "shelf_days": 1
-    },
-    {
-      "ingredient_name": "스트링 치즈",
-      "storage_id": 1,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "스트링 치즈",
-      "storage_id": 2,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "스트링 치즈",
-      "storage_id": 3,
-      "shelf_days": 1
-    },
-    {
-      "ingredient_name": "체다스트링 치즈",
-      "storage_id": 1,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "체다스트링 치즈",
-      "storage_id": 2,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "체다스트링 치즈",
-      "storage_id": 3,
-      "shelf_days": 1
-    },
-    {
-      "ingredient_name": "스파이시 갈릭치즈롤",
-      "storage_id": 3,
-      "shelf_days": 1
-    },
-    {
-      "ingredient_name": "체다 치즈",
-      "storage_id": 2,
-      "shelf_days": 3
-    },
-    {
-      "ingredient_name": "체다 치즈",
-      "storage_id": 3,
-      "shelf_days": 1
-    },
-    {
-      "ingredient_name": "치즈",
-      "storage_id": 1,
-      "shelf_days": 14
-    },
-    {
-      "ingredient_name": "치즈",
-      "storage_id": 2,
-      "shelf_days": 1
-    },
-    {
-      "ingredient_name": "치즈",
-      "storage_id": 3,
-      "shelf_days": 1
-    },
-    {
-      "ingredient_name": "페퍼 BBQ 소스",
-      "storage_id": 2,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "페퍼 BBQ 소스",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "페퍼 BBQ 소스",
-      "storage_id": 4,
-      "shelf_days": 12
-    },
-    {
-      "ingredient_name": "갈릭 랜치 소스",
-      "storage_id": 2,
-      "shelf_days": 5
-    },
-    {
-      "ingredient_name": "갈릭 랜치 소스",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "갈릭 랜치 소스",
-      "storage_id": 4,
-      "shelf_days": 12
-    },
-    {
-      "ingredient_name": "갈릭 소스",
-      "storage_id": 2,
-      "shelf_days": 5
-    },
-    {
-      "ingredient_name": "갈릭 소스",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "갈릭 소스",
-      "storage_id": 4,
-      "shelf_days": 12
-    },
-    {
-      "ingredient_name": "맥앤치즈 소스",
-      "storage_id": 2,
-      "shelf_days": 5
-    },
-    {
-      "ingredient_name": "맥앤치즈 소스",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "맥앤치즈 소스",
-      "storage_id": 4,
-      "shelf_days": 12
-    },
-    {
-      "ingredient_name": "불고기 소스",
-      "storage_id": 2,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "불고기 소스",
-      "storage_id": 3,
-      "shelf_days": 1
-    },
-    {
-      "ingredient_name": "불고기 소스",
-      "storage_id": 4,
-      "shelf_days": 12
-    },
-    {
-      "ingredient_name": "알프레도 소스",
-      "storage_id": 2,
-      "shelf_days": 5
-    },
-    {
-      "ingredient_name": "알프레도 소스",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "알프레도 소스",
-      "storage_id": 4,
-      "shelf_days": 12
-    },
-    {
-      "ingredient_name": "제스티버거소스",
-      "storage_id": 2,
-      "shelf_days": 5
-    },
-    {
-      "ingredient_name": "제스티버거소스",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "제스티버거소스",
-      "storage_id": 4,
-      "shelf_days": 12
-    },
-    {
-      "ingredient_name": "블랙 올리브",
-      "storage_id": 2,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "블랙 올리브",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "파인애플",
-      "storage_id": 2,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "파인애플",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "콘",
-      "storage_id": 2,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "콘",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "할라페뇨",
-      "storage_id": 2,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "할라페뇨",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "피자소스",
-      "storage_id": 4,
-      "shelf_days": 10
-    },
-    {
-      "ingredient_name": "고구마 무스",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "브라우니",
-      "storage_id": 1,
-      "shelf_days": 14
-    },
-    {
-      "ingredient_name": "브라우니",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "솔티드 카라멜",
-      "storage_id": 1,
-      "shelf_days": 14
-    },
-    {
-      "ingredient_name": "솔티드 카라멜",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "초코칩 쿠키",
-      "storage_id": 1,
-      "shelf_days": 14
-    },
-    {
-      "ingredient_name": "초코칩 쿠키",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "큰새우",
-      "storage_id": 1,
-      "shelf_days": 5
-    },
-    {
-      "ingredient_name": "큰새우",
-      "storage_id": 2,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "큰새우",
-      "storage_id": 3,
-      "shelf_days": 1
-    },
-    {
-      "ingredient_name": "포데이토 청크",
-      "storage_id": 1,
-      "shelf_days": 5
-    },
-    {
-      "ingredient_name": "포데이토 청크",
-      "storage_id": 2,
-      "shelf_days": 3
-    },
-    {
-      "ingredient_name": "포데이토 청크",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "피클",
-      "storage_id": 2,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "피클",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "더스티네이터",
-      "storage_id": 3,
-      "shelf_days": 14
-    },
-    {
-      "ingredient_name": "새니타이저",
-      "storage_id": 4,
-      "shelf_days": 7
-    },
-    {
-      "ingredient_name": "피자소스 배달(소분)",
-      "storage_id": 2,
-      "shelf_days": 1
-    },
-    {
-      "ingredient_name": "피자소스 배달(소분)",
-      "storage_id": 3,
-      "shelf_days": 1
-    },
-    {
-      "ingredient_name": "이탈리안 허브",
-      "storage_id": 3,
-      "shelf_days": 180
-    },
-    {
-      "ingredient_name": "레드 페퍼",
-      "storage_id": 3,
-      "shelf_days": 180
-    },
-    {
-      "ingredient_name": "후레쉬 파프리카 피클",
-      "storage_id": 2,
-      "shelf_days": 14
-    },
-    {
-      "ingredient_name": "후레쉬 파프리카 피클",
-      "storage_id": 3,
-      "shelf_days": 2
-    },
-    {
-      "ingredient_name": "레귤러 분할 3일차",
-      "storage_id": 5,
-      "shelf_days": 24
-    },
-    {
-      "ingredient_name": "레귤러 분할 4일차",
-      "storage_id": 5,
-      "shelf_days": 24
-    },
-    {
-      "ingredient_name": "레귤러 분할 5일차",
-      "storage_id": 5,
-      "shelf_days": 24
-    },
-    {
-      "ingredient_name": "레귤러 분할 6일차",
-      "storage_id": 5,
-      "shelf_days": 24
-    },
-    {
-      "ingredient_name": "레귤러 분할 7일차",
-      "storage_id": 5,
-      "shelf_days": 22
-    },
-    {
-      "ingredient_name": "라지 분할 3일차",
-      "storage_id": 5,
-      "shelf_days": 24
-    },
-    {
-      "ingredient_name": "라지 분할 4일차",
-      "storage_id": 5,
-      "shelf_days": 24
-    },
-    {
-      "ingredient_name": "라지 분할 5일차",
-      "storage_id": 5,
-      "shelf_days": 24
-    },
-    {
-      "ingredient_name": "라지 분할 6일차",
-      "storage_id": 5,
-      "shelf_days": 24
-    },
-    {
-      "ingredient_name": "라지 분할 7일차",
-      "storage_id": 5,
-      "shelf_days": 22
-    },
-    {
-      "ingredient_name": "패밀리 분할 3일차",
-      "storage_id": 5,
-      "shelf_days": 24
-    },
-    {
-      "ingredient_name": "패밀리 분할 4일차",
-      "storage_id": 5,
-      "shelf_days": 24
-    },
-    {
-      "ingredient_name": "패밀리 분할 5일차",
-      "storage_id": 5,
-      "shelf_days": 24
-    },
-    {
-      "ingredient_name": "패밀리 분할 6일차",
-      "storage_id": 5,
-      "shelf_days": 24
-    },
-    {
-      "ingredient_name": "패밀리 분할 7일차",
-      "storage_id": 5,
-      "shelf_days": 22
-    },
-    {
-      "ingredient_name": "파티 분할 3일차",
-      "storage_id": 5,
-      "shelf_days": 24
-    },
-    {
-      "ingredient_name": "파티 분할 4일차",
-      "storage_id": 5,
-      "shelf_days": 24
-    },
-    {
-      "ingredient_name": "파티 분할 5일차",
-      "storage_id": 5,
-      "shelf_days": 24
-    },
-    {
-      "ingredient_name": "파티 분할 6일차",
-      "storage_id": 5,
-      "shelf_days": 24
-    },
-    {
-      "ingredient_name": "파티 분할 7일차",
-      "storage_id": 5,
-      "shelf_days": 22
-    }
-  ]
+    "categories": [
+        {
+            "id": 1,
+            "name": "도우",
+            "emoji": "🍞",
+            "sort_order": 1
+        },
+        {
+            "id": 2,
+            "name": "미트",
+            "emoji": "🍖",
+            "sort_order": 2
+        },
+        {
+            "id": 3,
+            "name": "야채",
+            "emoji": "🥬",
+            "sort_order": 3
+        },
+        {
+            "id": 4,
+            "name": "치즈",
+            "emoji": "🧀",
+            "sort_order": 4
+        },
+        {
+            "id": 5,
+            "name": "소스",
+            "emoji": "🏺",
+            "sort_order": 5
+        },
+        {
+            "id": 6,
+            "name": "캔",
+            "emoji": "🥫",
+            "sort_order": 6
+        },
+        {
+            "id": 7,
+            "name": "기타",
+            "emoji": "🍕",
+            "sort_order": 7
+        }
+    ],
+    "storage_locations": [
+        {
+            "id": 1,
+            "name": "해동",
+            "sort_order": 1,
+            "unit": "day"
+        },
+        {
+            "id": 2,
+            "name": "워크인 랙산",
+            "sort_order": 2,
+            "unit": "day"
+        },
+        {
+            "id": 3,
+            "name": "메이크라인",
+            "sort_order": 3,
+            "unit": "day"
+        },
+        {
+            "id": 4,
+            "name": "소스보틀",
+            "sort_order": 4,
+            "unit": "hour"
+        },
+        {
+            "id": 5,
+            "name": "분할",
+            "sort_order": 5,
+            "unit": "hour"
+        }
+    ],
+    "label_sizes": [
+        {
+            "id": 1,
+            "width": 55,
+            "height": 20,
+            "is_default": 1
+        },
+        {
+            "id": 2,
+            "width": 50,
+            "height": 30,
+            "is_default": 1
+        },
+        {
+            "id": 3,
+            "width": 60,
+            "height": 40,
+            "is_default": 1
+        },
+        {
+            "id": 4,
+            "width": 70,
+            "height": 40,
+            "is_default": 1
+        },
+        {
+            "id": 5,
+            "width": 80,
+            "height": 50,
+            "is_default": 1
+        },
+        {
+            "id": 6,
+            "width": 100,
+            "height": 60,
+            "is_default": 1
+        },
+        {
+            "id": 7,
+            "width": 100,
+            "height": 70,
+            "is_default": 1
+        }
+    ],
+    "ingredients_v2": [
+        {
+            "category": "도우",
+            "name": "크루아상",
+            "abbr": "CRO"
+        },
+        {
+            "category": "미트",
+            "name": "그릴드치킨",
+            "abbr": "E"
+        },
+        {
+            "category": "미트",
+            "name": "베이컨",
+            "abbr": "K"
+        },
+        {
+            "category": "미트",
+            "name": "햄",
+            "abbr": "H"
+        },
+        {
+            "category": "미트",
+            "name": "페페로니",
+            "abbr": "P"
+        },
+        {
+            "category": "미트",
+            "name": "불고기",
+            "abbr": "L"
+        },
+        {
+            "category": "미트",
+            "name": "비프",
+            "abbr": "B"
+        },
+        {
+            "category": "미트",
+            "name": "바베큐 립",
+            "abbr": ""
+        },
+        {
+            "category": "미트",
+            "name": "이탈리안 소시지",
+            "abbr": "I"
+        },
+        {
+            "category": "미트",
+            "name": "치킨스트립",
+            "abbr": "CSHM"
+        },
+        {
+            "category": "미트",
+            "name": "파파스윙",
+            "abbr": "10WG"
+        },
+        {
+            "category": "야채",
+            "name": "양송이 버섯",
+            "abbr": "M"
+        },
+        {
+            "category": "야채",
+            "name": "양파",
+            "abbr": "O"
+        },
+        {
+            "category": "야채",
+            "name": "청피망",
+            "abbr": "G"
+        },
+        {
+            "category": "야채",
+            "name": "토마토",
+            "abbr": "T"
+        },
+        {
+            "category": "치즈",
+            "name": "2 블랜드치즈",
+            "abbr": "2BX"
+        },
+        {
+            "category": "치즈",
+            "name": "3 블랜드치즈",
+            "abbr": "3BX"
+        },
+        {
+            "category": "치즈",
+            "name": "스트링 치즈",
+            "abbr": ""
+        },
+        {
+            "category": "치즈",
+            "name": "체다스트링 치즈",
+            "abbr": "CC"
+        },
+        {
+            "category": "치즈",
+            "name": "스파이시 갈릭치즈롤",
+            "abbr": "SG"
+        },
+        {
+            "category": "치즈",
+            "name": "체다 치즈",
+            "abbr": "CD"
+        },
+        {
+            "category": "치즈",
+            "name": "치즈",
+            "abbr": "X"
+        },
+        {
+            "category": "치즈",
+            "name": "치즈(템퍼링)",
+            "abbr": "X"
+        },
+        {
+            "category": "소스",
+            "name": "페퍼 BBQ 소스",
+            "abbr": "Z"
+        },
+        {
+            "category": "소스",
+            "name": "갈릭 랜치 소스",
+            "abbr": "GR"
+        },
+        {
+            "category": "소스",
+            "name": "갈릭 소스",
+            "abbr": "A"
+        },
+        {
+            "category": "소스",
+            "name": "맥앤치즈 소스",
+            "abbr": ""
+        },
+        {
+            "category": "소스",
+            "name": "불고기 소스",
+            "abbr": ""
+        },
+        {
+            "category": "소스",
+            "name": "알프레도 소스",
+            "abbr": "AL"
+        },
+        {
+            "category": "소스",
+            "name": "제스티버거소스",
+            "abbr": "ZB"
+        },
+        {
+            "category": "캔",
+            "name": "블랙 올리브",
+            "abbr": "R"
+        },
+        {
+            "category": "캔",
+            "name": "파인애플",
+            "abbr": "N"
+        },
+        {
+            "category": "캔",
+            "name": "콘",
+            "abbr": "C"
+        },
+        {
+            "category": "캔",
+            "name": "할라페뇨",
+            "abbr": "J"
+        },
+        {
+            "category": "캔",
+            "name": "피자소스",
+            "abbr": "PS"
+        },
+        {
+            "category": "기타",
+            "name": "고구마 무스",
+            "abbr": "SM"
+        },
+        {
+            "category": "기타",
+            "name": "브라우니",
+            "abbr": ""
+        },
+        {
+            "category": "기타",
+            "name": "솔티드 카라멜",
+            "abbr": ""
+        },
+        {
+            "category": "기타",
+            "name": "초코칩 쿠키",
+            "abbr": ""
+        },
+        {
+            "category": "기타",
+            "name": "큰새우",
+            "abbr": ""
+        },
+        {
+            "category": "기타",
+            "name": "포데이토 청크",
+            "abbr": "U"
+        },
+        {
+            "category": "기타",
+            "name": "피클",
+            "abbr": ""
+        },
+        {
+            "category": "기타",
+            "name": "더스티네이터",
+            "abbr": ""
+        },
+        {
+            "category": "기타",
+            "name": "새니타이저",
+            "abbr": ""
+        },
+        {
+            "category": "기타",
+            "name": "피자소스 배달(소분)",
+            "abbr": ""
+        },
+        {
+            "category": "기타",
+            "name": "이탈리안 허브",
+            "abbr": ""
+        },
+        {
+            "category": "기타",
+            "name": "레드 페퍼",
+            "abbr": ""
+        },
+        {
+            "category": "기타",
+            "name": "후레쉬 파프리카 피클",
+            "abbr": ""
+        },
+        {
+            "category": "도우",
+            "name": "레귤러 분할 3일차",
+            "abbr": "R(3D)"
+        },
+        {
+            "category": "도우",
+            "name": "레귤러 분할 4일차",
+            "abbr": "R(4D)"
+        },
+        {
+            "category": "도우",
+            "name": "레귤러 분할 5일차",
+            "abbr": "R(5D)"
+        },
+        {
+            "category": "도우",
+            "name": "레귤러 분할 6일차",
+            "abbr": "R(6D)"
+        },
+        {
+            "category": "도우",
+            "name": "레귤러 분할 7일차",
+            "abbr": "R(7D)"
+        },
+        {
+            "category": "도우",
+            "name": "라지 분할 3일차",
+            "abbr": "L(3D)"
+        },
+        {
+            "category": "도우",
+            "name": "라지 분할 4일차",
+            "abbr": "L(4D)"
+        },
+        {
+            "category": "도우",
+            "name": "라지 분할 5일차",
+            "abbr": "L(5D)"
+        },
+        {
+            "category": "도우",
+            "name": "라지 분할 6일차",
+            "abbr": "L(6D)"
+        },
+        {
+            "category": "도우",
+            "name": "라지 분할 7일차",
+            "abbr": "L(7D)"
+        },
+        {
+            "category": "도우",
+            "name": "패밀리 분할 3일차",
+            "abbr": "F(3D)"
+        },
+        {
+            "category": "도우",
+            "name": "패밀리 분할 4일차",
+            "abbr": "F(4D)"
+        },
+        {
+            "category": "도우",
+            "name": "패밀리 분할 5일차",
+            "abbr": "F(5D)"
+        },
+        {
+            "category": "도우",
+            "name": "패밀리 분할 6일차",
+            "abbr": "F(6D)"
+        },
+        {
+            "category": "도우",
+            "name": "패밀리 분할 7일차",
+            "abbr": "F(7D)"
+        },
+        {
+            "category": "도우",
+            "name": "파티 분할 3일차",
+            "abbr": "P(3D)"
+        },
+        {
+            "category": "도우",
+            "name": "파티 분할 4일차",
+            "abbr": "P(4D)"
+        },
+        {
+            "category": "도우",
+            "name": "파티 분할 5일차",
+            "abbr": "P(5D)"
+        },
+        {
+            "category": "도우",
+            "name": "파티 분할 6일차",
+            "abbr": "P(6D)"
+        },
+        {
+            "category": "도우",
+            "name": "파티 분할 7일차",
+            "abbr": "P(7D)"
+        }
+    ],
+    "ingredient_storage": [
+        {
+            "ingredient_name": "크루아상",
+            "storage_id": 1,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "그릴드치킨",
+            "storage_id": 1,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "그릴드치킨",
+            "storage_id": 2,
+            "shelf_days": 3
+        },
+        {
+            "ingredient_name": "그릴드치킨",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "베이컨",
+            "storage_id": 1,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "베이컨",
+            "storage_id": 2,
+            "shelf_days": 3
+        },
+        {
+            "ingredient_name": "베이컨",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "햄",
+            "storage_id": 1,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "햄",
+            "storage_id": 2,
+            "shelf_days": 3
+        },
+        {
+            "ingredient_name": "햄",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "페페로니",
+            "storage_id": 1,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "페페로니",
+            "storage_id": 2,
+            "shelf_days": 3
+        },
+        {
+            "ingredient_name": "페페로니",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "불고기",
+            "storage_id": 1,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "불고기",
+            "storage_id": 2,
+            "shelf_days": 3
+        },
+        {
+            "ingredient_name": "불고기",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "비프",
+            "storage_id": 1,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "비프",
+            "storage_id": 2,
+            "shelf_days": 3
+        },
+        {
+            "ingredient_name": "비프",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "바베큐 립",
+            "storage_id": 1,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "바베큐 립",
+            "storage_id": 2,
+            "shelf_days": 3
+        },
+        {
+            "ingredient_name": "바베큐 립",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "이탈리안 소시지",
+            "storage_id": 1,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "이탈리안 소시지",
+            "storage_id": 2,
+            "shelf_days": 3
+        },
+        {
+            "ingredient_name": "이탈리안 소시지",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "치킨스트립",
+            "storage_id": 1,
+            "shelf_days": 5
+        },
+        {
+            "ingredient_name": "치킨스트립",
+            "storage_id": 2,
+            "shelf_days": 3
+        },
+        {
+            "ingredient_name": "치킨스트립",
+            "storage_id": 3,
+            "shelf_days": 1
+        },
+        {
+            "ingredient_name": "파파스윙",
+            "storage_id": 1,
+            "shelf_days": 5
+        },
+        {
+            "ingredient_name": "파파스윙",
+            "storage_id": 2,
+            "shelf_days": 3
+        },
+        {
+            "ingredient_name": "파파스윙",
+            "storage_id": 3,
+            "shelf_days": 1
+        },
+        {
+            "ingredient_name": "양송이 버섯",
+            "storage_id": 2,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "양송이 버섯",
+            "storage_id": 3,
+            "shelf_days": 1
+        },
+        {
+            "ingredient_name": "양파",
+            "storage_id": 2,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "양파",
+            "storage_id": 3,
+            "shelf_days": 1
+        },
+        {
+            "ingredient_name": "청피망",
+            "storage_id": 2,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "청피망",
+            "storage_id": 3,
+            "shelf_days": 1
+        },
+        {
+            "ingredient_name": "토마토",
+            "storage_id": 2,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "토마토",
+            "storage_id": 3,
+            "shelf_days": 1
+        },
+        {
+            "ingredient_name": "2 블랜드치즈",
+            "storage_id": 1,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "2 블랜드치즈",
+            "storage_id": 2,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "2 블랜드치즈",
+            "storage_id": 3,
+            "shelf_days": 1
+        },
+        {
+            "ingredient_name": "3 블랜드치즈",
+            "storage_id": 1,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "3 블랜드치즈",
+            "storage_id": 2,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "3 블랜드치즈",
+            "storage_id": 3,
+            "shelf_days": 1
+        },
+        {
+            "ingredient_name": "스트링 치즈",
+            "storage_id": 1,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "스트링 치즈",
+            "storage_id": 2,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "스트링 치즈",
+            "storage_id": 3,
+            "shelf_days": 1
+        },
+        {
+            "ingredient_name": "체다스트링 치즈",
+            "storage_id": 1,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "체다스트링 치즈",
+            "storage_id": 2,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "체다스트링 치즈",
+            "storage_id": 3,
+            "shelf_days": 1
+        },
+        {
+            "ingredient_name": "스파이시 갈릭치즈롤",
+            "storage_id": 3,
+            "shelf_days": 1
+        },
+        {
+            "ingredient_name": "체다 치즈",
+            "storage_id": 2,
+            "shelf_days": 3
+        },
+        {
+            "ingredient_name": "체다 치즈",
+            "storage_id": 3,
+            "shelf_days": 1
+        },
+        {
+            "ingredient_name": "치즈",
+            "storage_id": 1,
+            "shelf_days": 14
+        },
+        {
+            "ingredient_name": "치즈",
+            "storage_id": 2,
+            "shelf_days": 1
+        },
+        {
+            "ingredient_name": "치즈",
+            "storage_id": 3,
+            "shelf_days": 1
+        },
+        {
+            "ingredient_name": "페퍼 BBQ 소스",
+            "storage_id": 2,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "페퍼 BBQ 소스",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "페퍼 BBQ 소스",
+            "storage_id": 4,
+            "shelf_days": 12
+        },
+        {
+            "ingredient_name": "갈릭 랜치 소스",
+            "storage_id": 2,
+            "shelf_days": 5
+        },
+        {
+            "ingredient_name": "갈릭 랜치 소스",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "갈릭 랜치 소스",
+            "storage_id": 4,
+            "shelf_days": 12
+        },
+        {
+            "ingredient_name": "갈릭 소스",
+            "storage_id": 2,
+            "shelf_days": 5
+        },
+        {
+            "ingredient_name": "갈릭 소스",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "갈릭 소스",
+            "storage_id": 4,
+            "shelf_days": 12
+        },
+        {
+            "ingredient_name": "맥앤치즈 소스",
+            "storage_id": 2,
+            "shelf_days": 5
+        },
+        {
+            "ingredient_name": "맥앤치즈 소스",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "맥앤치즈 소스",
+            "storage_id": 4,
+            "shelf_days": 12
+        },
+        {
+            "ingredient_name": "불고기 소스",
+            "storage_id": 2,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "불고기 소스",
+            "storage_id": 3,
+            "shelf_days": 1
+        },
+        {
+            "ingredient_name": "불고기 소스",
+            "storage_id": 4,
+            "shelf_days": 12
+        },
+        {
+            "ingredient_name": "알프레도 소스",
+            "storage_id": 2,
+            "shelf_days": 5
+        },
+        {
+            "ingredient_name": "알프레도 소스",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "알프레도 소스",
+            "storage_id": 4,
+            "shelf_days": 12
+        },
+        {
+            "ingredient_name": "제스티버거소스",
+            "storage_id": 2,
+            "shelf_days": 5
+        },
+        {
+            "ingredient_name": "제스티버거소스",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "제스티버거소스",
+            "storage_id": 4,
+            "shelf_days": 12
+        },
+        {
+            "ingredient_name": "블랙 올리브",
+            "storage_id": 2,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "블랙 올리브",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "파인애플",
+            "storage_id": 2,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "파인애플",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "콘",
+            "storage_id": 2,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "콘",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "할라페뇨",
+            "storage_id": 2,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "할라페뇨",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "피자소스",
+            "storage_id": 4,
+            "shelf_days": 10
+        },
+        {
+            "ingredient_name": "고구마 무스",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "브라우니",
+            "storage_id": 1,
+            "shelf_days": 14
+        },
+        {
+            "ingredient_name": "브라우니",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "솔티드 카라멜",
+            "storage_id": 1,
+            "shelf_days": 14
+        },
+        {
+            "ingredient_name": "솔티드 카라멜",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "초코칩 쿠키",
+            "storage_id": 1,
+            "shelf_days": 14
+        },
+        {
+            "ingredient_name": "초코칩 쿠키",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "큰새우",
+            "storage_id": 1,
+            "shelf_days": 5
+        },
+        {
+            "ingredient_name": "큰새우",
+            "storage_id": 2,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "큰새우",
+            "storage_id": 3,
+            "shelf_days": 1
+        },
+        {
+            "ingredient_name": "포데이토 청크",
+            "storage_id": 1,
+            "shelf_days": 5
+        },
+        {
+            "ingredient_name": "포데이토 청크",
+            "storage_id": 2,
+            "shelf_days": 3
+        },
+        {
+            "ingredient_name": "포데이토 청크",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "피클",
+            "storage_id": 2,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "피클",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "더스티네이터",
+            "storage_id": 3,
+            "shelf_days": 14
+        },
+        {
+            "ingredient_name": "새니타이저",
+            "storage_id": 4,
+            "shelf_days": 7
+        },
+        {
+            "ingredient_name": "피자소스 배달(소분)",
+            "storage_id": 2,
+            "shelf_days": 1
+        },
+        {
+            "ingredient_name": "피자소스 배달(소분)",
+            "storage_id": 3,
+            "shelf_days": 1
+        },
+        {
+            "ingredient_name": "이탈리안 허브",
+            "storage_id": 3,
+            "shelf_days": 180
+        },
+        {
+            "ingredient_name": "레드 페퍼",
+            "storage_id": 3,
+            "shelf_days": 180
+        },
+        {
+            "ingredient_name": "후레쉬 파프리카 피클",
+            "storage_id": 2,
+            "shelf_days": 14
+        },
+        {
+            "ingredient_name": "후레쉬 파프리카 피클",
+            "storage_id": 3,
+            "shelf_days": 2
+        },
+        {
+            "ingredient_name": "레귤러 분할 3일차",
+            "storage_id": 5,
+            "shelf_days": 24
+        },
+        {
+            "ingredient_name": "레귤러 분할 4일차",
+            "storage_id": 5,
+            "shelf_days": 24
+        },
+        {
+            "ingredient_name": "레귤러 분할 5일차",
+            "storage_id": 5,
+            "shelf_days": 24
+        },
+        {
+            "ingredient_name": "레귤러 분할 6일차",
+            "storage_id": 5,
+            "shelf_days": 24
+        },
+        {
+            "ingredient_name": "레귤러 분할 7일차",
+            "storage_id": 5,
+            "shelf_days": 22
+        },
+        {
+            "ingredient_name": "라지 분할 3일차",
+            "storage_id": 5,
+            "shelf_days": 24
+        },
+        {
+            "ingredient_name": "라지 분할 4일차",
+            "storage_id": 5,
+            "shelf_days": 24
+        },
+        {
+            "ingredient_name": "라지 분할 5일차",
+            "storage_id": 5,
+            "shelf_days": 24
+        },
+        {
+            "ingredient_name": "라지 분할 6일차",
+            "storage_id": 5,
+            "shelf_days": 24
+        },
+        {
+            "ingredient_name": "라지 분할 7일차",
+            "storage_id": 5,
+            "shelf_days": 22
+        },
+        {
+            "ingredient_name": "패밀리 분할 3일차",
+            "storage_id": 5,
+            "shelf_days": 24
+        },
+        {
+            "ingredient_name": "패밀리 분할 4일차",
+            "storage_id": 5,
+            "shelf_days": 24
+        },
+        {
+            "ingredient_name": "패밀리 분할 5일차",
+            "storage_id": 5,
+            "shelf_days": 24
+        },
+        {
+            "ingredient_name": "패밀리 분할 6일차",
+            "storage_id": 5,
+            "shelf_days": 24
+        },
+        {
+            "ingredient_name": "패밀리 분할 7일차",
+            "storage_id": 5,
+            "shelf_days": 22
+        },
+        {
+            "ingredient_name": "파티 분할 3일차",
+            "storage_id": 5,
+            "shelf_days": 24
+        },
+        {
+            "ingredient_name": "파티 분할 4일차",
+            "storage_id": 5,
+            "shelf_days": 24
+        },
+        {
+            "ingredient_name": "파티 분할 5일차",
+            "storage_id": 5,
+            "shelf_days": 24
+        },
+        {
+            "ingredient_name": "파티 분할 6일차",
+            "storage_id": 5,
+            "shelf_days": 24
+        },
+        {
+            "ingredient_name": "파티 분할 7일차",
+            "storage_id": 5,
+            "shelf_days": 22
+        }
+    ]
 }

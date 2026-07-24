@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'services/api_sync_service.dart';
 import 'services/database_service.dart';
 import 'views/login_view.dart';
 import 'views/print_tab_view.dart';
@@ -8,6 +9,10 @@ import 'views/settings_tab_view.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DatabaseService.instance.init();
+  // Load the saved server address before the login screen builds; otherwise
+  // apiSyncUrl stays at its localhost default and the first login (which runs
+  // before the Settings tab is ever opened) can never reach a remote server.
+  await ApiSyncService.instance.loadConfig();
   runApp(const MyApp());
 }
 

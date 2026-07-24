@@ -1,7 +1,8 @@
+import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:flutter/foundation.dart';
-import 'package:cp949_codec/cp949_codec.dart';
 
 class BluetoothPrintService {
   BluetoothPrintService._privateConstructor();
@@ -95,62 +96,135 @@ class BluetoothPrintService {
     if (!_isConnected) return false;
 
     try {
-      final StringBuffer sb = StringBuffer();
-      
-      // TSPL Command Header
-      sb.write('SIZE ${width.toInt()} mm, ${height.toInt()} mm\r\n');
-      sb.write('GAP 2 mm, 0 mm\r\n');
-      sb.write('DIRECTION 1\r\n');
-      
-      // Set codepage to Korean (949 / CP949) for Hangul support
-      sb.write('CODEPAGE 949\r\n');
-      sb.write('CLS\r\n');
+      final int widthDots = (width * 8).round(); // 8 dots/mm
+      final int heightDots = (height * 8).round();
+      final int widthBytes = (widthDots + 7) ~/ 8;
 
       final String storageDisplay = storage == '입고' ? '입고' : '$storage 보관';
 
-      // Build visible lines list
       final List<String> visibleLines = [];
       if (showLine1) {
         visibleLines.add('[$storageDisplay] $name${abbr.isNotEmpty ? " ($abbr)" : ""}');
       }
-      if (showLine2) {
-        visibleLines.add('준비: $prepDate');
-      }
+      if (showLine2) visibleLines.add('준비: $prepDate');
       if (showLine3) {
-        final String expStr = expDate.isEmpty ? '상시 보관' : expDate;
-        visibleLines.add('폐기: $expStr');
+        visibleLines.add('폐기: ${expDate.isEmpty ? "상시 보관" : expDate}');
       }
-      if (showLine4) {
-        visibleLines.add('(담당: $staff)');
-      }
+      if (showLine4) visibleLines.add('(담당: $staff)');
 
-      if (visibleLines.isNotEmpty) {
-        final double totalDots = height * 8.0; // 8 dots/mm
-        final int gapDots = (verticalGapPt * 2.8).toInt().clamp(2, 50);
-        final int fontHeight = 24; // Font "K" is 24 dots height
-        final int totalContentHeight = (visibleLines.length * fontHeight) + ((visibleLines.length - 1) * gapDots);
+      // Render the label to a 1-bit bitmap so Hangul no longer depends on any
+      // printer-internal font. The previous TEXT "K" font does not exist on this
+      // model, so text never rendered and the label came out blank.
+      final Uint8List bitmap = await _renderLabelMonochrome(
+        widthBytes: widthBytes,
+        widthDots: widthDots,
+        heightDots: heightDots,
+        lines: visibleLines,
+        leftPaddingPercent: leftPaddingPercent,
+        verticalGapPt: verticalGapPt,
+      );
 
-        // Center content vertically
-        int currentY = ((totalDots - totalContentHeight) / 2).toInt().clamp(5, 120);
-        int xDots = (width * 8.0 * (leftPaddingPercent / 100.0)).toInt().clamp(5, 200);
+      // TSPL command: ASCII header + binary BITMAP payload + PRINT.
+      final BytesBuilder out = BytesBuilder();
+      final String header = 'SIZE ${width.toInt()} mm, ${height.toInt()} mm\r\n'
+          'GAP 2 mm, 0 mm\r\n'
+          'DIRECTION 1\r\n'
+          'CLS\r\n'
+          'BITMAP 0,0,$widthBytes,$heightDots,0,';
+      out.add(ascii.encode(header));
+      out.add(bitmap);
+      out.add(ascii.encode('\r\nPRINT $quantity\r\n'));
 
-        for (final lineText in visibleLines) {
-          sb.write('TEXT $xDots, $currentY, "K", 0, 1, 1, "$lineText"\r\n');
-          currentY += fontHeight + gapDots;
-        }
-      }
-
-      sb.write('PRINT $quantity\r\n');
-
-      // Convert TSPL command string to EUC-KR / CP949 bytes
-      final List<int> tsplBytes = cp949.encode(sb.toString());
-      final Uint8List data = Uint8List.fromList(tsplBytes);
-
-      await _bluetooth.writeBytes(data);
+      await _bluetooth.writeBytes(out.toBytes());
       return true;
     } catch (e) {
       debugPrint('Error writing TSPL to Bluetooth printer: $e');
       return false;
     }
+  }
+
+  /// Renders the label text to a packed 1-bit-per-pixel bitmap for TSPL BITMAP.
+  /// In TSPL BITMAP data a 0 bit prints a black dot and a 1 bit leaves it white,
+  /// so the buffer starts all-white (0xFF) and each text pixel clears its bit.
+  Future<Uint8List> _renderLabelMonochrome({
+    required int widthBytes,
+    required int widthDots,
+    required int heightDots,
+    required List<String> lines,
+    required double leftPaddingPercent,
+    required double verticalGapPt,
+  }) async {
+    final int canvasWidth = widthBytes * 8;
+    final ui.PictureRecorder recorder = ui.PictureRecorder();
+    final ui.Canvas canvas = ui.Canvas(recorder);
+    canvas.drawRect(
+      ui.Rect.fromLTWH(0, 0, canvasWidth.toDouble(), heightDots.toDouble()),
+      ui.Paint()..color = const ui.Color(0xFFFFFFFF),
+    );
+
+    // This printer mirrors BITMAP output left-to-right under DIRECTION 1, which
+    // made Hangul come out reversed. Pre-flip the canvas horizontally so the
+    // printer's mirroring cancels back to a correctly readable label.
+    canvas.translate(canvasWidth.toDouble(), 0);
+    canvas.scale(-1, 1);
+
+    final double x = (widthDots * (leftPaddingPercent / 100.0))
+        .clamp(4, (widthDots - 8).toDouble())
+        .toDouble();
+    final int gap = (verticalGapPt * 2).round().clamp(2, 40);
+
+    ui.Paragraph buildPara(String text, double fontSize) {
+      final builder = ui.ParagraphBuilder(ui.ParagraphStyle(
+        textAlign: ui.TextAlign.left,
+        fontSize: fontSize,
+        fontWeight: ui.FontWeight.bold,
+        maxLines: 1,
+        ellipsis: '…',
+      ))
+        ..pushStyle(ui.TextStyle(color: const ui.Color(0xFF000000)))
+        ..addText(text);
+      final p = builder.build();
+      p.layout(ui.ParagraphConstraints(width: canvasWidth - x));
+      return p;
+    }
+
+    // Last line (staff) is rendered a little smaller, matching the preview.
+    final List<ui.Paragraph> paras = [];
+    for (int i = 0; i < lines.length; i++) {
+      final double fs = (i == lines.length - 1 && lines.length > 1) ? 16.0 : 22.0;
+      paras.add(buildPara(lines[i], fs));
+    }
+
+    final double totalH = paras.fold<double>(0.0, (s, p) => s + p.height) +
+        (paras.isEmpty ? 0 : gap * (paras.length - 1));
+    double y = ((heightDots - totalH) / 2).clamp(2.0, heightDots.toDouble());
+    for (final p in paras) {
+      canvas.drawParagraph(p, ui.Offset(x, y));
+      y += p.height + gap;
+    }
+
+    final ui.Image image =
+        await recorder.endRecording().toImage(canvasWidth, heightDots);
+    final ByteData? rgba =
+        await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    image.dispose();
+
+    final int total = widthBytes * heightDots;
+    final Uint8List packed = Uint8List(total)..fillRange(0, total, 0xFF);
+    if (rgba == null) return packed;
+
+    final Uint8List px = rgba.buffer.asUint8List();
+    for (int yy = 0; yy < heightDots; yy++) {
+      for (int xx = 0; xx < canvasWidth; xx++) {
+        final int idx = (yy * canvasWidth + xx) * 4;
+        final int lum = (px[idx] + px[idx + 1] + px[idx + 2]) ~/ 3;
+        if (lum < 128) {
+          final int byteIndex = yy * widthBytes + (xx >> 3);
+          final int bit = 7 - (xx & 7);
+          packed[byteIndex] &= ~(1 << bit) & 0xFF;
+        }
+      }
+    }
+    return packed;
   }
 }

@@ -137,43 +137,6 @@ class _SettingsTabViewState extends State<SettingsTabView> {
     );
   }
 
-  void _addCustomPreset() {
-    final w = int.tryParse(_widthController.text) ?? 0;
-    final h = int.tryParse(_heightController.text) ?? 0;
-    if (w < 20 || w > 150 || h < 15 || h > 150) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: Colors.redAccent,
-          content: Text('가로 크기는 20~150mm, 세로 크기는 15~150mm 사이여야 합니다.'),
-        ),
-      );
-      return;
-    }
-
-    if (DatabaseService.instance.presets.any((p) => p.width == w && p.height == h)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('이미 존재하는 규격 프리셋입니다.')),
-      );
-      return;
-    }
-
-    final newId = DatabaseService.instance.presets.fold<int>(0, (max, p) => p.id > max ? p.id : max) + 1;
-    setState(() {
-      DatabaseService.instance.presets.add(
-        LabelSizePreset(id: newId, width: w, height: h, isDefault: 0),
-      );
-    });
-    DatabaseService.instance.save();
-    _saveLabelSize(w.toDouble(), h.toDouble());
-  }
-
-  void _deletePreset(int id) {
-    setState(() {
-      DatabaseService.instance.presets.removeWhere((p) => p.id == id);
-    });
-    DatabaseService.instance.save();
-  }
-
   Future<void> _initBluetooth() async {
     final bool isAndroid = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
     if (!isAndroid) return;
@@ -258,8 +221,6 @@ class _SettingsTabViewState extends State<SettingsTabView> {
 
   @override
   Widget build(BuildContext context) {
-    final presetsList = DatabaseService.instance.presets;
-
     return Scaffold(
       backgroundColor: const Color(0xFF0F0C20),
       body: SingleChildScrollView(

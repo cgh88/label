@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../services/database_service.dart';
-import '../services/password_service.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_sync_service.dart';
 
 class LoginView extends StatefulWidget {
   final Function(String username, String role) onLoginSuccess;
@@ -21,11 +23,21 @@ class LoginView extends StatefulWidget {
 class _LoginViewState extends State<LoginView> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _serverUrlController =
+      TextEditingController(text: ApiSyncService.instance.apiSyncUrl);
   final _formKey = GlobalKey<FormState>();
   String? _errorMessage;
   bool _isLoading = false;
 
-  void _handleLogin() {
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _serverUrlController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -36,45 +48,60 @@ class _LoginViewState extends State<LoginView> {
     final username = _usernameController.text.trim();
     final password = _passwordController.text;
 
-    // Check against local database users
-    final dbUsers = DatabaseService.instance.users;
-    bool authenticated = false;
-    String role = 'staff';
+    // Normalize and persist the server address entered on the login screen so
+    // login (and later sync/print) all target the same server.
+    var baseUrl = _serverUrlController.text.trim();
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      baseUrl = 'http://$baseUrl';
+    }
+    baseUrl = baseUrl.replaceAll(RegExp(r'/+$'), '');
+    await ApiSyncService.instance.saveConfig(baseUrl);
+    final loginUrl = '$baseUrl/api/auth/login';
 
-    if (dbUsers.isEmpty) {
-      // Fallback defaults when database isn't synced or has no users
-      if (username == 'admin' && password == 'admin') {
-        authenticated = true;
-        role = 'admin';
-      } else if (username == 'staff' && password == 'staff') {
-        authenticated = true;
-        role = 'staff';
-      }
-    } else {
-      final user = dbUsers.firstWhere(
-        (u) => u['username'].toString().toLowerCase() == username.toLowerCase(),
-        orElse: () => <String, dynamic>{},
-      );
+    try {
+      final response = await http.post(
+        Uri.parse(loginUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': username,
+          'password': password,
+        }),
+      ).timeout(const Duration(seconds: 8));
 
-      if (user.isNotEmpty) {
-        final storedHash = user['password'].toString();
-        if (PasswordService.verify(password, storedHash)) {
-          authenticated = true;
-          role = user['role'].toString();
+      final Map<String, dynamic> body = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200 && body['success'] == true) {
+        final user = body['user'] as Map<String, dynamic>? ?? {};
+        final role = user['role']?.toString() ?? 'staff';
+        final returnedUsername = user['username']?.toString() ?? username;
+
+        final rawCookie = response.headers['set-cookie'];
+        if (rawCookie != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('session_cookie', rawCookie);
+        }
+
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+          widget.onLoginSuccess(returnedUsername, role);
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = body['error']?.toString() ?? '아이디 또는 비밀번호가 올바르지 않습니다.';
+          });
         }
       }
-    }
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (authenticated) {
-      widget.onLoginSuccess(username, role);
-    } else {
-      setState(() {
-        _errorMessage = '아이디 또는 비밀번호가 올바르지 않습니다.';
-      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = '서버 연결 실패: 로그인하려면 서버 연결이 필요합니다.';
+        });
+      }
     }
   }
 
@@ -160,6 +187,48 @@ class _LoginViewState extends State<LoginView> {
                           ),
                         ),
                         const SizedBox(height: 32),
+
+                        // Server address input (required before the first login;
+                        // the tablet cannot reach the PC server via localhost).
+                        TextFormField(
+                          controller: _serverUrlController,
+                          keyboardType: TextInputType.url,
+                          autocorrect: false,
+                          style: isDark ? const TextStyle(color: Colors.white) : const TextStyle(color: Color(0xFF0F172A)),
+                          decoration: InputDecoration(
+                            labelText: '서버 주소 (예: http://192.168.0.25:3000)',
+                            labelStyle: isDark
+                                ? TextStyle(color: Colors.white.withOpacity(0.6))
+                                : const TextStyle(color: Color(0xFF64748B)),
+                            prefixIcon: Icon(
+                              Icons.dns_outlined,
+                              color: isDark ? Colors.white70 : const Color(0xFF64748B),
+                            ),
+                            filled: true,
+                            fillColor: isDark ? const Color(0xFF1E1F24) : const Color(0xFFF8FAFC),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFE2E8F0),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: isDark ? Colors.white30 : const Color(0xFF0F172A),
+                                width: 2,
+                              ),
+                            ),
+                            errorStyle: const TextStyle(color: Colors.redAccent),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return '서버 주소를 입력해 주세요.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 20),
 
                         // Username input
                         TextFormField(
