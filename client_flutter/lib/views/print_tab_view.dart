@@ -9,6 +9,7 @@ import '../models/models.dart';
 import '../services/database_service.dart';
 import '../services/bluetooth_service.dart';
 import '../services/layout_events.dart';
+import '../services/label_renderer.dart';
 
 class PrintTabView extends StatefulWidget {
   final int activeTabIndex;
@@ -968,66 +969,53 @@ class _PrintTabViewState extends State<PrintTabView> {
 
   // Renders the white label preview at a given pixel-per-mm scale, reused for
   // both the inline preview (6.4) and the enlarged popup (16.0).
-  Widget _buildLabelPreviewCard(double pxPerMm) {
-    final double scale = (_labelWidth / 50.0).clamp(0.5, 2.0);
-    final double f = pxPerMm / 6.4;
-    final double fs1 = _fontSize1 * 1.734 * scale * f;
-    final double fs2 = _fontSize2 * 1.734 * scale * f;
-    final double fs3 = _fontSize3 * 1.734 * scale * f;
-    final double fs4 = _fontSize4 * 1.734 * scale * f;
-    final double gap = _verticalGap * scale * 0.97 * f;
+  // Builds the visible label lines (with their pt font sizes) shared by the
+  // preview and the print bitmap.
+  List<LabelLine> _buildLabelLines() {
     final ing = _selectedIngredient!;
+    final List<LabelLine> lines = [];
+    if (_showLine1) {
+      lines.add(LabelLine(
+        '[${_selectedStorage == '입고' ? '입고' : '$_selectedStorage 보관'}] ${ing.name}${ing.abbr.isNotEmpty ? " (${ing.abbr})" : ""}',
+        _fontSize1,
+      ));
+    }
+    if (_showLine2) {
+      lines.add(LabelLine('준비: ${_formatDateTime(_prepTime)}', _fontSize2));
+    }
+    if (_showLine3) {
+      lines.add(LabelLine(
+        '폐기: ${_selectedStorage == '입고' ? '상시 보관' : _formatDateTime(_computeExpiration(ing, _selectedStorage))}',
+        _fontSize3,
+      ));
+    }
+    if (_showLine4) {
+      lines.add(LabelLine('(담당: ${_staffController.text.isEmpty ? '-' : _staffController.text})', _fontSize4));
+    }
+    return lines;
+  }
+
+  Widget _buildLabelPreviewCard(double pxPerMm) {
     return Container(
       width: _labelWidth * pxPerMm,
       height: _labelHeight * pxPerMm,
-      padding: EdgeInsets.symmetric(horizontal: 0.0, vertical: 4.5 * f),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: const Color(0xFF94A3B8), width: 1),
         borderRadius: BorderRadius.circular(4),
         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 15, offset: Offset(0, 4))],
       ),
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: _labelWidth * (_leftPadding / 100.0) * pxPerMm,
-          right: 13.5 * f,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (_showLine1)
-              Text(
-                '[${_selectedStorage == '입고' ? '입고' : '$_selectedStorage 보관'}] ${ing.name}${ing.abbr.isNotEmpty ? " (${ing.abbr})" : ""}',
-                style: TextStyle(color: Colors.black, fontSize: fs1, fontWeight: FontWeight.bold),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            if (_showLine1 && (_showLine2 || _showLine3 || _showLine4)) SizedBox(height: gap),
-            if (_showLine2)
-              Text(
-                '준비: ${_formatDateTime(_prepTime)}',
-                style: TextStyle(color: Colors.black, fontSize: fs2, fontWeight: FontWeight.bold),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            if (_showLine2 && (_showLine3 || _showLine4)) SizedBox(height: gap),
-            if (_showLine3)
-              Text(
-                '폐기: ${_selectedStorage == '입고' ? '상시 보관' : _formatDateTime(_computeExpiration(ing, _selectedStorage))}',
-                style: TextStyle(color: Colors.black, fontSize: fs3, fontWeight: FontWeight.bold),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            if (_showLine3 && _showLine4) SizedBox(height: gap),
-            if (_showLine4)
-              Text(
-                '(담당: ${_staffController.text.isEmpty ? '-' : _staffController.text})',
-                style: TextStyle(color: Colors.black54, fontSize: fs4, fontWeight: FontWeight.bold),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-          ],
+      // Paints with the exact same renderer used for the printed bitmap, so the
+      // preview matches the physical label 1:1.
+      child: CustomPaint(
+        size: Size(_labelWidth * pxPerMm, _labelHeight * pxPerMm),
+        painter: _LabelPainter(
+          lines: _buildLabelLines(),
+          widthMm: _labelWidth,
+          heightMm: _labelHeight,
+          leftPaddingPercent: _leftPadding,
+          verticalGapPt: _verticalGap,
+          pxPerMm: pxPerMm,
         ),
       ),
     );
@@ -1036,6 +1024,7 @@ class _PrintTabViewState extends State<PrintTabView> {
   void _showPreviewDialog() {
     if (_selectedIngredient == null) return;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Size screen = MediaQuery.of(context).size;
     showDialog(
       context: context,
       builder: (dialogContext) => Dialog(
@@ -1045,12 +1034,22 @@ class _PrintTabViewState extends State<PrintTabView> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(28),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: _buildLabelPreviewCard(16.0),
+              // Keep the exact 55:20 label ratio while scaling to fit the screen.
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: screen.width * 0.9 - 88,
+                  maxHeight: screen.height * 0.55,
+                ),
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: _buildLabelPreviewCard(16.0),
+                ),
+              ),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
@@ -1067,6 +1066,41 @@ class _PrintTabViewState extends State<PrintTabView> {
       ),
     );
   }
+}
+
+class _LabelPainter extends CustomPainter {
+  final List<LabelLine> lines;
+  final double widthMm;
+  final double heightMm;
+  final double leftPaddingPercent;
+  final double verticalGapPt;
+  final double pxPerMm;
+
+  _LabelPainter({
+    required this.lines,
+    required this.widthMm,
+    required this.heightMm,
+    required this.leftPaddingPercent,
+    required this.verticalGapPt,
+    required this.pxPerMm,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    paintLabel(
+      canvas,
+      widthMm: widthMm,
+      heightMm: heightMm,
+      lines: lines,
+      leftPaddingPercent: leftPaddingPercent,
+      verticalGapPt: verticalGapPt,
+      pxPerMm: pxPerMm,
+      fillBackground: false, // the Container already provides the white background
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _LabelPainter oldDelegate) => true;
 }
 
 class DashedDivider extends StatelessWidget {

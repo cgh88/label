@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:flutter/foundation.dart';
+import 'label_renderer.dart';
 
 class BluetoothPrintService {
   BluetoothPrintService._privateConstructor();
@@ -183,47 +184,22 @@ class BluetoothPrintService {
     canvas.translate(canvasWidth.toDouble(), 0);
     canvas.scale(-1, 1);
 
-    final double x = (widthDots * (leftPaddingPercent / 100.0))
-        .clamp(4, (widthDots - 8).toDouble())
-        .toDouble();
-    // Match the on-screen preview: it renders at 6.4 px/mm with
-    // fontPx = pt * 1.734 * scale. This bitmap renders at 8 dots/mm, so multiply
-    // by 8 / 6.4 = 1.25 to reproduce the same physical size on the label.
-    final double scale = ((widthDots / 8.0) / 50.0).clamp(0.5, 2.0);
-    const double ptToDot = 1.734 * 1.25;
-    final int gap = (verticalGapPt * scale * 0.97 * 1.25).round().clamp(1, 40);
-
-    ui.Paragraph buildPara(String text, double fontSize) {
-      final builder = ui.ParagraphBuilder(ui.ParagraphStyle(
-        textAlign: ui.TextAlign.left,
-        fontSize: fontSize,
-        fontWeight: ui.FontWeight.bold,
-        maxLines: 1,
-        ellipsis: '…',
-      ))
-        ..pushStyle(ui.TextStyle(color: const ui.Color(0xFF000000)))
-        ..addText(text);
-      final p = builder.build();
-      p.layout(ui.ParagraphConstraints(width: canvasWidth - x));
-      return p;
-    }
-
-    // Use per-line font sizes (pt, from settings) for accurate print output,
-    // converted to bitmap dots the same way the preview computes its size.
-    final List<ui.Paragraph> paras = [];
-    for (int i = 0; i < lines.length; i++) {
-      final double pt = i < lineFontSizes.length ? lineFontSizes[i] : 12.5;
-      final double fs = pt * ptToDot * scale;
-      paras.add(buildPara(lines[i], fs));
-    }
-
-    final double totalH = paras.fold<double>(0.0, (s, p) => s + p.height) +
-        (paras.isEmpty ? 0 : gap * (paras.length - 1));
-    double y = ((heightDots - totalH) / 2).clamp(2.0, heightDots.toDouble());
-    for (final p in paras) {
-      canvas.drawParagraph(p, ui.Offset(x, y));
-      y += p.height + gap;
-    }
+    // Draw with the exact same renderer the on-screen preview uses, at the
+    // printer's 8 dots/mm, so the printed label matches the preview 1:1.
+    final List<LabelLine> labelLines = [
+      for (int i = 0; i < lines.length; i++)
+        LabelLine(lines[i], i < lineFontSizes.length ? lineFontSizes[i] : 12.5),
+    ];
+    paintLabel(
+      canvas,
+      widthMm: widthDots / 8.0,
+      heightMm: heightDots / 8.0,
+      lines: labelLines,
+      leftPaddingPercent: leftPaddingPercent,
+      verticalGapPt: verticalGapPt,
+      pxPerMm: 8.0,
+      fillBackground: false, // background already filled before the mirror
+    );
 
     final ui.Image image =
         await recorder.endRecording().toImage(canvasWidth, heightDots);
