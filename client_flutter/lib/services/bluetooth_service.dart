@@ -373,7 +373,7 @@ class BluetoothPrintService {
     final int heightDots = (height * 8).round();
     final int widthBytes = (widthDots + 7) ~/ 8;
 
-    final String storageDisplay = storage == '입고' ? '입고' : '$storage 보관';
+    final String storageDisplay = storage;
 
     final List<LabelLine> labelLines = [];
     if (showLine1) {
@@ -385,7 +385,7 @@ class BluetoothPrintService {
       labelLines.add(LabelLine('준비: $prepDate', fontSize2));
     }
     if (showLine3) {
-      labelLines.add(LabelLine('폐기: ${expDate.isEmpty ? "상시 보관" : expDate}', fontSize3));
+      labelLines.add(LabelLine(expDate.isEmpty ? '' : '폐기: $expDate', fontSize3));
     }
     if (showLine4) {
       labelLines.add(LabelLine('(담당: $staff)', fontSize4));

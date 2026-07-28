@@ -121,51 +121,54 @@ class _PrintTabViewState extends State<PrintTabView> {
 
   void _filterIngredients() {
     final query = _searchController.text.trim().toLowerCase();
-    final queryChosung = _getChosung(query);
+    final bool hasQuery = query.isNotEmpty;
+    final String queryChosung = hasQuery ? _getChosung(query) : '';
 
-    setState(() {
-      _filteredIngredients = DatabaseService.instance.ingredients.where((ing) {
-        // First filter by category
-        if (_selectedCategory != '전체' && ing.category != _selectedCategory) return false;
+    _filteredIngredients = DatabaseService.instance.ingredients.where((ing) {
+      // First filter by category
+      if (_selectedCategory != '전체' && ing.category != _selectedCategory) return false;
 
-        if (query.isEmpty) return true;
+      if (!hasQuery) return true;
 
-        final name = ing.name.toLowerCase();
-        final nameChosung = _getChosung(ing.name);
-        final abbr = ing.abbr.toLowerCase();
+      final name = ing.name.toLowerCase();
+      if (name.contains(query)) return true;
 
-        return name.contains(query) ||
-            nameChosung.contains(queryChosung) ||
-            abbr.contains(query);
-      }).toList();
+      final abbr = ing.abbr.toLowerCase();
+      if (abbr.isNotEmpty && abbr.contains(query)) return true;
 
-      // Reset selection if the currently selected ingredient isn't in the filtered list
-      if (_selectedIngredient != null && !_filteredIngredients.contains(_selectedIngredient)) {
-        if (_selectedCategory != '전체' && _selectedIngredient!.category != _selectedCategory) {
-          _selectedIngredient = null;
-          _selectedStorage = '입고';
-        }
-      }
+      final nameChosung = _getChosung(ing.name);
+      return nameChosung.contains(queryChosung);
+    }).toList();
 
-      // Auto select first item if none selected
-      if (_selectedIngredient == null && _filteredIngredients.isNotEmpty) {
-        _selectIngredient(_filteredIngredients.first);
-      }
-    });
-  }
-
-  void _selectIngredient(Ingredient ing) {
-    setState(() {
-      _selectedIngredient = ing;
-      // Prep time is no longer manually edited; use the current time.
-      _prepTime = DateTime.now();
-      // Default to first storage location if available, otherwise '입고'
-      if (ing.storage.isNotEmpty) {
-        _selectedStorage = ing.storage.keys.first;
-      } else {
+    // Reset selection if the currently selected ingredient isn't in the filtered list
+    if (_selectedIngredient != null && !_filteredIngredients.contains(_selectedIngredient)) {
+      if (_selectedCategory != '전체' && _selectedIngredient!.category != _selectedCategory) {
+        _selectedIngredient = null;
         _selectedStorage = '입고';
       }
-    });
+    }
+
+    // Auto select first item if none selected
+    if (_selectedIngredient == null && _filteredIngredients.isNotEmpty) {
+      _selectIngredient(_filteredIngredients.first, notify: false);
+    }
+
+    setState(() {});
+  }
+
+  void _selectIngredient(Ingredient ing, {bool notify = true}) {
+    _selectedIngredient = ing;
+    // Prep time is no longer manually edited; use the current time.
+    _prepTime = DateTime.now();
+    // Default to first storage location if available, otherwise '입고'
+    if (ing.storage.isNotEmpty) {
+      _selectedStorage = ing.storage.keys.first;
+    } else {
+      _selectedStorage = '입고';
+    }
+    if (notify) {
+      setState(() {});
+    }
   }
 
 
@@ -320,7 +323,7 @@ class _PrintTabViewState extends State<PrintTabView> {
             final double pdfVerticalGap = _verticalGap * scale * 0.43; // Map spacing proportionally
 
             final double pdfAvailWidth = widthPt - pdfLeftPadding - 6.0;
-            final String storageDisplay = storage == '입고' ? '입고' : '$storage 보관';
+            final String storageDisplay = storage;
             final String fullLine1 = '[$storageDisplay] $name${abbr.isNotEmpty ? " ($abbr)" : ""}';
             double estWidth = 0;
             for (final char in fullLine1.runes) {
@@ -331,10 +334,9 @@ class _PrintTabViewState extends State<PrintTabView> {
                 : fullLine1;
             final String line2 = '준비: ${_formatDateTime(_prepTime)}';
             
-            final String expStr = storage == '입고'
-                ? '상시 보관'
-                : _formatDateTime(_computeExpiration(_selectedIngredient!, storage));
-            final String line3 = '폐기: $expStr';
+            final String line3 = storage == '입고'
+                ? ''
+                : '폐기: ${_formatDateTime(_computeExpiration(_selectedIngredient!, storage))}';
             final String line4 = '(담당: $staff)';
 
             return pw.Padding(
@@ -501,10 +503,8 @@ class _PrintTabViewState extends State<PrintTabView> {
                           padding: const EdgeInsets.only(right: 8.0),
                           child: InkWell(
                             onTap: () {
-                              setState(() {
-                                _selectedCategory = cat.name;
-                                _filterIngredients();
-                              });
+                              _selectedCategory = cat.name;
+                              _filterIngredients();
                             },
                             borderRadius: BorderRadius.circular(10),
                             child: Container(
@@ -587,8 +587,7 @@ class _PrintTabViewState extends State<PrintTabView> {
                               return InkWell(
                                 onTap: () => _selectIngredient(ing),
                                 borderRadius: BorderRadius.circular(12),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 150),
+                                child: Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
                                     color: isSelected
@@ -936,8 +935,7 @@ class _PrintTabViewState extends State<PrintTabView> {
     return InkWell(
       onTap: () => setState(() => _selectedStorage = loc),
       borderRadius: BorderRadius.circular(10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+      child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected
@@ -974,7 +972,7 @@ class _PrintTabViewState extends State<PrintTabView> {
     final ing = _selectedIngredient!;
     final List<LabelLine> lines = [];
     if (_showLine1) {
-      final String storageDisplay = _selectedStorage == '입고' ? '입고' : '$_selectedStorage 보관';
+      final String storageDisplay = _selectedStorage;
       final String line1Text = '[$storageDisplay] ${ing.name}${ing.abbr.isNotEmpty ? " (${ing.abbr})" : ""}';
       final String? fallbackText = ing.abbr.isNotEmpty ? '[$storageDisplay] ${ing.abbr}' : null;
       lines.add(LabelLine(
@@ -988,7 +986,7 @@ class _PrintTabViewState extends State<PrintTabView> {
     }
     if (_showLine3) {
       lines.add(LabelLine(
-        '폐기: ${_selectedStorage == '입고' ? '상시 보관' : _formatDateTime(_computeExpiration(ing, _selectedStorage))}',
+        _selectedStorage == '입고' ? '' : '폐기: ${_formatDateTime(_computeExpiration(ing, _selectedStorage))}',
         _fontSize3,
       ));
     }
@@ -1103,7 +1101,21 @@ class _LabelPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _LabelPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _LabelPainter oldDelegate) {
+    if (oldDelegate.lines.length != lines.length) return true;
+    for (int i = 0; i < lines.length; i++) {
+      if (oldDelegate.lines[i].text != lines[i].text ||
+          oldDelegate.lines[i].sizePt != lines[i].sizePt ||
+          oldDelegate.lines[i].fallbackText != lines[i].fallbackText) {
+        return true;
+      }
+    }
+    return oldDelegate.widthMm != widthMm ||
+        oldDelegate.heightMm != heightMm ||
+        oldDelegate.leftPaddingPercent != leftPaddingPercent ||
+        oldDelegate.verticalGapPt != verticalGapPt ||
+        oldDelegate.pxPerMm != pxPerMm;
+  }
 }
 
 class DashedDivider extends StatelessWidget {

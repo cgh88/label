@@ -1409,7 +1409,7 @@ function updateStickerPreview() {
         if (stickerPrepDate) stickerPrepDate.textContent = formatShortDate(state.prepTime);
         if (expireRow) expireRow.style.display = "none";
     } else {
-        if (stickerLoc) stickerLoc.textContent = state.selectedStorage ? `${state.selectedStorage} 보관` : "보관위치 미지정";
+        if (stickerLoc) stickerLoc.textContent = state.selectedStorage ? state.selectedStorage : "보관위치 미지정";
         if (stickerPrepLabel) stickerPrepLabel.textContent = "준비일시:";
         if (stickerPrepDate) stickerPrepDate.textContent = formatDate(state.prepTime);
         if (expireRow) expireRow.style.display = "block";
@@ -1422,7 +1422,7 @@ function updateStickerPreview() {
 
     // 2. Support new 4-line layout if present (no crash if absent)
     if (stickerLine1) {
-        const storageDisplay = state.selectedStorage === "입고" ? "입고" : `${state.selectedStorage} 보관`;
+        const storageDisplay = state.selectedStorage || "";
         const abbrText = ingredient.abbr ? ` (${ingredient.abbr})` : "";
         stickerLine1.textContent = `[${storageDisplay}] ${ingredient.name}${abbrText}`;
     }
@@ -1431,7 +1431,7 @@ function updateStickerPreview() {
     }
     if (stickerLine3) {
         if (state.selectedStorage === "입고") {
-            stickerLine3.textContent = `폐기: 상시 보관`;
+            stickerLine3.textContent = "";
         } else {
             stickerLine3.textContent = `폐기: ${formatDate(expireTime)}`;
         }
