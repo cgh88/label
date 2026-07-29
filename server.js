@@ -1321,6 +1321,15 @@ app.post('/api/ingredients/reset', requireAdmin, async (req, res) => {
     }
 });
 
+app.get('/download/app-release.apk', (req, res) => {
+    const apkPath = path.join(__dirname, 'client_flutter', 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk');
+    if (fs.existsSync(apkPath)) {
+        res.download(apkPath, 'shelflife-label-app.apk');
+    } else {
+        res.status(404).send('APK 파일이 없습니다.');
+    }
+});
+
 // ==========================================
 // Start Server & Graceful Shutdown
 // ==========================================
