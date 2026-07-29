@@ -733,6 +733,11 @@ class _SauceTabViewState extends State<SauceTabView> {
         prepDate: prepDateStr,
         expDate: expDateStr,
         staff: 'KDS',
+        fontSize1: 13.0,
+        fontSize2: 12.0,
+        fontSize3: 13.0,
+        leftPaddingPercent: 5.0,
+        verticalGapPt: 3.0,
       );
 
       if (success) {

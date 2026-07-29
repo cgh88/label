@@ -40,8 +40,8 @@ void paintLabel(
   final double density = pxPerMm / 6.4; // relative to the 6.4 px/mm reference
   final double scale = (widthMm / 50.0).clamp(0.5, 2.0);
   final double x = (widthPx * (leftPaddingPercent / 100.0))
-      .clamp(4.0 * density, widthPx - 8.0 * density);
-  final double rightPad = 13.5 * density;
+      .clamp(3.0 * density, widthPx - 6.0 * density);
+  final double rightPad = 6.0 * density;
   final double gap = verticalGapPt * scale * 0.97 * density;
   final double availWidth = (widthPx - x - rightPad).clamp(1.0, widthPx);
 
