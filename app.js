@@ -2146,12 +2146,12 @@ function renderSaucePrintedLabel(item, rawOutTime = null) {
             <div class="label-2050">
                 <div class="label-row label-header">
                     <span>PS 피자소스</span>
-                    <span>[워크인 IN]</span>
+                    <span>[IN]</span>
                 </div>
                 <div class="label-row"><span>ID: ${item.Source_ID}</span></div>
                 <div class="label-row"><span>PREP: ${formatSauceDateTimeWithDay(prepTime)}</span></div>
                 <div class="label-row"><span>IN  : ${formatSauceDateTimeWithDay(item.Last_Action_Time)}</span></div>
-                <div class="label-row"><span style="color: blue;">※ 냉장 보관 중 (차감 중지)</span></div>
+                <div class="label-row"><span style="color: blue;">※ 차감 중지</span></div>
                 <div class="label-row"><span>잔여: 시간 ${formatSauceDurationLabel(remMin)}</span></div>
             </div>
         `;

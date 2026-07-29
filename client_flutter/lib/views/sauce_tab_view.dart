@@ -612,7 +612,7 @@ class _SauceTabViewState extends State<SauceTabView> {
     final remMin = item.getDynamicRemainingMin(_systemTime);
 
     String statusBadge = '[PREP]';
-    if (item.status == 'IN') statusBadge = '[워크인 IN]';
+    if (item.status == 'IN') statusBadge = '[IN]';
     if (item.status == 'OUT') statusBadge = '[OUT]';
 
     return Tooltip(
@@ -669,7 +669,7 @@ class _SauceTabViewState extends State<SauceTabView> {
               const SizedBox(height: 2),
               Text('IN   : ${_formatDateTimeWithDay(item.lastActionTime)}', style: const TextStyle(color: Colors.black87, fontSize: 13)),
               const SizedBox(height: 2),
-              const Text('※ 냉장 보관 중 (차감 일시정지)', style: TextStyle(color: Colors.blue, fontSize: 12, fontWeight: FontWeight.bold)),
+              const Text('※ 차감 일시정지', style: TextStyle(color: Colors.blue, fontSize: 12, fontWeight: FontWeight.bold)),
             ] else if (item.status == 'OUT') ...[
               Text('OUT  : ${_formatDateTimeWithDay(_lastPrintedRawOutTime ?? item.lastActionTime)}', style: const TextStyle(color: Colors.black87, fontSize: 13)),
               const SizedBox(height: 2),
@@ -710,15 +710,15 @@ class _SauceTabViewState extends State<SauceTabView> {
     _showSnackBar('블루투스 프린터 연결 및 출력 전송 중...');
 
     String statusBadge = 'PREP';
-    if (item.status == 'IN') statusBadge = 'IN(냉장)';
-    if (item.status == 'OUT') statusBadge = 'OUT(실온)';
+    if (item.status == 'IN') statusBadge = 'IN';
+    if (item.status == 'OUT') statusBadge = 'OUT';
 
     String prepDateStr = 'Prep: ${_formatDateTimeWithDay(item.lastActionTime)}';
     String expDateStr = '폐기: ${_formatDateTimeWithDay(item.estDiscardTime)}';
 
     if (item.status == 'IN') {
       prepDateStr = 'PREP: ${_formatDateTimeWithDay(item.prepTime)}';
-      expDateStr = 'IN  : ${_formatDateTimeWithDay(item.lastActionTime)} (냉장보관)';
+      expDateStr = 'IN  : ${_formatDateTimeWithDay(item.lastActionTime)}';
     } else if (item.status == 'OUT') {
       prepDateStr = 'OUT : ${_formatDateTimeWithDay(_lastPrintedRawOutTime ?? item.lastActionTime)}';
       expDateStr = '폐기: ${_formatDateTimeWithDay(item.estDiscardTime)}';
