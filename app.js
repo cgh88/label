@@ -48,6 +48,34 @@ async function apiDelete(url) {
     return await response.json();
 }
 
+async function loadAppInfo() {
+    try {
+        const data = await apiGet('/api/app-info');
+        const metaEl = document.getElementById('apk-meta-info');
+        const badgeEl = document.getElementById('apk-download-badge');
+        if (metaEl && data.exists) {
+            const bDate = new Date(data.buildDate);
+            const yyyy = bDate.getFullYear();
+            const mm = String(bDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(bDate.getDate()).padStart(2, '0');
+            const hh = String(bDate.getHours()).padStart(2, '0');
+            const min = String(bDate.getMinutes()).padStart(2, '0');
+            const dateStr = `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+            metaEl.innerText = `v${data.version} (#${data.buildNumber}) · ${dateStr} (${data.fileSizeMb})`;
+        }
+        if (badgeEl && data.exists) {
+            badgeEl.title = `최신 안드로이드 태블릿 APK 다운로드\n버전: v${data.version} (빌드 #${data.buildNumber})\n빌드일시: ${data.buildDate}\n용량: ${data.fileSizeMb}`;
+        }
+    } catch (e) {
+        console.warn('App info fetch error:', e);
+    }
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadAppInfo);
+} else {
+    loadAppInfo();
+}
+
 function clearElement(element) {
     element.replaceChildren();
 }

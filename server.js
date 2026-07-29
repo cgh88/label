@@ -1502,9 +1502,49 @@ app.post('/api/ingredients/reset', requireAdmin, async (req, res) => {
     }
 });
 
+app.get('/api/app-info', (req, res) => {
+    const apkPath = path.join(__dirname, 'client_flutter', 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk');
+    const pubspecPath = path.join(__dirname, 'client_flutter', 'pubspec.yaml');
+    
+    let version = '1.0.0';
+    let buildNumber = '1';
+    
+    if (fs.existsSync(pubspecPath)) {
+        const pubContent = fs.readFileSync(pubspecPath, 'utf8');
+        const match = pubContent.match(/^version:\s*([^\s+]+)\+?(\d+)?/m);
+        if (match) {
+            version = match[1] || '1.0.0';
+            buildNumber = match[2] || '1';
+        }
+    }
+
+    if (fs.existsSync(apkPath)) {
+        const stats = fs.statSync(apkPath);
+        const buildDate = stats.mtime.toISOString();
+        const sizeMb = (stats.size / (1024 * 1024)).toFixed(1);
+        res.json({
+            exists: true,
+            version,
+            buildNumber,
+            buildDate,
+            fileSizeMb: `${sizeMb} MB`,
+            downloadUrl: '/download/app-release.apk',
+            fileName: 'shelflife-label-app.apk'
+        });
+    } else {
+        res.json({
+            exists: false,
+            version,
+            buildNumber,
+            downloadUrl: '/download/app-release.apk'
+        });
+    }
+});
+
 app.get('/download/app-release.apk', (req, res) => {
     const apkPath = path.join(__dirname, 'client_flutter', 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk');
     if (fs.existsSync(apkPath)) {
+        res.setHeader('Content-Type', 'application/vnd.android.package-archive');
         res.download(apkPath, 'shelflife-label-app.apk');
     } else {
         res.status(404).send('APK 파일이 없습니다.');

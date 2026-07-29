@@ -188,7 +188,48 @@ body.light-theme .circle {
 
 .header-actions {
     display: flex;
+    align-items: center;
     gap: 10px;
+}
+
+/* APK Download Badge Button */
+.apk-download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 14px;
+    border-radius: var(--border-radius-sm);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.22));
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    color: #10b981 !important;
+    text-decoration: none;
+    font-family: var(--font-main);
+    transition: var(--transition-smooth);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.12);
+}
+
+.apk-download-btn:hover {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.28), rgba(5, 150, 105, 0.38));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.apk-info-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+}
+
+.apk-title {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.apk-meta {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    font-family: monospace;
 }
 
 /* Navigation Main Tabs */
