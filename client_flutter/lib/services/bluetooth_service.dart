@@ -261,6 +261,23 @@ class BluetoothPrintService {
     return false;
   }
 
+  Future<bool> printRawBytes(List<int> bytes) async {
+    final bool? isConn = await _bluetooth.isConnected;
+    if (!_isConnected || isConn != true) {
+      final bool autoOk = await autoConnect();
+      if (!autoOk) return false;
+    }
+    try {
+      await _bluetooth.writeBytes(Uint8List.fromList(bytes));
+      _isConnected = true;
+      _notifyConnectionChange();
+      return true;
+    } catch (e) {
+      debugPrint('Error writing raw bytes to printer: $e');
+      return false;
+    }
+  }
+
   Future<bool> printTsplLabel({
     required double width,
     required double height,

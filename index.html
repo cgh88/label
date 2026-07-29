@@ -51,6 +51,10 @@
                 <i data-lucide="printer" class="tab-icon"></i>
                 <span>라벨 인쇄</span>
             </button>
+            <button class="main-tab" data-tab="tab-sauce">
+                <i data-lucide="pizza" class="tab-icon"></i>
+                <span>소스 관리</span>
+            </button>
             <button class="main-tab" data-tab="tab-manage">
                 <i data-lucide="database" class="tab-icon"></i>
                 <span>등록 재료 관리</span>
@@ -287,6 +291,129 @@
                                 </thead>
                                 <tbody id="mgmt-table-body">
                                     <!-- Javascript will inject registered rows here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- 3. TAB: PIZZA SAUCE MANAGEMENT -->
+        <div id="tab-sauce" class="tab-content">
+            <main class="management-layout">
+                <div class="sauce-container" style="width: 100%; display: flex; flex-direction: column; gap: 20px;">
+                    <!-- System Time Header Widget -->
+                    <div class="config-card" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <i data-lucide="pizza" style="width: 28px; height: 28px; color: #6366f1;"></i>
+                            <div>
+                                <h2 style="font-size: 1.1rem; font-weight: 700; margin: 0;">피자소스 유효기한 스마트 라벨링 (KDS)</h2>
+                                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">개봉 후 실온 누적 10시간 관리 · 냉장 보관 차감 일시정지 · 11시 고정 차감 룰 적용</p>
+                            </div>
+                        </div>
+                        <div class="system-time-widget" style="display: flex; align-items: center; gap: 8px; background: rgba(30, 41, 59, 0.5); padding: 8px 16px; border-radius: 10px; border: 1px solid var(--card-border);">
+                            <i data-lucide="clock" style="width: 16px; height: 16px; color: #38bdf8;"></i>
+                            <span id="sauce-current-system-time" style="font-family: monospace; font-size: 1rem; font-weight: 700; color: #38bdf8;">2026-07-29 00:00:00</span>
+                        </div>
+                    </div>
+
+                    <!-- Top Control Section & Virtual Printer -->
+                    <div style="display: grid; grid-template-columns: 1fr 380px; gap: 20px;" class="sauce-responsive-grid">
+                        <!-- Left: Barcode Scanner & Action Console -->
+                        <div style="display: flex; flex-direction: column; gap: 20px;">
+                            <div class="config-card">
+                                <h2 class="config-section-title">
+                                    <i data-lucide="qr-code"></i>
+                                    <span>소스 ID 바코드 스캔 및 액션 제어</span>
+                                </h2>
+                                <div class="scanner-actions-bar" style="display: flex; gap: 12px; flex-wrap: wrap;">
+                                    <div class="input-group" style="flex: 1; min-width: 220px; position: relative;">
+                                        <input type="text" id="sauce-barcode-input" placeholder="소스통 ID 입력 (예: S20260729-001)" style="width: 100%; padding: 12px 14px; border-radius: 10px; font-family: monospace;">
+                                    </div>
+                                    <div class="action-buttons" style="display: flex; gap: 8px;">
+                                        <button type="button" id="sauce-btn-prep" class="btn btn-prep" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border: none; padding: 12px 18px; border-radius: 10px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                            <i data-lucide="sparkles"></i> PREP (최초개봉)
+                                        </button>
+                                        <button type="button" id="sauce-btn-in" class="btn btn-in" style="background: linear-gradient(135deg, #d97706, #b45309); color: white; border: none; padding: 12px 18px; border-radius: 10px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                            <i data-lucide="snowflake"></i> IN (냉장보관)
+                                        </button>
+                                        <button type="button" id="sauce-btn-out" class="btn btn-out" style="background: linear-gradient(135deg, #059669, #047857); color: white; border: none; padding: 12px 18px; border-radius: 10px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                            <i data-lucide="flame"></i> OUT (실온사용)
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Real-time Sauce Grid -->
+                            <div class="config-card" style="flex: 1;">
+                                <div class="grid-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                    <h2 class="config-section-title" style="margin: 0;">
+                                        <i data-lucide="layout-grid"></i>
+                                        <span>실시간 메이크라인 소스 현황</span>
+                                    </h2>
+                                    <span id="sauce-active-count" class="grid-count" style="font-size: 0.85rem; padding: 4px 12px; border-radius: 20px; background: rgba(99, 102, 241, 0.15); color: #818cf8; font-weight: 700;">활성 소스: 0개</span>
+                                </div>
+                                <div id="sauce-grid-container" class="sauce-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; max-height: 480px; overflow-y: auto;">
+                                    <!-- Populated dynamically -->
+                                    <div class="empty-grid-msg" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                        현재 관리 중인 피자소스가 없습니다.<br>
+                                        ID를 입력하거나 PREP (최초개봉) 버튼을 클릭하여 소스통을 추가하세요.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right: Virtual Thermal Printer -->
+                        <div class="config-card" style="display: flex; flex-direction: column; gap: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <h2 class="config-section-title" style="margin: 0;">
+                                    <i data-lucide="printer"></i>
+                                    <span>가상 라벨 프린터</span>
+                                </h2>
+                                <button type="button" id="sauce-print-raw-btn" class="size-preset-btn" style="padding: 6px 12px; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px;">
+                                    <i data-lucide="printer" style="width: 14px; height: 14px;"></i> 인쇄
+                                </button>
+                            </div>
+                            <div class="printer-housing" style="background: #1e293b; border-radius: 16px; padding: 12px; border: 2px solid var(--card-border);">
+                                <div class="printer-slot" style="background: #0f172a; height: 12px; border-radius: 6px; margin-bottom: 12px;"></div>
+                                <div id="sauce-printer-paper-feed" class="printer-paper-feed" style="display: none; background: white; color: black; padding: 12px; border-radius: 6px;">
+                                    <!-- Label preview populated dynamically -->
+                                </div>
+                                <div id="sauce-printer-idle-msg" style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 40px 10px; font-family: monospace;">
+                                    [ 프린터 대기 중... ]<br>
+                                    콘솔에서 소스를 처리하면 여기에 실물 규격 라벨 스티커가 출력됩니다.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom: Database Relation Viewer -->
+                    <div class="config-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h2 class="config-section-title" style="margin: 0;">
+                                <i data-lucide="database"></i>
+                                <span>시스템 연동 실시간 Database Viewer (Relation: pizza_sauce)</span>
+                            </h2>
+                            <button type="button" id="sauce-reset-all-btn" class="reset-danger-btn" style="padding: 6px 12px; font-size: 0.8rem;">
+                                <i data-lucide="trash-2"></i> 이력 초기화
+                            </button>
+                        </div>
+                        <div class="table-wrapper" style="max-height: 250px; overflow-y: auto;">
+                            <table class="db-table" id="sauce-db-table">
+                                <thead>
+                                    <tr>
+                                        <th>Source_ID</th>
+                                        <th>Status</th>
+                                        <th>Total_Valid_Min</th>
+                                        <th>Accum_Used_Min</th>
+                                        <th>Rem_Valid_Min</th>
+                                        <th>Last_Action_Time</th>
+                                        <th>Est_Discard_Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sauce-db-table-body">
+                                    <!-- Table records populated dynamically -->
                                 </tbody>
                             </table>
                         </div>

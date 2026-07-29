@@ -185,6 +185,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     loadStaffName();
     
     initTabs();
+    initSauceSystem();
     initLabelSizeControls();
     initLayoutSettings();
     initEmojiPicker();
@@ -1785,4 +1786,462 @@ function initEmojiPicker() {
             popover.style.display = "none";
         }
     });
+}
+
+// ==========================================
+// Pizza Sauce Smart Labeling System
+// ==========================================
+let sauceState = {
+    db: [],
+    selectedId: null,
+    sequence: 1,
+    systemTime: new Date(),
+    lastPrintedSauce: null,
+    lastPrintedRawOutTime: null
+};
+
+function initSauceSystem() {
+    loadSauceFromLocalStorage();
+    sauceState.systemTime = new Date();
+    updateSauceSystemTimeDisplay();
+    updateSauceUI();
+
+    setInterval(tickSauceTimer, 1000);
+
+    const barcodeInput = document.getElementById("sauce-barcode-input");
+    if (barcodeInput) {
+        barcodeInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                handleSauceBarcodeInput();
+            }
+        });
+    }
+
+    const btnPrep = document.getElementById("sauce-btn-prep");
+    if (btnPrep) btnPrep.addEventListener("click", triggerSaucePrep);
+
+    const btnIn = document.getElementById("sauce-btn-in");
+    if (btnIn) btnIn.addEventListener("click", triggerSauceIn);
+
+    const btnOut = document.getElementById("sauce-btn-out");
+    if (btnOut) btnOut.addEventListener("click", triggerSauceOut);
+
+    const printRawBtn = document.getElementById("sauce-print-raw-btn");
+    if (printRawBtn) printRawBtn.addEventListener("click", printSauceLabelRaw);
+
+    const resetAllBtn = document.getElementById("sauce-reset-all-btn");
+    if (resetAllBtn) resetAllBtn.addEventListener("click", resetSauceAllData);
+}
+
+function loadSauceFromLocalStorage() {
+    const saved = localStorage.getItem("sauce_db");
+    if (saved) {
+        try {
+            sauceState.db = JSON.parse(saved);
+            sauceState.db.forEach(item => {
+                if (item.Prep_Time) item.Prep_Time = new Date(item.Prep_Time);
+                if (item.Last_Action_Time) item.Last_Action_Time = new Date(item.Last_Action_Time);
+                if (item.Est_Discard_Time) item.Est_Discard_Time = new Date(item.Est_Discard_Time);
+            });
+        } catch (_) {}
+    }
+    const savedSeq = localStorage.getItem("sauce_seq");
+    if (savedSeq) {
+        sauceState.sequence = parseInt(savedSeq, 10) || 1;
+    }
+}
+
+function saveSauceToLocalStorage() {
+    localStorage.setItem("sauce_db", JSON.stringify(sauceState.db));
+    localStorage.setItem("sauce_seq", sauceState.sequence.toString());
+}
+
+function tickSauceTimer() {
+    sauceState.systemTime = new Date();
+    updateSauceSystemTimeDisplay();
+    checkSauceExpirations();
+    if (state.activeTab === "tab-sauce") {
+        updateSauceUI();
+    }
+}
+
+function updateSauceSystemTimeDisplay() {
+    const el = document.getElementById("sauce-current-system-time");
+    if (el) {
+        el.innerText = formatSauceDateTime(sauceState.systemTime);
+    }
+}
+
+function formatSauceDateTime(date) {
+    if (!date) return "-";
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    const hh = String(date.getHours()).padStart(2, "0");
+    const min = String(date.getMinutes()).padStart(2, "0");
+    const sec = String(date.getSeconds()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd} ${hh}:${min}:${sec}`;
+}
+
+function formatSauceDateTimeShort(date) {
+    if (!date) return "-";
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    const hh = String(date.getHours()).padStart(2, "0");
+    const min = String(date.getMinutes()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+}
+
+function formatSauceDateTimeWithDay(date) {
+    if (!date) return "-";
+    const days = ["일", "월", "화", "수", "목", "금", "토"];
+    const dayName = days[date.getDay()];
+    return `${formatSauceDateTimeShort(date)} (${dayName})`;
+}
+
+function formatSauceDuration(totalMin) {
+    if (totalMin <= 0) return "00시간 00분";
+    const hrs = Math.floor(totalMin / 60);
+    const mins = Math.floor(totalMin % 60);
+    return `${String(hrs).padStart(2, "0")}시간 ${String(mins).padStart(2, "0")}분`;
+}
+
+function formatSauceDurationLabel(totalMin) {
+    if (totalMin <= 0) return "00:00";
+    const hrs = Math.floor(totalMin / 60);
+    const mins = Math.floor(totalMin % 60);
+    return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+}
+
+function checkSauceExpirations() {
+    let changed = false;
+    sauceState.db.forEach(item => {
+        if (item.Status === "DISCARD") return;
+        let remMin = item.Rem_Valid_Min;
+        if (item.Status === "PREP" || item.Status === "OUT") {
+            const lastAction = new Date(item.Last_Action_Time);
+            let elapsedMin = 0;
+            if (sauceState.systemTime > lastAction) {
+                elapsedMin = (sauceState.systemTime - lastAction) / (1000 * 60);
+            }
+            remMin = item.Total_Valid_Min - item.Accum_Used_Min - elapsedMin;
+            if (remMin <= 0 || sauceState.systemTime >= item.Est_Discard_Time) {
+                item.Status = "DISCARD";
+                item.Rem_Valid_Min = 0;
+                item.Accum_Used_Min = item.Total_Valid_Min;
+                item.Est_Discard_Time = sauceState.systemTime;
+                changed = true;
+            }
+        }
+    });
+    if (changed) saveSauceToLocalStorage();
+}
+
+function handleSauceBarcodeInput() {
+    const input = document.getElementById("sauce-barcode-input");
+    if (!input) return;
+    const idVal = input.value.trim().toUpperCase();
+    if (!idVal) return;
+    const existing = sauceState.db.find(item => item.Source_ID === idVal);
+    if (existing) {
+        sauceState.selectedId = idVal;
+        updateSauceUI();
+        input.value = "";
+    } else {
+        triggerSaucePrep();
+    }
+}
+
+function triggerSaucePrep() {
+    const input = document.getElementById("sauce-barcode-input");
+    let sourceId = input ? input.value.trim().toUpperCase() : "";
+    if (!sourceId) {
+        const yyyy = sauceState.systemTime.getFullYear();
+        const mm = String(sauceState.systemTime.getMonth() + 1).padStart(2, "0");
+        const dd = String(sauceState.systemTime.getDate()).padStart(2, "0");
+        const seq = String(sauceState.sequence++).padStart(3, "0");
+        sourceId = `S${yyyy}${mm}${dd}-${seq}`;
+    }
+
+    if (sauceState.db.some(item => item.Source_ID === sourceId)) {
+        alert("이미 존재하는 소스 ID입니다.");
+        return;
+    }
+
+    const now = new Date(sauceState.systemTime);
+    const estDiscard = new Date(now.getTime() + 10 * 60 * 60 * 1000);
+
+    const newRecord = {
+        Source_ID: sourceId,
+        Status: "PREP",
+        Prep_Time: now,
+        Total_Valid_Min: 600,
+        Accum_Used_Min: 0,
+        Rem_Valid_Min: 600,
+        Last_Action_Time: now,
+        Est_Discard_Time: estDiscard,
+        _updated: true
+    };
+
+    sauceState.db.unshift(newRecord);
+    sauceState.selectedId = sourceId;
+    if (input) input.value = "";
+
+    renderSaucePrintedLabel(newRecord);
+    saveSauceToLocalStorage();
+    updateSauceUI();
+}
+
+function getActiveOrSelectedSauce() {
+    if (sauceState.selectedId) {
+        return sauceState.db.find(item => item.Source_ID === sauceState.selectedId);
+    }
+    return sauceState.db.find(item => item.Status !== "DISCARD");
+}
+
+function triggerSauceIn() {
+    const item = getActiveOrSelectedSauce();
+    if (!item) {
+        alert("냉장 보관할 소스를 선택하거나 ID를 입력하세요.");
+        return;
+    }
+    if (item.Status === "DISCARD") {
+        alert("폐기된 소스는 냉장 보관할 수 없습니다.");
+        return;
+    }
+    if (item.Status === "IN") {
+        alert("이미 냉장 보관 상태(IN)입니다.");
+        return;
+    }
+
+    const now = new Date(sauceState.systemTime);
+    const lastAction = new Date(item.Last_Action_Time);
+    let workDuration = 0;
+    if (now > lastAction) {
+        workDuration = (now - lastAction) / (1000 * 60);
+    }
+
+    item.Accum_Used_Min = Math.min(item.Total_Valid_Min, item.Accum_Used_Min + workDuration);
+    item.Rem_Valid_Min = Math.max(0, item.Total_Valid_Min - item.Accum_Used_Min);
+    item.Last_Action_Time = now;
+    item.Est_Discard_Time = null;
+    item.Status = "IN";
+    item._updated = true;
+
+    renderSaucePrintedLabel(item);
+    saveSauceToLocalStorage();
+    updateSauceUI();
+}
+
+function triggerSauceOut() {
+    const item = getActiveOrSelectedSauce();
+    if (!item) {
+        alert("냉장 출고할 소스를 선택하거나 ID를 입력하세요.");
+        return;
+    }
+    if (item.Status === "DISCARD") {
+        alert("폐기된 소스는 출고할 수 없습니다.");
+        return;
+    }
+    if (item.Status === "PREP" || item.Status === "OUT") {
+        alert("이미 실온 사용 상태(PREP/OUT)입니다.");
+        return;
+    }
+
+    const now = new Date(sauceState.systemTime);
+    const openTimeToday = new Date(sauceState.systemTime);
+    openTimeToday.setHours(11, 0, 0, 0);
+
+    let effectiveStart = new Date(now);
+    if (now < openTimeToday) {
+        effectiveStart = openTimeToday;
+    }
+
+    item.Last_Action_Time = effectiveStart;
+    item.Est_Discard_Time = new Date(effectiveStart.getTime() + item.Rem_Valid_Min * 60 * 1000);
+    item.Status = "OUT";
+    item._updated = true;
+
+    renderSaucePrintedLabel(item, now);
+    saveSauceToLocalStorage();
+    updateSauceUI();
+}
+
+function resetSauceAllData() {
+    if (confirm("등록된 모든 소스 관리 이력을 초기화하시겠습니까?")) {
+        sauceState.db = [];
+        sauceState.selectedId = null;
+        saveSauceToLocalStorage();
+        updateSauceUI();
+        const paper = document.getElementById("sauce-printer-paper-feed");
+        const idleMsg = document.getElementById("sauce-printer-idle-msg");
+        if (paper) paper.style.display = "none";
+        if (idleMsg) idleMsg.style.display = "block";
+    }
+}
+
+function renderSaucePrintedLabel(item, rawOutTime = null) {
+    const paper = document.getElementById("sauce-printer-paper-feed");
+    const idleMsg = document.getElementById("sauce-printer-idle-msg");
+    if (!paper || !idleMsg) return;
+
+    idleMsg.style.display = "none";
+    paper.style.display = "flex";
+
+    const remMin = item.Rem_Valid_Min;
+    let html = "";
+
+    if (item.Status === "PREP") {
+        html = `
+            <div class="label-2050">
+                <div class="label-row label-header">
+                    <span>PS 피자소스</span>
+                    <span>[PREP]</span>
+                </div>
+                <div class="label-row"><span>ID: ${item.Source_ID}</span></div>
+                <div class="label-row"><span>Prep: ${formatSauceDateTimeWithDay(item.Last_Action_Time)}</span></div>
+                <div class="label-row"><span style="color: red;">폐기일: ${formatSauceDateTimeWithDay(item.Est_Discard_Time)}</span></div>
+                <div class="label-row"><span>잔여: 시간 ${formatSauceDurationLabel(remMin)}</span></div>
+            </div>
+        `;
+    } else if (item.Status === "IN") {
+        const prepTime = item.Prep_Time || item.Last_Action_Time;
+        html = `
+            <div class="label-2050">
+                <div class="label-row label-header">
+                    <span>PS 피자소스</span>
+                    <span>[워크인 IN]</span>
+                </div>
+                <div class="label-row"><span>ID: ${item.Source_ID}</span></div>
+                <div class="label-row"><span>PREP: ${formatSauceDateTimeWithDay(prepTime)}</span></div>
+                <div class="label-row"><span>IN  : ${formatSauceDateTimeWithDay(item.Last_Action_Time)}</span></div>
+                <div class="label-row"><span style="color: blue;">※ 냉장 보관 중 (차감 중지)</span></div>
+                <div class="label-row"><span>잔여: 시간 ${formatSauceDurationLabel(remMin)}</span></div>
+            </div>
+        `;
+    } else if (item.Status === "OUT") {
+        const processTime = rawOutTime || item.Last_Action_Time || sauceState.systemTime;
+        html = `
+            <div class="label-2050">
+                <div class="label-row label-header">
+                    <span>PS 피자소스</span>
+                    <span>[OUT]</span>
+                </div>
+                <div class="label-row"><span>ID: ${item.Source_ID}</span></div>
+                <div class="label-row"><span>OUT : ${formatSauceDateTimeWithDay(processTime)}</span></div>
+                <div class="label-row"><span style="color: red;">폐기: ${formatSauceDateTimeWithDay(item.Est_Discard_Time)}</span></div>
+                <div class="label-row"><span>잔여: 시간 ${formatSauceDurationLabel(remMin)}</span></div>
+            </div>
+        `;
+    }
+
+    paper.innerHTML = html;
+}
+
+function printSauceLabelRaw() {
+    const paper = document.getElementById("sauce-printer-paper-feed");
+    if (!paper || paper.style.display === "none") {
+        alert("출력할 라벨 데이터가 존재하지 않습니다.");
+        return;
+    }
+    window.print();
+}
+
+function updateSauceUI() {
+    const activeCount = sauceState.db.filter(item => item.Status !== "DISCARD").length;
+    const activeCountEl = document.getElementById("sauce-active-count");
+    if (activeCountEl) activeCountEl.innerText = `활성 소스: ${activeCount}개`;
+
+    const gridContainer = document.getElementById("sauce-grid-container");
+    if (gridContainer) {
+        if (sauceState.db.length === 0) {
+            gridContainer.innerHTML = `
+                <div class="empty-grid-msg" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                    현재 관리 중인 피자소스가 없습니다.<br>
+                    ID를 입력하거나 PREP (최초개봉) 버튼을 클릭하여 소스통을 추가하세요.
+                </div>
+            `;
+        } else {
+            let gridHtml = "";
+            sauceState.db.forEach(item => {
+                let currentRem = item.Rem_Valid_Min;
+                if (item.Status === "PREP" || item.Status === "OUT") {
+                    const lastAction = new Date(item.Last_Action_Time);
+                    let elapsedMin = 0;
+                    if (sauceState.systemTime > lastAction) {
+                        elapsedMin = (sauceState.systemTime - lastAction) / (1000 * 60);
+                    }
+                    currentRem = Math.max(0, item.Total_Valid_Min - item.Accum_Used_Min - elapsedMin);
+                }
+
+                const pct = (currentRem / item.Total_Valid_Min) * 100;
+                let progClass = "";
+                if (pct < 15) progClass = "danger";
+                else if (pct < 45) progClass = "warning";
+                if (item.Status === "IN") progClass += " paused";
+
+                const isSelected = (sauceState.selectedId === item.Source_ID) ? "selected" : "";
+                let statusBadgeClass = `badge-sauce badge-${item.Status.toLowerCase()}`;
+                let statusLabel = item.Status;
+
+                gridHtml += `
+                    <div class="sauce-card ${isSelected}" onclick="selectSauceCard('${item.Source_ID}')">
+                        <div class="sauce-card-header">
+                            <span class="sauce-id">${item.Source_ID}</span>
+                            <span class="${statusBadgeClass}">${statusLabel}</span>
+                        </div>
+                        <div style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 2px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-muted);">최종 시작:</span>
+                                <span>${formatSauceDateTimeShort(new Date(item.Last_Action_Time))}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-muted);">예상 폐기:</span>
+                                <span style="color: ${item.Status === 'DISCARD' || currentRem <= 0 ? '#ef4444' : 'inherit'}; font-weight: 700;">${formatSauceDateTimeShort(item.Est_Discard_Time)}</span>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="progress-container">
+                                <div class="progress-bar ${progClass}" style="width: ${item.Status === 'DISCARD' ? 0 : pct}%;"></div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-top: 4px;">
+                                <span style="color: var(--text-muted);">잔여시간:</span>
+                                <span style="font-weight: 700;">${item.Status === 'IN' ? '차감 중지 (IN)' : (item.Status === 'DISCARD' ? '폐기 완료' : formatSauceDuration(currentRem))}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            gridContainer.innerHTML = gridHtml;
+        }
+    }
+
+    const tableBody = document.getElementById("sauce-db-table-body");
+    if (tableBody) {
+        let tableHtml = "";
+        sauceState.db.forEach(item => {
+            let trClass = item._updated ? "updated" : "";
+            delete item._updated;
+            tableHtml += `
+                <tr class="${trClass}">
+                    <td style="font-weight: 700;">${item.Source_ID}</td>
+                    <td><span class="badge-sauce badge-${item.Status.toLowerCase()}">${item.Status}</span></td>
+                    <td>${item.Total_Valid_Min}</td>
+                    <td>${Math.round(item.Accum_Used_Min)}</td>
+                    <td>${Math.round(item.Rem_Valid_Min)}</td>
+                    <td>${formatSauceDateTimeShort(new Date(item.Last_Action_Time))}</td>
+                    <td>${formatSauceDateTimeShort(item.Est_Discard_Time)}</td>
+                </tr>
+            `;
+        });
+        tableBody.innerHTML = tableHtml;
+    }
+}
+
+function selectSauceCard(id) {
+    sauceState.selectedId = (sauceState.selectedId === id) ? null : id;
+    const item = sauceState.db.find(i => i.Source_ID === id);
+    if (item) renderSaucePrintedLabel(item);
+    updateSauceUI();
 }

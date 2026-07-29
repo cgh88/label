@@ -7,6 +7,7 @@ import 'services/bluetooth_service.dart';
 import 'services/database_service.dart';
 import 'views/login_view.dart';
 import 'views/print_tab_view.dart';
+import 'views/sauce_tab_view.dart';
 import 'views/settings_tab_view.dart';
 
 void main() {
@@ -415,7 +416,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _navigateToSettings() {
     setState(() {
-      _activeTabIndex = 1;
+      _activeTabIndex = 2;
     });
   }
 
@@ -618,7 +619,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         child: BottomNavigationBar(
-          currentIndex: _activeTabIndex > 1 ? 0 : _activeTabIndex,
+          currentIndex: _activeTabIndex,
           onTap: (index) {
             setState(() {
               _activeTabIndex = index;
@@ -632,6 +633,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             BottomNavigationBarItem(
               icon: Icon(Icons.print),
               label: '라벨 인쇄',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.local_pizza),
+              label: '소스 관리',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.settings),
@@ -655,12 +660,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
         ),
         child: IndexedStack(
-          index: _activeTabIndex > 1 ? 0 : _activeTabIndex,
+          index: _activeTabIndex,
           children: [
             PrintTabView(
               activeTabIndex: _activeTabIndex,
               onNavigateToSettings: _navigateToSettings,
             ),
+            const SauceTabView(),
             const SettingsTabView(),
           ],
         ),

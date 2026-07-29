@@ -21,6 +21,7 @@ class DatabaseService {
   List<Ingredient> ingredients = [];
   List<Map<String, dynamic>> users = [];
   List<Map<String, dynamic>> printLogs = [];
+  List<SauceItem> sauceItems = [];
   String lastUpdated = "";
 
   final ValueNotifier<int> dataRevision = ValueNotifier<int>(0);
@@ -140,6 +141,9 @@ class DatabaseService {
 
     users = [];
     printLogs = List<Map<String, dynamic>>.from(_dbData['print_logs'] ?? []);
+    sauceItems = (_dbData['sauce_items'] as List? ?? [])
+        .map((s) => SauceItem.fromJson(Map<String, dynamic>.from(s as Map)))
+        .toList();
   }
 
   Future<void> save() async {
@@ -150,6 +154,7 @@ class DatabaseService {
     _dbData['ingredients_v2'] = ingredients.map((i) => i.toJson()).toList();
     _dbData['users'] = [];
     _dbData['print_logs'] = printLogs;
+    _dbData['sauce_items'] = sauceItems.map((s) => s.toJson()).toList();
     
     final mappingList = <Map<String, dynamic>>[];
     for (final ing in ingredients) {
@@ -175,6 +180,11 @@ class DatabaseService {
     }
     lastUpdated = _dbData['last_updated'];
     dataRevision.value++;
+  }
+
+  Future<void> saveSauceItems(List<SauceItem> items) async {
+    sauceItems = items;
+    await save();
   }
 
   Future<void> replaceDatabaseContent(String jsonContent) async {

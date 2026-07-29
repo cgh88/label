@@ -1,3 +1,5 @@
+export 'sauce_item.dart';
+
 class AppCategory {
   final int id;
   final String name;
