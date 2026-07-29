@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/sauce_item.dart';
 import '../services/bluetooth_service.dart';
 import '../services/database_service.dart';
+import '../services/api_sync_service.dart';
 
 class SauceTabView extends StatefulWidget {
   const SauceTabView({super.key});
@@ -45,14 +46,24 @@ class _SauceTabViewState extends State<SauceTabView> {
     super.dispose();
   }
 
-  void _loadSauceList() {
+  Future<void> _loadSauceList() async {
     setState(() {
       _sauceList = List<SauceItem>.from(DatabaseService.instance.sauceItems);
-      // Auto sequence generation base
       if (_sauceList.isNotEmpty) {
         _sequence = _sauceList.length + 1;
       }
     });
+
+    final remoteSauces = await ApiSyncService.instance.fetchSauces();
+    if (remoteSauces.isNotEmpty && mounted) {
+      setState(() {
+        _sauceList = remoteSauces;
+        if (_sauceList.isNotEmpty) {
+          _sequence = _sauceList.length + 1;
+        }
+      });
+      DatabaseService.instance.saveSauceItems(_sauceList);
+    }
   }
 
   void _saveSauceList() {
@@ -64,6 +75,7 @@ class _SauceTabViewState extends State<SauceTabView> {
     for (final item in _sauceList) {
       if (item.updateExpirationCheck(_systemTime)) {
         updated = true;
+        ApiSyncService.instance.putSauceStatus(item);
       }
     }
     if (updated) {
@@ -109,6 +121,7 @@ class _SauceTabViewState extends State<SauceTabView> {
     });
 
     _saveSauceList();
+    ApiSyncService.instance.postSaucePrep(newRecord);
     _showSnackBar('신규 피자소스 [PREP] 개봉 완료: $sourceId');
   }
 
@@ -136,6 +149,7 @@ class _SauceTabViewState extends State<SauceTabView> {
     });
 
     _saveSauceList();
+    ApiSyncService.instance.putSauceStatus(item);
     _showSnackBar('피자소스 [IN] 냉장고 보관 처리 (차감 중지): ${item.sourceId}');
   }
 
@@ -163,6 +177,7 @@ class _SauceTabViewState extends State<SauceTabView> {
     });
 
     _saveSauceList();
+    ApiSyncService.instance.putSauceStatus(item);
 
     final isBefore11 = now.isBefore(DateTime(now.year, now.month, now.day, 11, 0, 0));
     final msg = isBefore11
@@ -178,6 +193,7 @@ class _SauceTabViewState extends State<SauceTabView> {
       if (_lastPrintedSauce?.sourceId == id) _lastPrintedSauce = null;
     });
     _saveSauceList();
+    ApiSyncService.instance.deleteSauce(id);
   }
 
   void _clearAllSauces() {
@@ -201,6 +217,7 @@ class _SauceTabViewState extends State<SauceTabView> {
                 _lastPrintedSauce = null;
               });
               _saveSauceList();
+              ApiSyncService.instance.deleteSauce('reset-all');
               _showSnackBar('모든 소스 관리 데이터가 초기화되었습니다.');
             },
             child: const Text('초기화', style: TextStyle(color: Colors.white)),

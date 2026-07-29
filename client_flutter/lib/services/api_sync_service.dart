@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import '../models/sauce_item.dart';
 import 'database_service.dart';
 
 typedef SyncProgressCallback = void Function(double progress, String statusMessage);
@@ -193,6 +194,89 @@ class ApiSyncService {
       );
     } catch (e) {
       return SyncResult(success: false, message: '파일 구조 해석 오류: $e');
+    }
+  }
+
+  /// Fetches sauce master list from backend DB.
+  Future<List<Map<String, dynamic>>> fetchSauceMasters() async {
+    if (!isConfigured()) return [];
+    try {
+      final res = await http.get(Uri.parse('$apiSyncUrl/api/sauce-master'), headers: await authHeaders()).timeout(const Duration(seconds: 3));
+      if (res.statusCode == 200) {
+        final List list = jsonDecode(res.body);
+        return List<Map<String, dynamic>>.from(list);
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Fetches system settings map from backend DB.
+  Future<Map<String, String>> fetchSystemSettings() async {
+    if (!isConfigured()) return {};
+    try {
+      final res = await http.get(Uri.parse('$apiSyncUrl/api/system-settings'), headers: await authHeaders()).timeout(const Duration(seconds: 3));
+      if (res.statusCode == 200) {
+        final Map<String, dynamic> map = jsonDecode(res.body);
+        return map.map((k, v) => MapEntry(k, v.toString()));
+      }
+    } catch (_) {}
+    return {};
+  }
+
+  /// Fetches sauces list from backend DB.
+  Future<List<SauceItem>> fetchSauces() async {
+    if (!isConfigured()) return [];
+    try {
+      final res = await http.get(Uri.parse('$apiSyncUrl/api/sauces'), headers: await authHeaders()).timeout(const Duration(seconds: 3));
+      if (res.statusCode == 200) {
+        final List list = jsonDecode(res.body);
+        return list.map((s) => SauceItem.fromJson(Map<String, dynamic>.from(s))).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Posts new PREP sauce to backend DB.
+  Future<bool> postSaucePrep(SauceItem item) async {
+    if (!isConfigured()) return false;
+    try {
+      final res = await http.post(
+        Uri.parse('$apiSyncUrl/api/sauces/prep'),
+        headers: await authHeaders(jsonBody: true),
+        body: jsonEncode(item.toJson()),
+      ).timeout(const Duration(seconds: 3));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Updates sauce status on backend DB.
+  Future<bool> putSauceStatus(SauceItem item) async {
+    if (!isConfigured()) return false;
+    try {
+      final res = await http.put(
+        Uri.parse('$apiSyncUrl/api/sauces/${item.sourceId}/status'),
+        headers: await authHeaders(jsonBody: true),
+        body: jsonEncode(item.toJson()),
+      ).timeout(const Duration(seconds: 3));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Deletes sauce or resets all on backend DB.
+  Future<bool> deleteSauce(String sourceId) async {
+    if (!isConfigured()) return false;
+    try {
+      final res = await http.delete(
+        Uri.parse('$apiSyncUrl/api/sauces/$sourceId'),
+        headers: await authHeaders(),
+      ).timeout(const Duration(seconds: 3));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
     }
   }
 }

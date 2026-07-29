@@ -1,5 +1,6 @@
 class SauceItem {
   final String sourceId;
+  String sauceCode; // 'PS', 'GD', 'BQ', 'HS'
   String status; // 'PREP', 'IN', 'OUT', 'DISCARD'
   DateTime prepTime;
   int totalValidMin;
@@ -10,6 +11,7 @@ class SauceItem {
 
   SauceItem({
     required this.sourceId,
+    this.sauceCode = 'PS',
     required this.status,
     required this.prepTime,
     this.totalValidMin = 600,
@@ -63,16 +65,19 @@ class SauceItem {
   /// Trigger PREP action
   static SauceItem createPrep({
     required String sourceId,
+    String sauceCode = 'PS',
+    int totalValidMin = 600,
     required DateTime now,
   }) {
-    final estDiscard = now.add(const Duration(hours: 10));
+    final estDiscard = now.add(Duration(minutes: totalValidMin));
     return SauceItem(
       sourceId: sourceId,
+      sauceCode: sauceCode,
       status: 'PREP',
       prepTime: now,
-      totalValidMin: 600,
+      totalValidMin: totalValidMin,
       accumUsedMin: 0.0,
-      remValidMin: 600.0,
+      remValidMin: totalValidMin.toDouble(),
       lastActionTime: now,
       estDiscardTime: estDiscard,
     );
@@ -95,11 +100,11 @@ class SauceItem {
   }
 
   /// Trigger OUT action (Retrieve from fridge to room temp)
-  void triggerOut(DateTime now) {
+  void triggerOut(DateTime now, {int startHour = 11}) {
     if (status == 'DISCARD' || status == 'PREP' || status == 'OUT') return;
 
-    // Rule: If retrieved before 11:00 AM today, countdown starts at 11:00 AM
-    final openTimeToday = DateTime(now.year, now.month, now.day, 11, 0, 0);
+    // Rule: If retrieved before operating start hour (e.g. 11:00 AM) today, countdown starts at 11:00 AM
+    final openTimeToday = DateTime(now.year, now.month, now.day, startHour, 0, 0);
 
     DateTime effectiveStart = now;
     if (now.isBefore(openTimeToday)) {
@@ -114,26 +119,46 @@ class SauceItem {
   Map<String, dynamic> toJson() {
     return {
       'sourceId': sourceId,
+      'source_id': sourceId,
+      'sauceCode': sauceCode,
+      'sauce_code': sauceCode,
       'status': status,
       'prepTime': prepTime.toIso8601String(),
+      'prep_time': prepTime.toIso8601String(),
       'totalValidMin': totalValidMin,
+      'total_valid_min': totalValidMin,
       'accumUsedMin': accumUsedMin,
+      'accum_used_min': accumUsedMin,
       'remValidMin': remValidMin,
+      'rem_valid_min': remValidMin,
       'lastActionTime': lastActionTime.toIso8601String(),
+      'last_action_time': lastActionTime.toIso8601String(),
       'estDiscardTime': estDiscardTime?.toIso8601String(),
+      'est_discard_time': estDiscardTime?.toIso8601String(),
     };
   }
 
   factory SauceItem.fromJson(Map<String, dynamic> json) {
+    final sId = json['source_id'] ?? json['sourceId'] ?? '';
+    final sCode = json['sauce_code'] ?? json['sauceCode'] ?? 'PS';
+    final st = json['status'] ?? 'PREP';
+    final pTimeStr = json['prep_time'] ?? json['prepTime'] ?? DateTime.now().toIso8601String();
+    final totMin = (json['total_valid_min'] ?? json['totalValidMin'] as num?)?.toInt() ?? 600;
+    final accMin = (json['accum_used_min'] ?? json['accumUsedMin'] as num?)?.toDouble() ?? 0.0;
+    final remMin = (json['rem_valid_min'] ?? json['remValidMin'] as num?)?.toDouble() ?? totMin.toDouble();
+    final lastActStr = json['last_action_time'] ?? json['lastActionTime'] ?? pTimeStr;
+    final estDiscStr = json['est_discard_time'] ?? json['estDiscardTime'];
+
     return SauceItem(
-      sourceId: json['sourceId'] ?? '',
-      status: json['status'] ?? 'PREP',
-      prepTime: DateTime.parse(json['prepTime']),
-      totalValidMin: json['totalValidMin'] ?? 600,
-      accumUsedMin: (json['accumUsedMin'] as num?)?.toDouble() ?? 0.0,
-      remValidMin: (json['remValidMin'] as num?)?.toDouble() ?? 600.0,
-      lastActionTime: DateTime.parse(json['lastActionTime']),
-      estDiscardTime: json['estDiscardTime'] != null ? DateTime.parse(json['estDiscardTime']) : null,
+      sourceId: sId,
+      sauceCode: sCode,
+      status: st,
+      prepTime: DateTime.parse(pTimeStr),
+      totalValidMin: totMin,
+      accumUsedMin: accMin,
+      remValidMin: remMin,
+      lastActionTime: DateTime.parse(lastActStr),
+      estDiscardTime: estDiscStr != null ? DateTime.parse(estDiscStr) : null,
     );
   }
 }

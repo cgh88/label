@@ -488,7 +488,67 @@ async function initDatabaseAsync() {
         value TEXT NOT NULL
     )`);
 
+    await runAsync(`CREATE TABLE IF NOT EXISTS sauce_master (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sauce_code TEXT UNIQUE NOT NULL,
+        sauce_name TEXT NOT NULL,
+        default_valid_min INTEGER DEFAULT 600,
+        warning_pct INTEGER DEFAULT 45,
+        critical_pct INTEGER DEFAULT 15,
+        is_active INTEGER DEFAULT 1
+    )`);
+    await seedSauceMasterAsync();
+
+    await runAsync(`CREATE TABLE IF NOT EXISTS system_settings (
+        setting_key TEXT PRIMARY KEY,
+        setting_value TEXT NOT NULL,
+        description TEXT
+    )`);
+    await seedSystemSettingsAsync();
+
+    await runAsync(`CREATE TABLE IF NOT EXISTS pizza_sauce (
+        source_id TEXT PRIMARY KEY,
+        sauce_code TEXT DEFAULT 'PS',
+        status TEXT NOT NULL,
+        total_valid_min INTEGER NOT NULL,
+        accum_used_min REAL DEFAULT 0,
+        rem_valid_min REAL NOT NULL,
+        prep_time TEXT NOT NULL,
+        last_action_time TEXT NOT NULL,
+        est_discard_time TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )`);
+
     await checkAndMigrateAsync();
+}
+
+async function seedSauceMasterAsync() {
+    const defaultSauces = [
+        { code: 'PS', name: '피자소스', min: 600, warn: 45, crit: 15 },
+        { code: 'GD', name: '갈릭디핑소스', min: 480, warn: 45, crit: 15 },
+        { code: 'BQ', name: '바비큐소스', min: 480, warn: 45, crit: 15 },
+        { code: 'HS', name: '핫소스', min: 720, warn: 45, crit: 15 }
+    ];
+    for (const s of defaultSauces) {
+        await runAsync(
+            "INSERT OR IGNORE INTO sauce_master (sauce_code, sauce_name, default_valid_min, warning_pct, critical_pct) VALUES (?, ?, ?, ?, ?)",
+            [s.code, s.name, s.min, s.warn, s.crit]
+        );
+    }
+}
+
+async function seedSystemSettingsAsync() {
+    const defaultSettings = [
+        { key: 'operating_start_time', val: '11:00:00', desc: '오전 출고 시 유효시간 차감 시작 시각' },
+        { key: 'operating_end_time', val: '22:00:00', desc: '매장 영업 마감 시각' },
+        { key: 'sauce_id_prefix', val: 'S', desc: '소스통 바코드 ID 접두사' }
+    ];
+    for (const st of defaultSettings) {
+        await runAsync(
+            "INSERT OR IGNORE INTO system_settings (setting_key, setting_value, description) VALUES (?, ?, ?)",
+            [st.key, st.val, st.desc]
+        );
+    }
 }
 
 async function checkAndMigrateAsync() {
@@ -859,6 +919,127 @@ app.post('/api/print-logs', requireLogin, async (req, res) => {
             [logEntry.id, logEntry.ingredient_name, logEntry.category, logEntry.abbr, logEntry.storage_location, logEntry.prep_date, logEntry.expire_date, logEntry.staff, logEntry.quantity, logEntry.timestamp]
         );
         res.json({ success: true, log: logEntry });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ==========================================
+// Sauce Management REST APIs
+// ==========================================
+
+// GET /api/sauce-master (Sauce item master list)
+app.get('/api/sauce-master', async (req, res) => {
+    try {
+        const rows = await allAsync("SELECT * FROM sauce_master WHERE is_active = 1 ORDER BY id ASC");
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/sauce-master (Create or Update sauce master)
+app.post('/api/sauce-master', requireAdmin, async (req, res) => {
+    const { sauce_code, sauce_name, default_valid_min, warning_pct, critical_pct } = req.body || {};
+    if (!sauce_code || !sauce_name) {
+        return res.status(400).json({ error: '소스 코드와 소스 이름은 필수입니다.' });
+    }
+    try {
+        await runAsync(
+            `INSERT OR REPLACE INTO sauce_master (sauce_code, sauce_name, default_valid_min, warning_pct, critical_pct, is_active)
+             VALUES (?, ?, ?, ?, ?, 1)`,
+            [sauce_code.toUpperCase(), sauce_name, default_valid_min || 600, warning_pct || 45, critical_pct || 15]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/system-settings (System configuration)
+app.get('/api/system-settings', async (req, res) => {
+    try {
+        const rows = await allAsync("SELECT * FROM system_settings");
+        const settings = {};
+        rows.forEach(r => { settings[r.setting_key] = r.setting_value; });
+        res.json(settings);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/system-settings (Update system configuration)
+app.post('/api/system-settings', requireAdmin, async (req, res) => {
+    const { key, value } = req.body || {};
+    if (!key) return res.status(400).json({ error: '설정 키는 필수입니다.' });
+    try {
+        await runAsync(
+            "INSERT OR REPLACE INTO system_settings (setting_key, setting_value) VALUES (?, ?)",
+            [key, String(value)]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/sauces (Get active/stored sauces)
+app.get('/api/sauces', async (req, res) => {
+    try {
+        const rows = await allAsync("SELECT * FROM pizza_sauce ORDER BY created_at DESC");
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/sauces/prep (Create new PREP sauce)
+app.post('/api/sauces/prep', async (req, res) => {
+    const { source_id, sauce_code, total_valid_min, prep_time, last_action_time, est_discard_time } = req.body || {};
+    if (!source_id) return res.status(400).json({ error: 'Source ID는 필수입니다.' });
+
+    const nowIso = prep_time || new Date().toISOString();
+    const estIso = est_discard_time || new Date(new Date(nowIso).getTime() + (total_valid_min || 600) * 60 * 1000).toISOString();
+
+    try {
+        await runAsync(
+            `INSERT INTO pizza_sauce (source_id, sauce_code, status, total_valid_min, accum_used_min, rem_valid_min, prep_time, last_action_time, est_discard_time)
+             VALUES (?, ?, 'PREP', ?, 0, ?, ?, ?, ?)`,
+            [source_id, sauce_code || 'PS', total_valid_min || 600, total_valid_min || 600, nowIso, last_action_time || nowIso, estIso]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PUT /api/sauces/:id/status (Update status to IN, OUT, or DISCARD)
+app.put('/api/sauces/:id/status', async (req, res) => {
+    const source_id = req.params.id;
+    const { status, accum_used_min, rem_valid_min, last_action_time, est_discard_time } = req.body || {};
+    if (!status) return res.status(400).json({ error: 'Status 항목은 필수입니다.' });
+
+    try {
+        await runAsync(
+            `UPDATE pizza_sauce SET status = ?, accum_used_min = ?, rem_valid_min = ?, last_action_time = ?, est_discard_time = ? WHERE source_id = ?`,
+            [status, accum_used_min ?? 0, rem_valid_min ?? 0, last_action_time || new Date().toISOString(), est_discard_time || null, source_id]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE /api/sauces/:id (Delete sauce record or reset all)
+app.delete('/api/sauces/:id', async (req, res) => {
+    const id = req.params.id;
+    try {
+        if (id === 'reset-all') {
+            await runAsync("DELETE FROM pizza_sauce");
+        } else {
+            await runAsync("DELETE FROM pizza_sauce WHERE source_id = ?", [id]);
+        }
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
