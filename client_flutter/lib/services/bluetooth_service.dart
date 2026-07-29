@@ -399,10 +399,16 @@ class BluetoothPrintService {
       labelLines.add(LabelLine(line1Text, fontSize1, fallbackText: fallbackText));
     }
     if (showLine2) {
-      labelLines.add(LabelLine('준비: $prepDate', fontSize2));
+      final String line2Text = (prepDate.startsWith('준비:') || prepDate.startsWith('Prep:') || prepDate.startsWith('PREP:') || prepDate.startsWith('OUT:') || prepDate.startsWith('IN:'))
+          ? prepDate
+          : '준비: $prepDate';
+      labelLines.add(LabelLine(line2Text, fontSize2));
     }
     if (showLine3) {
-      labelLines.add(LabelLine(expDate.isEmpty ? '' : '폐기: $expDate', fontSize3));
+      final String line3Text = (expDate.startsWith('폐기:') || expDate.startsWith('폐기일:') || expDate.startsWith('IN:') || expDate.startsWith('※'))
+          ? expDate
+          : (expDate.isEmpty ? '' : '폐기: $expDate');
+      labelLines.add(LabelLine(line3Text, fontSize3));
     }
     if (showLine4) {
       labelLines.add(LabelLine('(담당: $staff)', fontSize4));
