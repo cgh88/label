@@ -425,6 +425,7 @@ function initDateTime() {
 }
 
 function updatePrepTimeInputDisplay() {
+    if (!prepTimeInput) return;
     const tzOffset = state.prepTime.getTimezoneOffset() * 60000;
     const localISOTime = (new Date(state.prepTime - tzOffset)).toISOString().slice(0, 16);
     prepTimeInput.value = localISOTime;
@@ -434,7 +435,7 @@ function loadStaffName() {
     const savedStaff = localStorage.getItem("label_staff_name");
     if (savedStaff) {
         state.staffName = savedStaff;
-        staffInput.value = savedStaff;
+        if (staffInput) staffInput.value = savedStaff;
         if (stickerStaffVal) {
             stickerStaffVal.textContent = savedStaff;
         }
@@ -443,10 +444,12 @@ function loadStaffName() {
 
 function setupEventHandlers() {
     // Search
-    searchInput.addEventListener("input", (e) => {
-        state.filters.search = e.target.value.trim();
-        renderIngredients();
-    });
+    if (searchInput) {
+        searchInput.addEventListener("input", (e) => {
+            state.filters.search = e.target.value.trim();
+            renderIngredients();
+        });
+    }
 
     if (mgmtSearchInput) {
         mgmtSearchInput.addEventListener("input", (e) => {
@@ -456,15 +459,17 @@ function setupEventHandlers() {
     }
     
     // Theme Toggle
-    themeToggleBtn.addEventListener("click", toggleTheme);
+    if (themeToggleBtn) themeToggleBtn.addEventListener("click", toggleTheme);
     
     // Prep Time Input Manual Change
-    prepTimeInput.addEventListener("change", (e) => {
-        if (e.target.value) {
-            state.prepTime = new Date(e.target.value);
-            updateStickerPreview();
-        }
-    });
+    if (prepTimeInput) {
+        prepTimeInput.addEventListener("change", (e) => {
+            if (e.target.value) {
+                state.prepTime = new Date(e.target.value);
+                updateStickerPreview();
+            }
+        });
+    }
     
     // Time adjustment buttons
     document.querySelectorAll(".time-adjust-btn").forEach(btn => {
@@ -475,11 +480,13 @@ function setupEventHandlers() {
     });
     
     // Staff Input
-    staffInput.addEventListener("input", (e) => {
-        state.staffName = e.target.value;
-        localStorage.setItem("label_staff_name", state.staffName);
-        updateStickerPreview();
-    });
+    if (staffInput) {
+        staffInput.addEventListener("input", (e) => {
+            state.staffName = e.target.value;
+            localStorage.setItem("label_staff_name", state.staffName);
+            updateStickerPreview();
+        });
+    }
     
     // Qty input
     labelQtyInput.addEventListener("change", (e) => {
