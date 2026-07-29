@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_sync_service.dart';
+import '../services/bluetooth_service.dart';
 
 class LoginView extends StatefulWidget {
   final Function(String username, String role) onLoginSuccess;
@@ -81,19 +83,26 @@ class _LoginViewState extends State<LoginView> {
           await prefs.setString('session_cookie', rawCookie);
         }
 
-        // Perform initial sync after login to ensure client has latest server data
-        try {
-          await ApiSyncService.instance.performSync();
-        } catch (e) {
-          debugPrint('Initial sync error after login: $e');
-        }
-
         if (mounted) {
           setState(() {
             _isLoading = false;
           });
           widget.onLoginSuccess(returnedUsername, role);
         }
+
+        // Perform sync and Bluetooth autoConnect in the background without blocking screen transition
+        unawaited(Future(() async {
+          try {
+            await ApiSyncService.instance.performSync();
+          } catch (e) {
+            debugPrint('Background sync error after login: $e');
+          }
+          try {
+            await BluetoothPrintService.instance.autoConnect();
+          } catch (e) {
+            debugPrint('Background BT autoConnect error after login: $e');
+          }
+        }));
       } else {
         if (mounted) {
           setState(() {
@@ -158,18 +167,13 @@ class _LoginViewState extends State<LoginView> {
                       children: [
                         // Header logo/icon (without purple tint)
                         Center(
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.08)
-                                  : const Color(0xFF0F172A).withValues(alpha: 0.08),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.print_rounded,
-                              size: 48,
-                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.asset(
+                              'assets/images/app_logo_3.png',
+                              width: 72,
+                              height: 72,
+                              fit: BoxFit.contain,
                             ),
                           ),
                         ),

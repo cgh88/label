@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -32,6 +33,8 @@ class _PrintTabViewState extends State<PrintTabView> {
   String _selectedCategory = '전체';
   Ingredient? _selectedIngredient;
   String _selectedStorage = '입고';
+  bool _isStorageLocked = false;
+  String? _lockedStorage;
   DateTime _prepTime = DateTime.now();
 
   List<Ingredient> _filteredIngredients = [];
@@ -71,6 +74,7 @@ class _PrintTabViewState extends State<PrintTabView> {
 
   @override
   void dispose() {
+    _searchDebounceTimer?.cancel();
     layoutSettingsRevision.removeListener(_loadSettings);
     _searchController.dispose();
     _staffController.dispose();
@@ -81,41 +85,77 @@ class _PrintTabViewState extends State<PrintTabView> {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
-    setState(() {
-      _staffController.text = prefs.getString('staff_name') ?? '';
-      // Label size is fixed at 55×20mm
-      _labelWidth = 55.0;
-      _labelHeight = 20.0;
+    final staff = prefs.getString('staff_name') ?? '';
+    final show1 = prefs.getBool('layout_show_line_1') ?? true;
+    final show2 = prefs.getBool('layout_show_line_2') ?? true;
+    final show3 = prefs.getBool('layout_show_line_3') ?? true;
+    final show4 = prefs.getBool('layout_show_line_4') ?? true;
+    final fs1 = prefs.getDouble('layout_font_size_1') ?? 12.5;
+    final fs2 = prefs.getDouble('layout_font_size_2') ?? 12.5;
+    final fs3 = prefs.getDouble('layout_font_size_3') ?? 12.5;
+    final fs4 = prefs.getDouble('layout_font_size_4') ?? 6.25;
+    final pad = prefs.getDouble('layout_left_padding') ?? 10.0;
+    final gap = prefs.getDouble('layout_vertical_gap') ?? 3.5;
 
-      _showLine1 = prefs.getBool('layout_show_line_1') ?? true;
-      _showLine2 = prefs.getBool('layout_show_line_2') ?? true;
-      _showLine3 = prefs.getBool('layout_show_line_3') ?? true;
-      _showLine4 = prefs.getBool('layout_show_line_4') ?? true;
-      _fontSize1 = prefs.getDouble('layout_font_size_1') ?? 12.5;
-      _fontSize2 = prefs.getDouble('layout_font_size_2') ?? 12.5;
-      _fontSize3 = prefs.getDouble('layout_font_size_3') ?? 12.5;
-      _fontSize4 = prefs.getDouble('layout_font_size_4') ?? 6.25;
-      _leftPadding = prefs.getDouble('layout_left_padding') ?? 10.0;
-      _verticalGap = prefs.getDouble('layout_vertical_gap') ?? 3.5;
+    if (_staffController.text != staff ||
+        _showLine1 != show1 ||
+        _showLine2 != show2 ||
+        _showLine3 != show3 ||
+        _showLine4 != show4 ||
+        _fontSize1 != fs1 ||
+        _fontSize2 != fs2 ||
+        _fontSize3 != fs3 ||
+        _fontSize4 != fs4 ||
+        _leftPadding != pad ||
+        _verticalGap != gap) {
+      setState(() {
+        _staffController.text = staff;
+        _labelWidth = 55.0;
+        _labelHeight = 20.0;
+        _showLine1 = show1;
+        _showLine2 = show2;
+        _showLine3 = show3;
+        _showLine4 = show4;
+        _fontSize1 = fs1;
+        _fontSize2 = fs2;
+        _fontSize3 = fs3;
+        _fontSize4 = fs4;
+        _leftPadding = pad;
+        _verticalGap = gap;
+      });
+    }
+  }
+
+
+  Timer? _searchDebounceTimer;
+
+  void _onSearchChanged() {
+    _searchDebounceTimer?.cancel();
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 150), () {
+      if (mounted) {
+        _filterIngredients();
+      }
     });
   }
 
-
-  void _onSearchChanged() {
-    _filterIngredients();
-  }
+  static final Map<String, String> _chosungCache = <String, String>{};
 
   String _getChosung(String str) {
+    final cached = _chosungCache[str];
+    if (cached != null) return cached;
+
     const cho = ["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
-    var result = "";
+    final sb = StringBuffer();
     for (var i = 0; i < str.length; i++) {
-      var code = str.codeUnitAt(i) - 44032;
+      final code = str.codeUnitAt(i) - 44032;
       if (code >= 0 && code < 11172) {
-        result += cho[(code / 588).floor()];
+        sb.write(cho[(code / 588).floor()]);
       } else {
-        result += str[i];
+        sb.write(str[i]);
       }
     }
+    final result = sb.toString();
+    _chosungCache[str] = result;
     return result;
   }
 
@@ -160,11 +200,28 @@ class _PrintTabViewState extends State<PrintTabView> {
     _selectedIngredient = ing;
     // Prep time is no longer manually edited; use the current time.
     _prepTime = DateTime.now();
-    // Default to first storage location if available, otherwise '입고'
-    if (ing.storage.isNotEmpty) {
-      _selectedStorage = ing.storage.keys.first;
+
+    // Check if the currently locked storage location is supported by this ingredient.
+    // If not supported, automatically release the lock.
+    if (_isStorageLocked && _lockedStorage != null) {
+      final bool isSupported = _lockedStorage == '입고' || ing.storage.containsKey(_lockedStorage);
+      if (isSupported) {
+        _selectedStorage = _lockedStorage!;
+      } else {
+        _isStorageLocked = false;
+        _lockedStorage = null;
+        if (ing.storage.isNotEmpty) {
+          _selectedStorage = ing.storage.keys.first;
+        } else {
+          _selectedStorage = '입고';
+        }
+      }
     } else {
-      _selectedStorage = '입고';
+      if (ing.storage.isNotEmpty) {
+        _selectedStorage = ing.storage.keys.first;
+      } else {
+        _selectedStorage = '입고';
+      }
     }
     if (notify) {
       setState(() {});
@@ -252,17 +309,6 @@ class _PrintTabViewState extends State<PrintTabView> {
       );
 
       if (success) {
-        await DatabaseService.instance.addPrintLog(
-          ingredientName: _selectedIngredient!.name,
-          category: _selectedIngredient!.category,
-          abbr: _selectedIngredient!.abbr,
-          storageLocation: storage,
-          prepDate: prepStr,
-          expireDate: expStr,
-          staff: _staffController.text.isEmpty ? '-' : _staffController.text,
-          quantity: qty,
-        );
-
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('블루투스 프린터로 $qty장의 라벨을 전송했습니다.')),
@@ -397,23 +443,6 @@ class _PrintTabViewState extends State<PrintTabView> {
         onLayout: (PdfPageFormat format) async => doc.save(),
         format: pageFormat,
         name: 'label_${_selectedIngredient!.name}_$storage',
-      );
-
-      final qty = int.tryParse(_qtyController.text) ?? 1;
-      final prepStr = _formatDateTime(_prepTime);
-      final expStr = storage != '입고'
-          ? _formatDateTime(_computeExpiration(_selectedIngredient!, storage))
-          : '';
-
-      await DatabaseService.instance.addPrintLog(
-        ingredientName: _selectedIngredient!.name,
-        category: _selectedIngredient!.category,
-        abbr: _selectedIngredient!.abbr,
-        storageLocation: storage,
-        prepDate: prepStr,
-        expireDate: expStr,
-        staff: _staffController.text.isEmpty ? '-' : _staffController.text,
-        quantity: qty,
       );
     } catch (e) {
       debugPrint('Printing error: $e');
@@ -630,7 +659,7 @@ class _PrintTabViewState extends State<PrintTabView> {
                                           child: Text(
                                             ing.category,
                                             style: TextStyle(
-                                              color: catColor.computeLuminance() > 0.6 ? Colors.black : Colors.white,
+                                              color: Colors.white,
                                               fontSize: 11,
                                               fontWeight: FontWeight.bold,
                                             ),
@@ -717,14 +746,23 @@ class _PrintTabViewState extends State<PrintTabView> {
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  ..._selectedIngredient!.storage.keys
-                                      .map((loc) => _buildStorageButton(loc, isDark)),
-                                  _buildStorageButton('입고', isDark),
-                                ],
+                              Builder(
+                                builder: (context) {
+                                  final Set<String> storageKeys = {
+                                    ..._selectedIngredient!.storage.keys,
+                                    '입고',
+                                  };
+                                  if (_isStorageLocked && _lockedStorage != null) {
+                                    storageKeys.add(_lockedStorage!);
+                                  }
+                                  return Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: storageKeys
+                                        .map((loc) => _buildStorageButton(loc, isDark))
+                                        .toList(),
+                                  );
+                                },
                               ),
                               const SizedBox(height: 24),
 
@@ -766,9 +804,6 @@ class _PrintTabViewState extends State<PrintTabView> {
                                             borderSide: const BorderSide(color: Color(0xFF6366F1)),
                                           ),
                                         ),
-                                        onChanged: (_) {
-                                          setState(() {});
-                                        },
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -932,33 +967,73 @@ class _PrintTabViewState extends State<PrintTabView> {
   // no longer shifts on selection).
   Widget _buildStorageButton(String loc, bool isDark) {
     final bool isSelected = _selectedStorage == loc;
+    final bool isLocked = _isStorageLocked && _lockedStorage == loc;
+
+    final Color bgColor;
+    if (isLocked) {
+      bgColor = const Color(0xFFF59E0B);
+    } else if (isSelected) {
+      bgColor = const Color(0xFFFF1E1E);
+    } else {
+      bgColor = isDark ? const Color(0xFF1E2030) : Colors.white;
+    }
+
     return InkWell(
-      onTap: () => setState(() => _selectedStorage = loc),
+      onTap: () {
+        setState(() {
+          _selectedStorage = loc;
+        });
+      },
+      onDoubleTap: () {
+        setState(() {
+          if (_isStorageLocked && _lockedStorage == loc) {
+            _isStorageLocked = false;
+            _lockedStorage = null;
+          } else {
+            _isStorageLocked = true;
+            _lockedStorage = loc;
+            _selectedStorage = loc;
+          }
+        });
+      },
       borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFFFF1E1E)
-              : (isDark ? const Color(0xFF1E2030) : Colors.white),
+          color: bgColor,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected
-                ? Colors.transparent
-                : (isDark ? Colors.white.withValues(alpha: 0.2) : const Color(0xFFCBD5E1)),
-            width: isSelected ? 0 : 1.2,
+            color: isLocked
+                ? const Color(0xFFFBBF24)
+                : (isSelected
+                    ? Colors.transparent
+                    : (isDark ? Colors.white.withValues(alpha: 0.2) : const Color(0xFFCBD5E1))),
+            width: (isLocked || isSelected) ? 0 : 1.2,
           ),
-          boxShadow: isSelected
-              ? [BoxShadow(color: const Color(0xFFFF1E1E).withValues(alpha: 0.35), blurRadius: 8, offset: const Offset(0, 2))]
-              : [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04), blurRadius: 4, offset: const Offset(0, 2))],
+          boxShadow: isLocked
+              ? [BoxShadow(color: const Color(0xFFF59E0B).withValues(alpha: 0.45), blurRadius: 8, offset: const Offset(0, 2))]
+              : (isSelected
+                  ? [BoxShadow(color: const Color(0xFFFF1E1E).withValues(alpha: 0.35), blurRadius: 8, offset: const Offset(0, 2))]
+                  : [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04), blurRadius: 4, offset: const Offset(0, 2))]),
         ),
-        child: Text(
-          loc,
-          style: TextStyle(
-            color: isSelected ? Colors.white : (isDark ? Colors.white : const Color(0xFF1E293B)),
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isLocked) ...[
+              const Icon(Icons.lock, size: 15, color: Colors.white),
+              const SizedBox(width: 5),
+            ],
+            Text(
+              loc,
+              style: TextStyle(
+                color: (isSelected || isLocked)
+                    ? Colors.white
+                    : (isDark ? Colors.white : const Color(0xFF1E293B)),
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -191,52 +191,19 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _initializeAppServices() async {
-    final Stopwatch stopwatch = Stopwatch()..start();
-    // Guarantee minimum splash display time (1200ms) so the user sees a smooth loading screen
-    // with step-by-step progress instead of an instant flicker.
-    const Duration minVisible = Duration(milliseconds: 1200);
-
     try {
       if (mounted) {
         setState(() {
-          _progress = 0.2;
+          _progress = 0.4;
           _statusMessage = '로컬 데이터베이스 초기화 중...';
         });
       }
 
       try {
         await DatabaseService.instance.init();
+        await ApiSyncService.instance.loadConfig();
       } catch (e) {
         debugPrint('Database init error caught: $e');
-      }
-
-      if (mounted) {
-        setState(() {
-          _progress = 0.55;
-          _statusMessage = '서버 데이터 동기화 중...';
-        });
-      }
-
-      try {
-        await ApiSyncService.instance.loadConfig();
-        if (ApiSyncService.instance.isConfigured()) {
-          await ApiSyncService.instance.performSync();
-        }
-      } catch (e) {
-        debugPrint('Config load and sync error caught: $e');
-      }
-
-      if (mounted) {
-        setState(() {
-          _progress = 0.8;
-          _statusMessage = '프린터 연결 확인 중...';
-        });
-      }
-
-      try {
-        await BluetoothPrintService.instance.autoConnect();
-      } catch (e) {
-        debugPrint('Bluetooth autoConnect error caught: $e');
       }
 
       if (mounted) {
@@ -246,11 +213,25 @@ class _SplashScreenState extends State<SplashScreen> {
         });
       }
 
-      final Duration remaining = minVisible - stopwatch.elapsed;
-      if (remaining > Duration.zero) {
-        await Future.delayed(remaining);
-      }
+      // Enter main screen immediately without blocking on network sync or BT connection
       if (mounted) widget.onInitComplete();
+
+      // Run server sync and Bluetooth printer autoConnect in the background
+      unawaited(Future(() async {
+        try {
+          if (ApiSyncService.instance.isConfigured()) {
+            await ApiSyncService.instance.performSync();
+          }
+        } catch (e) {
+          debugPrint('Background sync error on startup: $e');
+        }
+
+        try {
+          await BluetoothPrintService.instance.autoConnect();
+        } catch (e) {
+          debugPrint('Background BT autoConnect on startup: $e');
+        }
+      }));
     } catch (e) {
       debugPrint('Overall Splash init error caught: $e');
       if (mounted) widget.onInitComplete();
@@ -280,6 +261,16 @@ class _SplashScreenState extends State<SplashScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.asset(
+                      'assets/images/app_logo_3.png',
+                      width: 72,
+                      height: 72,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   const Text(
                     'SHELFLIFE LABEL SYSTEM',
                     style: TextStyle(
@@ -503,7 +494,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         title: Row(
           children: [
-            const Icon(Icons.print, color: Color(0xFFFF1E1E)),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.asset(
+                'assets/images/app_logo_3.png',
+                width: 28,
+                height: 28,
+                fit: BoxFit.contain,
+              ),
+            ),
             const SizedBox(width: 8),
             Flexible(
               child: Text(

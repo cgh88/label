@@ -265,40 +265,7 @@ class DatabaseService {
     required String staff,
     required int quantity,
   }) async {
-    final newLog = {
-      'id': '${DateTime.now().millisecondsSinceEpoch}-${DateTime.now().microsecondsSinceEpoch}',
-      'ingredient_name': ingredientName,
-      'category': category,
-      'abbr': abbr,
-      'storage_location': storageLocation,
-      'prep_date': prepDate,
-      'expire_date': expireDate,
-      'staff': staff,
-      'quantity': quantity,
-      'timestamp': DateTime.now().toUtc().toIso8601String(),
-    };
-
-    printLogs.add(newLog);
-    await save();
-
-    // Try to send via HTTP POST to /api/print-logs
-    final baseUrl = ApiSyncService.instance.apiSyncUrl;
-    final serverUrl = '$baseUrl/api/print-logs';
-
-    try {
-      final response = await http.post(
-        Uri.parse(serverUrl),
-        headers: await ApiSyncService.authHeaders(jsonBody: true),
-        body: jsonEncode(newLog),
-      );
-      if (response.statusCode != 200) {
-        debugPrint('HTTP Print Log failed with status: ${response.statusCode}');
-      } else {
-        debugPrint('HTTP Print Log success: $serverUrl');
-      }
-    } catch (e) {
-      debugPrint('HTTP Print Log error (possibly offline): $e');
-    }
+    // Print history logging disabled as requested.
   }
 
   Future<Map<String, dynamic>> _getDefaultData() async {
