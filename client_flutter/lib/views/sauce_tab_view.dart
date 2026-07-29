@@ -546,22 +546,23 @@ class _SauceTabViewState extends State<SauceTabView> {
                     Icon(Icons.print, size: 20, color: Color(0xFF10B981)),
                     SizedBox(width: 8),
                     Text(
-                      '가상 감열지 라벨 프린터',
+                      '감열지 라벨 스티커 미리보기',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black87,
+                    backgroundColor: const Color(0xFF10B981),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  icon: const Icon(Icons.bluetooth_searching, size: 16),
-                  label: const Text('실물 출력을 위해 BT 프린터 사용'),
+                  icon: const Icon(Icons.print, size: 18),
+                  label: const Text('라벨 스티커 출력', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   onPressed: () {
                     if (item == null) {
-                      _showSnackBar('출력할 라벨이 없습니다.');
+                      _showSnackBar('출력할 소스 라벨을 선택해 주세요.');
                       return;
                     }
                     _printBluetoothLabel(item);
@@ -589,7 +590,7 @@ class _SauceTabViewState extends State<SauceTabView> {
                           Icon(Icons.receipt_long, size: 40, color: isDark ? Colors.white38 : Colors.black38),
                           const SizedBox(height: 8),
                           Text(
-                            '[ 프린터 대기 중 ]\nPREP / IN / OUT 처리 시 감열 라벨 스티커가 출력됩니다.',
+                            '[ 프린터 대기 중 ]\nPREP / IN / OUT 처리 시 감열 라벨 스티커가 자동 미리보기됩니다.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 13,
@@ -614,68 +615,95 @@ class _SauceTabViewState extends State<SauceTabView> {
     if (item.status == 'IN') statusBadge = '[워크인 IN]';
     if (item.status == 'OUT') statusBadge = '[OUT]';
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Tooltip(
+      message: '터치하여 블루투스 라벨 스티커 출력',
+      child: InkWell(
+        onTap: () => _printBluetoothLabel(item),
         borderRadius: BorderRadius.circular(8),
-        boxShadow: const [
-          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'PS 피자소스',
-                style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  statusBadge,
-                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          const Divider(color: Colors.black45, thickness: 1.5, height: 16),
-          Text(
-            'ID : ${item.sourceId}',
-            style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
-          ),
-          const SizedBox(height: 4),
-          if (item.status == 'PREP') ...[
-            Text('Prep : ${_formatDateTimeWithDay(item.lastActionTime)}', style: const TextStyle(color: Colors.black87, fontSize: 13)),
-            const SizedBox(height: 2),
-            Text('폐기일: ${_formatDateTimeWithDay(item.estDiscardTime)}', style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
-          ] else if (item.status == 'IN') ...[
-            Text('PREP : ${_formatDateTimeWithDay(item.prepTime)}', style: const TextStyle(color: Colors.black87, fontSize: 13)),
-            const SizedBox(height: 2),
-            Text('IN   : ${_formatDateTimeWithDay(item.lastActionTime)}', style: const TextStyle(color: Colors.black87, fontSize: 13)),
-            const SizedBox(height: 2),
-            const Text('※ 냉장 보관 중 (차감 일시정지)', style: TextStyle(color: Colors.blue, fontSize: 12, fontWeight: FontWeight.bold)),
-          ] else if (item.status == 'OUT') ...[
-            Text('OUT  : ${_formatDateTimeWithDay(_lastPrintedRawOutTime ?? item.lastActionTime)}', style: const TextStyle(color: Colors.black87, fontSize: 13)),
-            const SizedBox(height: 2),
-            Text('폐기 : ${_formatDateTimeWithDay(item.estDiscardTime)}', style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
+        child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFF10B981), width: 2),
+          boxShadow: const [
+            BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4)),
           ],
-          const SizedBox(height: 4),
-          Text(
-            '잔여 : 시간 ${_formatDurationLabel(remMin)}',
-            style: const TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold),
-          ),
-        ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'PS 피자소스',
+                  style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    statusBadge,
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            const Divider(color: Colors.black45, thickness: 1.5, height: 16),
+            Text(
+              'ID : ${item.sourceId}',
+              style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+            ),
+            const SizedBox(height: 4),
+            if (item.status == 'PREP') ...[
+              Text('Prep : ${_formatDateTimeWithDay(item.lastActionTime)}', style: const TextStyle(color: Colors.black87, fontSize: 13)),
+              const SizedBox(height: 2),
+              Text('폐기일: ${_formatDateTimeWithDay(item.estDiscardTime)}', style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
+            ] else if (item.status == 'IN') ...[
+              Text('PREP : ${_formatDateTimeWithDay(item.prepTime)}', style: const TextStyle(color: Colors.black87, fontSize: 13)),
+              const SizedBox(height: 2),
+              Text('IN   : ${_formatDateTimeWithDay(item.lastActionTime)}', style: const TextStyle(color: Colors.black87, fontSize: 13)),
+              const SizedBox(height: 2),
+              const Text('※ 냉장 보관 중 (차감 일시정지)', style: TextStyle(color: Colors.blue, fontSize: 12, fontWeight: FontWeight.bold)),
+            ] else if (item.status == 'OUT') ...[
+              Text('OUT  : ${_formatDateTimeWithDay(_lastPrintedRawOutTime ?? item.lastActionTime)}', style: const TextStyle(color: Colors.black87, fontSize: 13)),
+              const SizedBox(height: 2),
+              Text('폐기 : ${_formatDateTimeWithDay(item.estDiscardTime)}', style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
+            ],
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '잔여 : 시간 ${_formatDurationLabel(remMin)}',
+                  style: const TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.touch_app, size: 13, color: Colors.white),
+                      SizedBox(width: 3),
+                      Text('터치하여 출력', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-    );
+    ),
+  );
   }
 
   void _printBluetoothLabel(SauceItem item) async {
