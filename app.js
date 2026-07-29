@@ -1951,6 +1951,18 @@ function formatSauceDurationLabel(totalMin) {
 
 function checkSauceExpirations() {
     let changed = false;
+    const now = sauceState.systemTime;
+    const cutoff24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    const initialLen = sauceState.db.length;
+    sauceState.db = sauceState.db.filter(item => {
+        const prep = new Date(item.Prep_Time || item.Last_Action_Time);
+        const last = new Date(item.Last_Action_Time);
+        if (prep < cutoff24h || last < cutoff24h) return false;
+        return true;
+    });
+    if (sauceState.db.length !== initialLen) changed = true;
+
     sauceState.db.forEach(item => {
         if (item.Status === "DISCARD") return;
         let remMin = item.Rem_Valid_Min;
@@ -1992,11 +2004,13 @@ function triggerSaucePrep() {
     const input = document.getElementById("sauce-barcode-input");
     let sourceId = input ? input.value.trim().toUpperCase() : "";
     if (!sourceId) {
-        const yyyy = sauceState.systemTime.getFullYear();
+        const yy = String(sauceState.systemTime.getFullYear()).slice(2);
         const mm = String(sauceState.systemTime.getMonth() + 1).padStart(2, "0");
         const dd = String(sauceState.systemTime.getDate()).padStart(2, "0");
-        const seq = String(sauceState.sequence++).padStart(3, "0");
-        sourceId = `S${yyyy}${mm}${dd}-${seq}`;
+        const prefix = `S${yy}${mm}${dd}-`;
+        const todayCount = sauceState.db.filter(item => item.Source_ID && item.Source_ID.startsWith(prefix)).length;
+        const seq = String(todayCount + 1).padStart(3, "0");
+        sourceId = `${prefix}${seq}`;
     }
 
     if (sauceState.db.some(item => item.Source_ID === sourceId)) {

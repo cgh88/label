@@ -18,7 +18,6 @@ class _SauceTabViewState extends State<SauceTabView> {
   String? _selectedSauceId;
   DateTime _systemTime = DateTime.now();
   Timer? _timer;
-  int _sequence = 1;
 
   // Selected label preview item
   SauceItem? _lastPrintedSauce;
@@ -49,18 +48,12 @@ class _SauceTabViewState extends State<SauceTabView> {
   Future<void> _loadSauceList() async {
     setState(() {
       _sauceList = List<SauceItem>.from(DatabaseService.instance.sauceItems);
-      if (_sauceList.isNotEmpty) {
-        _sequence = _sauceList.length + 1;
-      }
     });
 
     final remoteSauces = await ApiSyncService.instance.fetchSauces();
     if (remoteSauces.isNotEmpty && mounted) {
       setState(() {
         _sauceList = remoteSauces;
-        if (_sauceList.isNotEmpty) {
-          _sequence = _sauceList.length + 1;
-        }
       });
       DatabaseService.instance.saveSauceItems(_sauceList);
     }
@@ -72,8 +65,30 @@ class _SauceTabViewState extends State<SauceTabView> {
 
   void _checkExpirations() {
     bool updated = false;
+    final now = _systemTime;
+    final cutoff24h = now.subtract(const Duration(hours: 24));
+
+    // Auto-purge items older than 24 hours to keep log lightweight
+    final initialLen = _sauceList.length;
+    _sauceList.removeWhere((item) {
+      if (item.prepTime.isBefore(cutoff24h) || item.lastActionTime.isBefore(cutoff24h)) {
+        return true;
+      }
+      return false;
+    });
+
+    if (_sauceList.length != initialLen) {
+      updated = true;
+      if (_selectedSauceId != null && !_sauceList.any((i) => i.sourceId == _selectedSauceId)) {
+        _selectedSauceId = null;
+      }
+      if (_lastPrintedSauce != null && !_sauceList.any((i) => i.sourceId == _lastPrintedSauce!.sourceId)) {
+        _lastPrintedSauce = null;
+      }
+    }
+
     for (final item in _sauceList) {
-      if (item.updateExpirationCheck(_systemTime)) {
+      if (item.updateExpirationCheck(now)) {
         updated = true;
         ApiSyncService.instance.putSauceStatus(item);
       }
@@ -95,11 +110,14 @@ class _SauceTabViewState extends State<SauceTabView> {
   void _triggerPrep() {
     String sourceId = _idInputController.text.trim().toUpperCase();
     if (sourceId.isEmpty) {
-      final yyyy = _systemTime.year.toString();
+      final yy = (_systemTime.year % 100).toString().padLeft(2, '0');
       final mm = _systemTime.month.toString().padLeft(2, '0');
       final dd = _systemTime.day.toString().padLeft(2, '0');
-      final seqStr = (_sequence++).toString().padLeft(3, '0');
-      sourceId = 'S$yyyy$mm$dd-$seqStr';
+      final datePrefix = 'S$yy$mm$dd-';
+      
+      final todayCount = _sauceList.where((item) => item.sourceId.startsWith(datePrefix)).length;
+      final seqStr = (todayCount + 1).toString().padLeft(3, '0');
+      sourceId = '$datePrefix$seqStr';
     }
 
     if (_sauceList.any((item) => item.sourceId == sourceId)) {
