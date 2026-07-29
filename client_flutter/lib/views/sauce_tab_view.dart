@@ -736,9 +736,9 @@ class _SauceTabViewState extends State<SauceTabView> {
 
     if (item.status == 'IN') {
       prepDateStr = 'PREP: ${_formatDateTimeWithDay(item.prepTime)}';
-      expDateStr = 'IN  : ${_formatDateTimeWithDay(item.lastActionTime)}';
+      expDateStr = 'IN: ${_formatDateTimeWithDay(item.lastActionTime)}';
     } else if (item.status == 'OUT') {
-      prepDateStr = 'OUT : ${_formatDateTimeWithDay(_lastPrintedRawOutTime ?? item.lastActionTime)}';
+      prepDateStr = 'OUT: ${_formatDateTimeWithDay(_lastPrintedRawOutTime ?? item.lastActionTime)}';
       expDateStr = '폐기: ${_formatDateTimeWithDay(item.estDiscardTime)}';
     }
 

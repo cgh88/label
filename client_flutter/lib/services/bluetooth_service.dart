@@ -399,15 +399,17 @@ class BluetoothPrintService {
       labelLines.add(LabelLine(line1Text, fontSize1, fallbackText: fallbackText));
     }
     if (showLine2) {
-      final String line2Text = (prepDate.startsWith('준비:') || prepDate.startsWith('Prep:') || prepDate.startsWith('PREP:') || prepDate.startsWith('OUT:') || prepDate.startsWith('IN:'))
-          ? prepDate
-          : '준비: $prepDate';
+      String line2Text = prepDate;
+      if (!line2Text.contains(':') && !line2Text.startsWith('준비') && !line2Text.startsWith('Prep') && !line2Text.startsWith('OUT') && !line2Text.startsWith('IN')) {
+        line2Text = '준비: $line2Text';
+      }
       labelLines.add(LabelLine(line2Text, fontSize2));
     }
     if (showLine3) {
-      final String line3Text = (expDate.startsWith('폐기:') || expDate.startsWith('폐기일:') || expDate.startsWith('IN:') || expDate.startsWith('※'))
-          ? expDate
-          : (expDate.isEmpty ? '' : '폐기: $expDate');
+      String line3Text = expDate;
+      if (line3Text.isNotEmpty && !line3Text.contains(':') && !line3Text.startsWith('폐기') && !line3Text.startsWith('IN') && !line3Text.startsWith('※')) {
+        line3Text = '폐기: $line3Text';
+      }
       labelLines.add(LabelLine(line3Text, fontSize3));
     }
     if (showLine4) {
