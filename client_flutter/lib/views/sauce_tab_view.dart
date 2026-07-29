@@ -679,10 +679,40 @@ class _SauceTabViewState extends State<SauceTabView> {
   }
 
   void _printBluetoothLabel(SauceItem item) async {
-    final remMin = item.getDynamicRemainingMin(_systemTime);
-    String statusBadge = item.status;
+    _showSnackBar('블루투스 프린터 연결 및 출력 전송 중...');
 
-    final textPayload = '''
+    String statusBadge = 'PREP';
+    if (item.status == 'IN') statusBadge = 'IN(냉장)';
+    if (item.status == 'OUT') statusBadge = 'OUT(실온)';
+
+    String prepDateStr = _formatDateTimeWithDay(item.lastActionTime);
+    String expDateStr = _formatDateTimeWithDay(item.estDiscardTime);
+
+    if (item.status == 'IN') {
+      prepDateStr = _formatDateTimeWithDay(item.prepTime);
+      expDateStr = 'IN: ${_formatDateTimeWithDay(item.lastActionTime)} (차감중지)';
+    } else if (item.status == 'OUT') {
+      prepDateStr = _formatDateTimeWithDay(_lastPrintedRawOutTime ?? item.lastActionTime);
+    }
+
+    try {
+      final success = await BluetoothPrintService.instance.printTsplLabel(
+        width: 50,
+        height: 20,
+        name: 'PS 피자소스',
+        abbr: item.sourceId,
+        storage: statusBadge,
+        prepDate: prepDateStr,
+        expDate: expDateStr,
+        staff: 'KDS',
+      );
+
+      if (success) {
+        _showSnackBar('블루투스 프린터로 피자소스 라벨 스티커 출력 성공! (${item.sourceId})');
+      } else {
+        // Fallback attempt with raw text bytes if TSPL image print fails
+        final remMin = item.getDynamicRemainingMin(_systemTime);
+        final textPayload = '''
 ================================
      피자소스 유효기한 스티커    
 ================================
@@ -692,17 +722,17 @@ ID      : ${item.sourceId}
 폐기시각: ${_formatDateTime(item.estDiscardTime)}
 잔여시간: ${_formatDuration(remMin)}
 ================================
-''';
 
-    try {
-      final success = await BluetoothPrintService.instance.printRawBytes(textPayload.codeUnits);
-      if (success) {
-        _showSnackBar('블루투스 프린터로 피자소스 라벨 전송 완료');
-      } else {
-        _showSnackBar('프린터 미연결 상태입니다. 가상 라벨을 참조하세요.');
+\r\n\r\n''';
+        final rawSuccess = await BluetoothPrintService.instance.printRawBytes(textPayload.codeUnits);
+        if (rawSuccess) {
+          _showSnackBar('블루투스 프린터로 텍스트 라벨 전송 완료');
+        } else {
+          _showSnackBar('블루투스 프린터가 연결되지 않았습니다. [설정] 탭에서 프린터를 연결해 주세요.');
+        }
       }
     } catch (e) {
-      _showSnackBar('프린터 출력 실패: $e');
+      _showSnackBar('프린터 출력 오류: $e');
     }
   }
 
