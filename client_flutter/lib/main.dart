@@ -619,6 +619,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         child: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
           currentIndex: _activeTabIndex,
           onTap: (index) {
             setState(() {
@@ -627,7 +628,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           },
           backgroundColor: isDark ? const Color(0xFF0F111A) : const Color(0xFFFFFFFF),
           selectedItemColor: const Color(0xFF6366F1),
-          unselectedItemColor: isDark ? Colors.white38 : Colors.black38,
+          unselectedItemColor: isDark ? Colors.white70 : const Color(0xFF64748B),
+          selectedFontSize: 13,
+          unselectedFontSize: 13,
+          showSelectedLabels: true,
+          showUnselectedLabels: true,
           elevation: 0,
           items: const [
             BottomNavigationBarItem(
