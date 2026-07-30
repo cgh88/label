@@ -1030,6 +1030,10 @@ function renderRegisteredIngredientsTable() {
         th.textContent = loc.name;
         headerRow.appendChild(th);
     });
+    const sauceTh = document.createElement("th");
+    sauceTh.textContent = "소스관리";
+    headerRow.appendChild(sauceTh);
+
     const actTh = document.createElement("th");
     actTh.textContent = "동작";
     headerRow.appendChild(actTh);
@@ -1078,6 +1082,43 @@ function renderRegisteredIngredientsTable() {
             }
             tr.appendChild(createTextElement("td", "", valText));
         });
+
+        const sauceCell = document.createElement("td");
+        sauceCell.style.textAlign = "center";
+        const sauceChk = document.createElement("input");
+        sauceChk.type = "checkbox";
+        sauceChk.checked = !!(ing.is_sauce || ing.isSauce);
+        sauceChk.style.cssText = "width: 18px; height: 18px; cursor: pointer; accent-color: #38bdf8;";
+        sauceChk.title = "체크 시 소스관리 탭에서 사용 가능";
+        sauceChk.addEventListener("change", async () => {
+            const is_sauce = sauceChk.checked ? 1 : 0;
+            try {
+                const storagePayload = {};
+                if (ing.storage) {
+                    Object.entries(ing.storage).forEach(([locName, obj]) => {
+                        const loc = state.locations.find(l => l.name === locName);
+                        if (loc && obj && obj.days !== undefined && obj.days !== null) {
+                            storagePayload[loc.id] = obj.days;
+                        }
+                    });
+                }
+                await apiPut(`/api/ingredients/${encodeURIComponent(ing.name)}`, {
+                    name: ing.name,
+                    category: ing.category,
+                    abbr: ing.abbr || "",
+                    is_sauce: is_sauce,
+                    storage: storagePayload
+                });
+                await loadAllData();
+                renderRegisteredIngredientsTable();
+                renderIngredients();
+            } catch (err) {
+                alert("소스관리 설정 변경 실패: " + err.message);
+                sauceChk.checked = !sauceChk.checked;
+            }
+        });
+        sauceCell.appendChild(sauceChk);
+        tr.appendChild(sauceCell);
 
         const actionCell = document.createElement("td");
         
@@ -1329,7 +1370,7 @@ async function handleMgmtEditIngredient(e) {
     });
 
     try {
-        await apiPut(`/api/ingredients/${encodeURIComponent(oldName)}`, { category, name, abbr, storage });
+        await apiPut(`/api/ingredients/${encodeURIComponent(oldName)}`, { category, name, abbr, is_sauce, storage });
         
         // If selected ingredient was renamed, update selectedId
         if (state.selectedId === oldName) {
