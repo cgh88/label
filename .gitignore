@@ -11,4 +11,5 @@ client_flutter/build/
 client_flutter/.dart_tool/
 client_flutter/.flutter-plugins
 client_flutter/.flutter-plugins-dependencies
+temp/
 
