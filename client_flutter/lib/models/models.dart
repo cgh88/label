@@ -113,6 +113,7 @@ class Ingredient {
   final String category;
   final String abbr;
   final bool isSauce;
+  final int sortOrder;
   final Map<String, IngredientStorageLimit> storage; // key: storage location name, value: limit config
 
   Ingredient({
@@ -120,6 +121,7 @@ class Ingredient {
     required this.category,
     required this.abbr,
     this.isSauce = false,
+    this.sortOrder = 0,
     required this.storage,
   });
 
@@ -135,6 +137,7 @@ class Ingredient {
       category: json['category'] as String,
       abbr: json['abbr'] as String? ?? '',
       isSauce: json['is_sauce'] == 1 || json['is_sauce'] == true || json['isSauce'] == true,
+      sortOrder: json['sort_order'] as int? ?? json['sortOrder'] as int? ?? 0,
       storage: storageMap,
     );
   }

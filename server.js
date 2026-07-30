@@ -459,9 +459,11 @@ async function initDatabaseAsync() {
         name TEXT PRIMARY KEY,
         category TEXT NOT NULL,
         abbr TEXT DEFAULT '',
-        is_sauce INTEGER DEFAULT 0
+        is_sauce INTEGER DEFAULT 0,
+        sort_order INTEGER DEFAULT 0
     )`);
     await runAsync(`ALTER TABLE ingredients_v2 ADD COLUMN is_sauce INTEGER DEFAULT 0`).catch(() => {});
+    await runAsync(`ALTER TABLE ingredients_v2 ADD COLUMN sort_order INTEGER DEFAULT 0`).catch(() => {});
 
     await runAsync(`CREATE TABLE IF NOT EXISTS ingredient_storage (
         ingredient_name TEXT NOT NULL,
@@ -1152,7 +1154,7 @@ app.delete('/api/label-sizes/:id', requireAdmin, (req, res) => {
 // ==========================================
 app.get('/api/ingredients', requireLogin, (req, res) => {
     // Join ingredients with their storage mappings
-    db.all("SELECT * FROM ingredients_v2 ORDER BY name ASC", [], (err, ingredients) => {
+    db.all("SELECT * FROM ingredients_v2 ORDER BY CASE WHEN sort_order IS NULL OR sort_order = 0 THEN 99999 ELSE sort_order END ASC, category ASC, name ASC", [], (err, ingredients) => {
         if (err) return res.status(500).json({ error: err.message });
 
         // Get all storage mappings in one query
@@ -1175,6 +1177,28 @@ app.get('/api/ingredients', requireLogin, (req, res) => {
             res.json(result);
         });
     });
+});
+
+app.post('/api/ingredients/reorder', requireAdmin, async (req, res) => {
+    const { order } = req.body || {};
+    if (!Array.isArray(order)) return res.status(400).json({ error: 'order 배열이 필요합니다.' });
+
+    try {
+        await runAsync("BEGIN TRANSACTION");
+        const stmt = db.prepare("UPDATE ingredients_v2 SET sort_order = ? WHERE name = ?");
+        for (let i = 0; i < order.length; i++) {
+            await new Promise((resolve, reject) => {
+                stmt.run(i + 1, order[i], err => err ? reject(err) : resolve());
+            });
+        }
+        await finalizeAsync(stmt);
+        await touchDbLastUpdatedAsync();
+        await runAsync("COMMIT");
+        res.json({ success: true });
+    } catch (err) {
+        await runAsync("ROLLBACK").catch(() => {});
+        sendServerError(res, err, '순서 변경 중 오류가 발생했습니다.');
+    }
 });
 
 app.post('/api/ingredients', requireAdmin, async (req, res) => {

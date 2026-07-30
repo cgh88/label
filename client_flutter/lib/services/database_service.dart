@@ -139,6 +139,15 @@ class DatabaseService {
       return Ingredient.fromJson(ingMap);
     }).toList();
 
+    ingredients.sort((a, b) {
+      if (a.sortOrder > 0 && b.sortOrder > 0 && a.sortOrder != b.sortOrder) {
+        return a.sortOrder.compareTo(b.sortOrder);
+      }
+      final catCmp = a.category.compareTo(b.category);
+      if (catCmp != 0) return catCmp;
+      return a.name.compareTo(b.name);
+    });
+
     users = [];
     printLogs = List<Map<String, dynamic>>.from(_dbData['print_logs'] ?? []);
     sauceItems = (_dbData['sauce_items'] as List? ?? [])

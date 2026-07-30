@@ -1022,6 +1022,12 @@ function renderRegisteredIngredientsTable() {
     if (!headerRow || !tbody) return;
     
     clearElement(headerRow);
+    const dragTh = document.createElement("th");
+    dragTh.style.width = "45px";
+    dragTh.style.textAlign = "center";
+    dragTh.textContent = "이동";
+    headerRow.appendChild(dragTh);
+
     ["카테고리", "재료명", "약어"].forEach(label => {
         headerRow.appendChild(createTextElement("th", "", label));
     });
@@ -1040,6 +1046,15 @@ function renderRegisteredIngredientsTable() {
     
     clearElement(tbody);
     
+    state.ingredients.sort((a, b) => {
+        const orderA = a.sort_order || a.sortOrder || 0;
+        const orderB = b.sort_order || b.sortOrder || 0;
+        if (orderA > 0 && orderB > 0 && orderA !== orderB) return orderA - orderB;
+        const catCmp = (a.category || "").localeCompare(b.category || "", "ko-KR");
+        if (catCmp !== 0) return catCmp;
+        return (a.name || "").localeCompare(b.name || "", "ko-KR");
+    });
+
     const query = (state.filters.mgmtSearch || "").trim().toLowerCase();
     const queryChosung = getChosung(query);
     const filteredIngredients = state.ingredients.filter(ing => {
@@ -1054,8 +1069,71 @@ function renderRegisteredIngredientsTable() {
                abbr.includes(query);
     });
 
-    filteredIngredients.forEach(ing => {
+    filteredIngredients.forEach((ing, index) => {
         const tr = document.createElement("tr");
+        tr.draggable = true;
+        tr.dataset.index = index;
+        tr.style.cursor = "move";
+
+        // Drag Handle Cell
+        const dragTd = document.createElement("td");
+        dragTd.style.textAlign = "center";
+        dragTd.innerHTML = `<span style="cursor:grab; font-size:1.1rem; color: #38bdf8; user-select:none;" title="드래그하여 순서 변경">☰</span>`;
+        tr.appendChild(dragTd);
+
+        // Drag Events
+        tr.addEventListener("dragstart", (e) => {
+            tr.style.opacity = "0.5";
+            tr.classList.add("dragging-row");
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", index.toString());
+        });
+
+        tr.addEventListener("dragend", () => {
+            tr.style.opacity = "1";
+            tr.classList.remove("dragging-row");
+            document.querySelectorAll("#mgmt-table-body tr").forEach(r => {
+                r.style.borderTop = "";
+                r.style.borderBottom = "";
+            });
+        });
+
+        tr.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            tr.style.borderTop = "2px dashed #38bdf8";
+        });
+
+        tr.addEventListener("dragleave", () => {
+            tr.style.borderTop = "";
+            tr.style.borderBottom = "";
+        });
+
+        tr.addEventListener("drop", async (e) => {
+            e.preventDefault();
+            tr.style.borderTop = "";
+            tr.style.borderBottom = "";
+            
+            const fromIdxStr = e.dataTransfer.getData("text/plain");
+            const fromIdx = parseInt(fromIdxStr, 10);
+            const toIdx = index;
+
+            if (!isNaN(fromIdx) && fromIdx !== toIdx && fromIdx >= 0 && fromIdx < filteredIngredients.length) {
+                const movedItem = filteredIngredients[fromIdx];
+                filteredIngredients.splice(fromIdx, 1);
+                filteredIngredients.splice(toIdx, 0, movedItem);
+
+                const newOrderNames = filteredIngredients.map(i => i.name);
+                try {
+                    await apiPost('/api/ingredients/reorder', { order: newOrderNames });
+                    await loadAllData();
+                    renderRegisteredIngredientsTable();
+                    renderIngredients();
+                } catch (err) {
+                    alert("순서 변경 실패: " + err.message);
+                }
+            }
+        });
 
         const categoryCell = document.createElement("td");
         const categoryTag = createTextElement("strong", "cat-tag", ing.category);
@@ -1122,6 +1200,54 @@ function renderRegisteredIngredientsTable() {
 
         const actionCell = document.createElement("td");
         
+        const upBtn = document.createElement("button");
+        upBtn.className = "db-action-btn edit";
+        upBtn.title = "한 칸 위로";
+        upBtn.innerHTML = "▲";
+        upBtn.style.cssText = "padding:2px 6px; font-size:0.75rem; margin-right:4px;";
+        upBtn.addEventListener("click", async () => {
+            const idx = state.ingredients.findIndex(i => i.name === ing.name);
+            if (idx > 0) {
+                const temp = state.ingredients[idx];
+                state.ingredients[idx] = state.ingredients[idx - 1];
+                state.ingredients[idx - 1] = temp;
+                const orderNames = state.ingredients.map(i => i.name);
+                try {
+                    await apiPost('/api/ingredients/reorder', { order: orderNames });
+                    await loadAllData();
+                    renderRegisteredIngredientsTable();
+                    renderIngredients();
+                } catch (e) {
+                    alert('순서 변경 실패: ' + e.message);
+                }
+            }
+        });
+        actionCell.appendChild(upBtn);
+
+        const downBtn = document.createElement("button");
+        downBtn.className = "db-action-btn edit";
+        downBtn.title = "한 칸 아래로";
+        downBtn.innerHTML = "▼";
+        downBtn.style.cssText = "padding:2px 6px; font-size:0.75rem; margin-right:4px;";
+        downBtn.addEventListener("click", async () => {
+            const idx = state.ingredients.findIndex(i => i.name === ing.name);
+            if (idx >= 0 && idx < state.ingredients.length - 1) {
+                const temp = state.ingredients[idx];
+                state.ingredients[idx] = state.ingredients[idx + 1];
+                state.ingredients[idx + 1] = temp;
+                const orderNames = state.ingredients.map(i => i.name);
+                try {
+                    await apiPost('/api/ingredients/reorder', { order: orderNames });
+                    await loadAllData();
+                    renderRegisteredIngredientsTable();
+                    renderIngredients();
+                } catch (e) {
+                    alert('순서 변경 실패: ' + e.message);
+                }
+            }
+        });
+        actionCell.appendChild(downBtn);
+
         const editBtn = document.createElement("button");
         editBtn.className = "db-action-btn edit";
         editBtn.dataset.name = ing.name;
