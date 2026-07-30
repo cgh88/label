@@ -140,8 +140,10 @@ class DatabaseService {
     }).toList();
 
     ingredients.sort((a, b) {
-      if (a.sortOrder > 0 && b.sortOrder > 0 && a.sortOrder != b.sortOrder) {
-        return a.sortOrder.compareTo(b.sortOrder);
+      final orderA = a.sortOrder > 0 ? a.sortOrder : 99999;
+      final orderB = b.sortOrder > 0 ? b.sortOrder : 99999;
+      if (orderA != orderB) {
+        return orderA.compareTo(orderB);
       }
       final catCmp = a.category.compareTo(b.category);
       if (catCmp != 0) return catCmp;

@@ -730,7 +730,7 @@ app.get('/api/sync/database', async (req, res) => {
         const categories = await allAsync("SELECT * FROM categories ORDER BY sort_order ASC, id ASC");
         const storage_locations = await allAsync("SELECT * FROM storage_locations ORDER BY sort_order ASC, id ASC");
         const label_sizes = await allAsync("SELECT * FROM label_sizes ORDER BY width ASC, height ASC, id ASC");
-        const ingredients_v2 = await allAsync("SELECT * FROM ingredients_v2 ORDER BY name ASC");
+        const ingredients_v2 = await allAsync("SELECT * FROM ingredients_v2 ORDER BY CASE WHEN sort_order IS NULL OR sort_order = 0 THEN 99999 ELSE sort_order END ASC, category ASC, name ASC");
         const ingredient_storage = await allAsync("SELECT * FROM ingredient_storage");
 
         let lastUpdated = new Date().toISOString();
@@ -787,7 +787,7 @@ app.post('/api/sync/database', requireLogin, async (req, res) => {
             const categories = await allAsync("SELECT * FROM categories ORDER BY sort_order ASC, id ASC");
             const storage_locations = await allAsync("SELECT * FROM storage_locations ORDER BY sort_order ASC, id ASC");
             const label_sizes = await allAsync("SELECT * FROM label_sizes ORDER BY width ASC, height ASC, id ASC");
-            const ingredients_v2 = await allAsync("SELECT * FROM ingredients_v2 ORDER BY name ASC");
+            const ingredients_v2 = await allAsync("SELECT * FROM ingredients_v2 ORDER BY CASE WHEN sort_order IS NULL OR sort_order = 0 THEN 99999 ELSE sort_order END ASC, category ASC, name ASC");
             const ingredient_storage = await allAsync("SELECT * FROM ingredient_storage");
             const currentData = { categories, storage_locations, label_sizes, ingredients_v2, ingredient_storage };
             const currentEtag = crypto.createHash('md5').update(JSON.stringify(currentData)).digest('hex');
