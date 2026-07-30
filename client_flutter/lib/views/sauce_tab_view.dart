@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../models/sauce_item.dart';
+import '../models/models.dart';
 import '../services/bluetooth_service.dart';
 import '../services/database_service.dart';
 import '../services/api_sync_service.dart';
@@ -15,6 +15,7 @@ class SauceTabView extends StatefulWidget {
 class _SauceTabViewState extends State<SauceTabView> {
   final TextEditingController _idInputController = TextEditingController();
   List<SauceItem> _sauceList = [];
+  Ingredient? _selectedSauceIng;
   String? _selectedSauceId;
   DateTime _systemTime = DateTime.now();
   Timer? _timer;
@@ -108,12 +109,16 @@ class _SauceTabViewState extends State<SauceTabView> {
   }
 
   void _triggerPrep() {
+    final ing = _selectedSauceIng;
+    final sauceName = ing != null ? ing.name : 'PS 피자소스';
+    final sauceCode = (ing != null && ing.abbr.isNotEmpty) ? ing.abbr.toUpperCase() : 'S';
+
     String sourceId = _idInputController.text.trim().toUpperCase();
     if (sourceId.isEmpty) {
       final yy = (_systemTime.year % 100).toString().padLeft(2, '0');
       final mm = _systemTime.month.toString().padLeft(2, '0');
       final dd = _systemTime.day.toString().padLeft(2, '0');
-      final datePrefix = 'S$yy$mm$dd-';
+      final datePrefix = '$sauceCode$yy$mm$dd-';
       
       final todayCount = _sauceList.where((item) => item.sourceId.startsWith(datePrefix)).length;
       final seqStr = (todayCount + 1).toString().padLeft(3, '0');
@@ -127,6 +132,8 @@ class _SauceTabViewState extends State<SauceTabView> {
 
     final newRecord = SauceItem.createPrep(
       sourceId: sourceId,
+      sauceCode: sauceCode,
+      sauceName: sauceName,
       now: DateTime.now(),
     );
 
@@ -140,7 +147,7 @@ class _SauceTabViewState extends State<SauceTabView> {
 
     _saveSauceList();
     ApiSyncService.instance.postSaucePrep(newRecord);
-    _showSnackBar('신규 피자소스 [PREP] 개봉 완료: $sourceId');
+    _showSnackBar('신규 $sauceName [PREP] 개봉 완료: $sourceId');
   }
 
   void _triggerIn() {
@@ -472,6 +479,49 @@ class _SauceTabViewState extends State<SauceTabView> {
               ],
             ),
             const SizedBox(height: 14),
+
+            Builder(
+              builder: (context) {
+                final sauceIngredients = DatabaseService.instance.ingredients.where((i) => i.isSauce).toList();
+                if (sauceIngredients.isNotEmpty && (_selectedSauceIng == null || !sauceIngredients.any((i) => i.name == _selectedSauceIng!.name))) {
+                  _selectedSauceIng = sauceIngredients.first;
+                }
+                if (sauceIngredients.isEmpty) return const SizedBox.shrink();
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('소스관리 대상 제품 선택:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: sauceIngredients.map((ing) {
+                          final isSel = _selectedSauceIng?.name == ing.name;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 6.0),
+                            child: ChoiceChip(
+                              selectedColor: const Color(0xFF2563EB),
+                              backgroundColor: isDark ? const Color(0xFF1E2030) : const Color(0xFFF1F5F9),
+                              labelStyle: TextStyle(
+                                color: isSel ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                                fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              label: Text(ing.name),
+                              selected: isSel,
+                              onSelected: (val) {
+                                if (val) setState(() => _selectedSauceIng = ing);
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                );
+              },
+            ),
 
             // Barcode Input Field
             Row(

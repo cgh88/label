@@ -1,6 +1,7 @@
 class SauceItem {
   final String sourceId;
   String sauceCode; // 'PS', 'GD', 'BQ', 'HS'
+  String sauceName; // '피자소스', '갈릭디핑'
   String status; // 'PREP', 'IN', 'OUT', 'DISCARD'
   DateTime prepTime;
   int totalValidMin;
@@ -12,6 +13,7 @@ class SauceItem {
   SauceItem({
     required this.sourceId,
     this.sauceCode = 'PS',
+    this.sauceName = '피자소스',
     required this.status,
     required this.prepTime,
     this.totalValidMin = 600,
@@ -66,6 +68,7 @@ class SauceItem {
   static SauceItem createPrep({
     required String sourceId,
     String sauceCode = 'PS',
+    String sauceName = '피자소스',
     int totalValidMin = 600,
     required DateTime now,
   }) {
@@ -73,6 +76,7 @@ class SauceItem {
     return SauceItem(
       sourceId: sourceId,
       sauceCode: sauceCode,
+      sauceName: sauceName,
       status: 'PREP',
       prepTime: now,
       totalValidMin: totalValidMin,

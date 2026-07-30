@@ -1173,10 +1173,12 @@ async function handleMgmtAddIngredient(e) {
     const nameInput = document.getElementById("mgmt-new-name");
     const abbrInput = document.getElementById("mgmt-new-abbr");
     const categorySelect = document.getElementById("mgmt-new-category");
+    const isSauceInp = document.getElementById("mgmt-new-is-sauce");
     
     const name = nameInput.value.trim();
     const abbr = abbrInput.value.trim().toUpperCase();
     const category = categorySelect.value;
+    const is_sauce = isSauceInp ? (isSauceInp.checked ? 1 : 0) : 0;
     
     if (!name || !category) {
         alert("재료명과 카테고리는 필수입니다.");
@@ -1202,7 +1204,7 @@ async function handleMgmtAddIngredient(e) {
     });
     
     try {
-        await apiPost("/api/ingredients", { name, category, abbr, storage });
+        await apiPost("/api/ingredients", { name, category, abbr, is_sauce, storage });
         await loadAllData();
         renderRegisteredIngredientsTable();
         renderIngredients();
@@ -1245,6 +1247,9 @@ function openEditModal(name) {
     editNameInput.value = name;
     editAbbrInput.value = ingredient.abbr || "";
     
+    const editIsSauceInp = document.getElementById("mgmt-edit-is-sauce");
+    if (editIsSauceInp) editIsSauceInp.checked = !!(ingredient.is_sauce || ingredient.isSauce);
+
     clearElement(editCategorySelect);
     state.categories.forEach(cat => {
         const opt = document.createElement("option");
@@ -1305,6 +1310,8 @@ async function handleMgmtEditIngredient(e) {
     const name = editNameInput.value.trim();
     const abbr = editAbbrInput.value.trim().toUpperCase();
     const category = editCategorySelect.value;
+    const editIsSauceInp = document.getElementById("mgmt-edit-is-sauce");
+    const is_sauce = editIsSauceInp ? (editIsSauceInp.checked ? 1 : 0) : 0;
 
     if (!name || !category) {
         alert("재료명과 카테고리는 필수 항목입니다.");

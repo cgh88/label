@@ -458,8 +458,10 @@ async function initDatabaseAsync() {
     await runAsync(`CREATE TABLE IF NOT EXISTS ingredients_v2 (
         name TEXT PRIMARY KEY,
         category TEXT NOT NULL,
-        abbr TEXT DEFAULT ''
+        abbr TEXT DEFAULT '',
+        is_sauce INTEGER DEFAULT 0
     )`);
+    await runAsync(`ALTER TABLE ingredients_v2 ADD COLUMN is_sauce INTEGER DEFAULT 0`).catch(() => {});
 
     await runAsync(`CREATE TABLE IF NOT EXISTS ingredient_storage (
         ingredient_name TEXT NOT NULL,
@@ -1176,12 +1178,13 @@ app.get('/api/ingredients', requireLogin, (req, res) => {
 });
 
 app.post('/api/ingredients', requireAdmin, async (req, res) => {
-    const { category, name, abbr, storage } = req.body || {};
+    const { category, name, abbr, storage, is_sauce, isSauce } = req.body || {};
     if (!name || !category) return res.status(400).json({ error: '재료명과 카테고리는 필수 항목입니다.' });
 
     const trimmedName = String(name).trim().substring(0, 100);
     const trimmedCategory = String(category).trim().substring(0, 100);
     const trimmedAbbr = String(abbr || '').trim().substring(0, 50);
+    const isSauceVal = (is_sauce === 1 || is_sauce === true || isSauce === 1 || isSauce === true) ? 1 : 0;
 
     if (storage && typeof storage === 'object') {
         for (const [storageId, days] of Object.entries(storage)) {
@@ -1196,8 +1199,8 @@ app.post('/api/ingredients', requireAdmin, async (req, res) => {
     try {
         await runAsync("BEGIN TRANSACTION");
         
-        await runAsync("INSERT INTO ingredients_v2 (name, category, abbr) VALUES (?, ?, ?)",
-            [trimmedName, trimmedCategory, trimmedAbbr]
+        await runAsync("INSERT INTO ingredients_v2 (name, category, abbr, is_sauce) VALUES (?, ?, ?, ?)",
+            [trimmedName, trimmedCategory, trimmedAbbr, isSauceVal]
         );
 
         if (storage && typeof storage === 'object') {
@@ -1239,12 +1242,13 @@ app.delete('/api/ingredients/:name', requireAdmin, async (req, res) => {
 
 app.put('/api/ingredients/:oldName', requireAdmin, async (req, res) => {
     const oldName = decodeURIComponent(req.params.oldName);
-    const { category, name, abbr, storage } = req.body || {};
+    const { category, name, abbr, storage, is_sauce, isSauce } = req.body || {};
     if (!name || !category) return res.status(400).json({ error: '재료명과 카테고리는 필수 항목입니다.' });
 
     const trimmedName = String(name).trim().substring(0, 100);
     const trimmedCategory = String(category).trim().substring(0, 100);
     const trimmedAbbr = String(abbr || '').trim().substring(0, 50);
+    const isSauceVal = (is_sauce === 1 || is_sauce === true || isSauce === 1 || isSauce === true) ? 1 : 0;
 
     if (storage && typeof storage === 'object') {
         for (const [storageId, days] of Object.entries(storage)) {
@@ -1260,8 +1264,8 @@ app.put('/api/ingredients/:oldName', requireAdmin, async (req, res) => {
         await runAsync("BEGIN TRANSACTION");
 
         await runAsync("DELETE FROM ingredient_storage WHERE ingredient_name = ?", [oldName]);
-        await runAsync("UPDATE ingredients_v2 SET name = ?, category = ?, abbr = ? WHERE name = ?",
-            [trimmedName, trimmedCategory, trimmedAbbr, oldName]
+        await runAsync("UPDATE ingredients_v2 SET name = ?, category = ?, abbr = ?, is_sauce = ? WHERE name = ?",
+            [trimmedName, trimmedCategory, trimmedAbbr, isSauceVal, oldName]
         );
 
         if (storage && typeof storage === 'object') {

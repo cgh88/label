@@ -112,12 +112,14 @@ class Ingredient {
   final String name;
   final String category;
   final String abbr;
+  final bool isSauce;
   final Map<String, IngredientStorageLimit> storage; // key: storage location name, value: limit config
 
   Ingredient({
     required this.name,
     required this.category,
     required this.abbr,
+    this.isSauce = false,
     required this.storage,
   });
 
@@ -132,6 +134,7 @@ class Ingredient {
       name: json['name'] as String,
       category: json['category'] as String,
       abbr: json['abbr'] as String? ?? '',
+      isSauce: json['is_sauce'] == 1 || json['is_sauce'] == true || json['isSauce'] == true,
       storage: storageMap,
     );
   }
@@ -140,6 +143,8 @@ class Ingredient {
         'name': name,
         'category': category,
         'abbr': abbr,
+        'is_sauce': isSauce ? 1 : 0,
+        'isSauce': isSauce,
         'storage': storage.map((k, v) => MapEntry(k, v.toJson())),
       };
 }
