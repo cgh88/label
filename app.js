@@ -2050,12 +2050,30 @@ function handleSauceBarcodeInput() {
 
 function triggerSaucePrep() {
     const input = document.getElementById("sauce-barcode-input");
+    const sauceSelect = document.getElementById("sauce-product-select");
+    const selectedSauceName = sauceSelect ? sauceSelect.value : "피자소스";
+    
+    const ing = state.ingredients.find(i => i.name === selectedSauceName);
+    let validMin = 600;
+    let sauceCode = "S";
+    let sauceName = selectedSauceName || "피자소스";
+
+    if (ing) {
+        if (ing.abbr) sauceCode = ing.abbr.toUpperCase();
+        if (ing.storage && ing.storage["소스보틀"] && ing.storage["소스보틀"].days > 0) {
+            validMin = ing.storage["소스보틀"].days * 60;
+        } else if (ing.storage) {
+            const foundLoc = Object.entries(ing.storage).find(([k, v]) => (k.includes("소스") || k.includes("보틀")) && v.days > 0);
+            if (foundLoc) validMin = foundLoc[1].days * 60;
+        }
+    }
+
     let sourceId = input ? input.value.trim().toUpperCase() : "";
     if (!sourceId) {
         const yy = String(sauceState.systemTime.getFullYear()).slice(2);
         const mm = String(sauceState.systemTime.getMonth() + 1).padStart(2, "0");
         const dd = String(sauceState.systemTime.getDate()).padStart(2, "0");
-        const prefix = `S${yy}${mm}${dd}-`;
+        const prefix = `${sauceCode}${yy}${mm}${dd}-`;
         const todayCount = sauceState.db.filter(item => item.Source_ID && item.Source_ID.startsWith(prefix)).length;
         const seq = String(todayCount + 1).padStart(3, "0");
         sourceId = `${prefix}${seq}`;
@@ -2067,15 +2085,17 @@ function triggerSaucePrep() {
     }
 
     const now = new Date(sauceState.systemTime);
-    const estDiscard = new Date(now.getTime() + 10 * 60 * 60 * 1000);
+    const estDiscard = new Date(now.getTime() + validMin * 60 * 1000);
 
     const newRecord = {
         Source_ID: sourceId,
+        Sauce_Name: sauceName,
+        sauceName: sauceName,
         Status: "PREP",
         Prep_Time: now,
-        Total_Valid_Min: 600,
+        Total_Valid_Min: validMin,
         Accum_Used_Min: 0,
-        Rem_Valid_Min: 600,
+        Rem_Valid_Min: validMin,
         Last_Action_Time: now,
         Est_Discard_Time: estDiscard,
         _updated: true

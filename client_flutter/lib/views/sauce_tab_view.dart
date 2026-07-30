@@ -112,6 +112,7 @@ class _SauceTabViewState extends State<SauceTabView> {
     final ing = _selectedSauceIng;
     final sauceName = ing != null ? ing.name : 'PS 피자소스';
     final sauceCode = (ing != null && ing.abbr.isNotEmpty) ? ing.abbr.toUpperCase() : 'S';
+    final validMin = ing != null ? ing.sauceBottleValidMin : 600;
 
     String sourceId = _idInputController.text.trim().toUpperCase();
     if (sourceId.isEmpty) {
@@ -134,6 +135,7 @@ class _SauceTabViewState extends State<SauceTabView> {
       sourceId: sourceId,
       sauceCode: sauceCode,
       sauceName: sauceName,
+      totalValidMin: validMin,
       now: DateTime.now(),
     );
 
@@ -507,7 +509,7 @@ class _SauceTabViewState extends State<SauceTabView> {
                                 color: isSel ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
                                 fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
                               ),
-                              label: Text(ing.name),
+                              label: Text('${ing.name} (${(ing.sauceBottleValidMin / 60).toStringAsFixed(0)}시간)'),
                               selected: isSel,
                               onSelected: (val) {
                                 if (val) setState(() => _selectedSauceIng = ing);

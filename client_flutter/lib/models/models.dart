@@ -139,6 +139,19 @@ class Ingredient {
     );
   }
 
+  int get sauceBottleValidMin {
+    if (storage.containsKey('소스보틀')) {
+      final hours = storage['소스보틀']!.days;
+      if (hours > 0) return hours * 60;
+    }
+    for (final entry in storage.entries) {
+      if (entry.key.contains('소스') || entry.key.contains('보틀')) {
+        if (entry.value.days > 0) return entry.value.days * 60;
+      }
+    }
+    return 600; // Default 10h = 600m
+  }
+
   Map<String, dynamic> toJson() => {
         'name': name,
         'category': category,
