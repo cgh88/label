@@ -493,48 +493,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
             width: 1,
           ),
         ),
-        title: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: Image.asset(
-                'assets/images/app_logo_3.png',
-                width: 28,
-                height: 28,
-                fit: BoxFit.contain,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                'SHELFLIFE LABEL SYSTEM',
-                style: TextStyle(
-                  color: isDark ? Colors.white : Colors.black,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  letterSpacing: 1.2,
+        title: Builder(
+          builder: (context) {
+            final screenWidth = MediaQuery.of(context).size.width;
+            final isCompact = screenWidth < 600;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Image.asset(
+                    'assets/images/app_logo_3.png',
+                    width: isCompact ? 24 : 28,
+                    height: isCompact ? 24 : 28,
+                    fit: BoxFit.contain,
+                  ),
                 ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: _userRole == 'admin' ? Colors.redAccent.withValues(alpha: 0.2) : Colors.blueAccent.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                _userRole == 'admin' ? '관리자' : '일반',
-                style: TextStyle(
-                  color: _userRole == 'admin' ? Colors.redAccent : Colors.blueAccent,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    isCompact ? 'LABEL SYSTEM' : 'SHELFLIFE LABEL SYSTEM',
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: isCompact ? 15 : 18,
+                      letterSpacing: isCompact ? 0.5 : 1.2,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
                 ),
-              ),
-            ),
-          ],
+                if (!isCompact) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _userRole == 'admin' ? Colors.redAccent.withValues(alpha: 0.2) : Colors.blueAccent.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      _userRole == 'admin' ? '관리자' : '일반',
+                      style: TextStyle(
+                        color: _userRole == 'admin' ? Colors.redAccent : Colors.blueAccent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
         ),
         actions: [
           PopupMenuButton<String>(
@@ -588,25 +597,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             onPressed: widget.toggleTheme,
           ),
-          const SizedBox(width: 4),
-          Center(
-            child: Text(
-              '$_currentUser 님',
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.black,
-                fontSize: 13,
-              ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
+          Builder(
+            builder: (context) {
+              final isCompact = MediaQuery.of(context).size.width < 600;
+              if (isCompact) return const SizedBox.shrink();
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(width: 4),
+                  Center(
+                    child: Text(
+                      '$_currentUser 님',
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black,
+                        fontSize: 13,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
-          const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.redAccent),
             onPressed: _handleLogout,
             tooltip: '로그아웃',
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 8),
         ],
       ),
       bottomNavigationBar: Container(

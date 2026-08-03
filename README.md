@@ -24,6 +24,7 @@ SHELFLIFE 라벨 프린터 시스템은 매장 식자재 유통기한 관리 및
 ## 시작하기 (Quickstart)
 
 ### 1. 백엔드 서버 실행
+
 ```bash
 # 기본 의존성 설치
 npm install
@@ -36,6 +37,7 @@ npm test
 ```
 
 ### 2. Flutter 클라이언트 실행
+
 ```bash
 cd client_flutter
 flutter pub get

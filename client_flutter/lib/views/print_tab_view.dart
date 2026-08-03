@@ -230,9 +230,10 @@ class _PrintTabViewState extends State<PrintTabView> {
 
 
   DateTime _computeExpiration(Ingredient ing, String storageName) {
-    if (storageName == '입고') return _prepTime;
-
-    final limit = ing.storage[storageName];
+    IngredientStorageLimit? limit = ing.storage[storageName];
+    if (limit == null && storageName == '입고' && ing.storage.isNotEmpty) {
+      limit = ing.storage.values.first;
+    }
     if (limit == null) return _prepTime;
 
     final shelfLifeValue = limit.days;
@@ -281,10 +282,9 @@ class _PrintTabViewState extends State<PrintTabView> {
     if (bluetoothPrintService.isConnected) {
       final qty = int.tryParse(_qtyController.text) ?? 1;
       final storage = _selectedStorage;
-      final prepStr = _formatDateTime(_prepTime);
-      final expStr = storage != '입고'
-          ? _formatDateTime(_computeExpiration(_selectedIngredient!, storage))
-          : '';
+      final prepPrefix = storage == '입고' ? '입고' : '준비';
+      final prepStr = '$prepPrefix: ${_formatDateTime(_prepTime)}';
+      final expStr = '폐기: ${_formatDateTime(_computeExpiration(_selectedIngredient!, storage))}';
 
       final success = await bluetoothPrintService.printTsplLabel(
         width: _labelWidth,
@@ -378,11 +378,9 @@ class _PrintTabViewState extends State<PrintTabView> {
             final String line1 = (abbr.isNotEmpty && estWidth > pdfAvailWidth)
                 ? '[$storageDisplay] $abbr'
                 : fullLine1;
-            final String line2 = '준비: ${_formatDateTime(_prepTime)}';
-            
-            final String line3 = storage == '입고'
-                ? ''
-                : '폐기: ${_formatDateTime(_computeExpiration(_selectedIngredient!, storage))}';
+            final String line2Prefix = storage == '입고' ? '입고' : '준비';
+            final String line2 = '$line2Prefix: ${_formatDateTime(_prepTime)}';
+            final String line3 = '폐기: ${_formatDateTime(_computeExpiration(_selectedIngredient!, storage))}';
             final String line4 = '(담당: $staff)';
 
             return pw.Padding(
@@ -485,446 +483,501 @@ class _PrintTabViewState extends State<PrintTabView> {
     final categoriesList = DatabaseService.instance.categories;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+    final Widget searchAndCategorySection = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextField(
+          controller: _searchController,
+          style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+          decoration: InputDecoration(
+            hintText: '재료명 또는 약어 초성 입력...',
+            hintStyle: TextStyle(color: isDark ? Colors.white.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.4)),
+            prefixIcon: const Icon(Icons.search, color: Color(0xFF6366F1)),
+            filled: true,
+            fillColor: isDark ? const Color(0xFF13141F) : const Color(0xFFFFFFFF),
+            contentPadding: const EdgeInsets.symmetric(vertical: 14.0),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        SizedBox(
+          height: 44,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: categoriesList.length + 1,
+            itemBuilder: (context, index) {
+              final cat = index == 0
+                  ? AppCategory(id: 0, name: '전체', emoji: '🔍', sortOrder: 0)
+                  : categoriesList[index - 1];
+              final isSelected = cat.name == _selectedCategory;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: InkWell(
+                  onTap: () {
+                    _selectedCategory = cat.name;
+                    _filterIngredients();
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: isSelected
+                          ? const LinearGradient(
+                              colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
+                          : null,
+                      color: isSelected
+                          ? null
+                          : (isDark ? const Color(0xFF1E2030) : Colors.white),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isSelected
+                            ? Colors.transparent
+                            : (isDark ? Colors.white.withValues(alpha: 0.2) : const Color(0xFFCBD5E1)),
+                        width: isSelected ? 0 : 1.2,
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFF6366F1).withValues(alpha: 0.35),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              )
+                            ]
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              )
+                            ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${cat.emoji} ${cat.name}',
+                        style: TextStyle(
+                          color: isSelected
+                              ? Colors.white
+                              : (isDark ? Colors.white : const Color(0xFF1E293B)),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+
+    Widget buildIngredientGrid({required bool shrinkWrap, ScrollPhysics? physics}) {
+      if (_filteredIngredients.isEmpty) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 40),
+          alignment: Alignment.center,
+          child: Text(
+            '해당하는 재료가 없습니다.',
+            style: TextStyle(color: isDark ? Colors.white.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.4), fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+        );
+      }
+      return GridView.builder(
+        shrinkWrap: shrinkWrap,
+        physics: physics,
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 165,
+          mainAxisExtent: 105,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+        ),
+        itemCount: _filteredIngredients.length,
+        itemBuilder: (context, index) {
+          final ing = _filteredIngredients[index];
+          final isSelected = _selectedIngredient == ing;
+          final catColor = _getCategoryColor(ing.category);
+
+          return InkWell(
+            onTap: () => _selectIngredient(ing),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? (isDark ? const Color(0xFF6366F1).withValues(alpha: 0.22) : const Color(0xFFEEF2FF))
+                    : (isDark ? const Color(0xFF1E2030) : Colors.white),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected
+                      ? (isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5))
+                      : catColor.withValues(alpha: isDark ? 0.55 : 0.75),
+                  width: isSelected ? 2.5 : 1.6,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFF6366F1).withValues(alpha: isDark ? 0.4 : 0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        )
+                      ]
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+                          blurRadius: 5,
+                          offset: const Offset(0, 2),
+                        )
+                      ],
+              ),
+              child: Stack(
                 children: [
-                  TextField(
-                    controller: _searchController,
-                    style: TextStyle(color: isDark ? Colors.white : Colors.black87),
-                    decoration: InputDecoration(
-                      hintText: '재료명 또는 약어 초성 입력...',
-                      hintStyle: TextStyle(color: isDark ? Colors.white.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.4)),
-                      prefixIcon: const Icon(Icons.search, color: Color(0xFF6366F1)),
-                      filled: true,
-                      fillColor: isDark ? const Color(0xFF13141F) : const Color(0xFFFFFFFF),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 14.0),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08)),
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: catColor,
+                        borderRadius: BorderRadius.circular(5),
                       ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+                      child: Text(
+                        ing.category,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-
-                  SizedBox(
-                    height: 46,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: categoriesList.length + 1,
-                      itemBuilder: (context, index) {
-                        final cat = index == 0
-                            ? AppCategory(id: 0, name: '전체', emoji: '🔍', sortOrder: 0)
-                            : categoriesList[index - 1];
-                        final isSelected = cat.name == _selectedCategory;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: InkWell(
-                            onTap: () {
-                              _selectedCategory = cat.name;
-                              _filterIngredients();
-                            },
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                              decoration: BoxDecoration(
-                                gradient: isSelected
-                                    ? const LinearGradient(
-                                        colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      )
-                                    : null,
-                                color: isSelected
-                                    ? null
-                                    : (isDark ? const Color(0xFF1E2030) : Colors.white),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? Colors.transparent
-                                      : (isDark ? Colors.white.withValues(alpha: 0.2) : const Color(0xFFCBD5E1)),
-                                  width: isSelected ? 0 : 1.2,
-                                ),
-                                boxShadow: isSelected
-                                    ? [
-                                        BoxShadow(
-                                          color: const Color(0xFF6366F1).withValues(alpha: 0.35),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 2),
-                                        )
-                                      ]
-                                    : [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2),
-                                        )
-                                      ],
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '${cat.emoji} ${cat.name}',
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : (isDark ? Colors.white : const Color(0xFF1E293B)),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ),
+                  if (ing.abbr.isNotEmpty)
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withValues(alpha: 0.15) : const Color(0xFFE2E8F0),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          ing.abbr,
+                          style: TextStyle(
+                            color: isDark ? Colors.white : const Color(0xFF1E293B),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
                           ),
-                        );
-                      },
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  Expanded(
-                    child: _filteredIngredients.isEmpty
-                        ? Center(
-                            child: Text(
-                              '해당하는 재료가 없습니다.',
-                              style: TextStyle(color: isDark ? Colors.white.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.4), fontSize: 16, fontWeight: FontWeight.w600),
-                            ),
-                          )
-                        : GridView.builder(
-                            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: 165,
-                              mainAxisExtent: 110,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                            ),
-                            itemCount: _filteredIngredients.length,
-                            itemBuilder: (context, index) {
-                              final ing = _filteredIngredients[index];
-                              final isSelected = _selectedIngredient == ing;
-                              final catColor = _getCategoryColor(ing.category);
-                              
-                              return InkWell(
-                                onTap: () => _selectIngredient(ing),
-                                borderRadius: BorderRadius.circular(12),
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? (isDark ? const Color(0xFF6366F1).withValues(alpha: 0.22) : const Color(0xFFEEF2FF))
-                                        : (isDark ? const Color(0xFF1E2030) : Colors.white),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? (isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5))
-                                          : catColor.withValues(alpha: isDark ? 0.55 : 0.75),
-                                      width: isSelected ? 2.5 : 1.6,
-                                    ),
-                                    boxShadow: isSelected
-                                        ? [
-                                            BoxShadow(
-                                              color: const Color(0xFF6366F1).withValues(alpha: isDark ? 0.4 : 0.3),
-                                              blurRadius: 10,
-                                              offset: const Offset(0, 3),
-                                            )
-                                          ]
-                                        : [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
-                                              blurRadius: 5,
-                                              offset: const Offset(0, 2),
-                                            )
-                                          ],
-                                  ),
-                                  child: Stack(
-                                    children: [
-                                      Positioned(
-                                        top: 0,
-                                        left: 0,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                          decoration: BoxDecoration(
-                                            color: catColor,
-                                            borderRadius: BorderRadius.circular(5),
-                                          ),
-                                          child: Text(
-                                            ing.category,
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      if (ing.abbr.isNotEmpty)
-                                        Positioned(
-                                          top: 0,
-                                          right: 0,
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
-                                            decoration: BoxDecoration(
-                                              color: isDark ? Colors.white.withValues(alpha: 0.15) : const Color(0xFFE2E8F0),
-                                              borderRadius: BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              ing.abbr,
-                                              style: TextStyle(
-                                                color: isDark ? Colors.white : const Color(0xFF1E293B),
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w800,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      Positioned.fill(
-                                        child: Align(
-                                          alignment: Alignment.bottomCenter,
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(top: 26.0),
-                                            child: Text(
-                                              ing.name,
-                                              style: TextStyle(
-                                                color: isDark ? Colors.white : Colors.black87,
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
-                                                height: 1.25,
-                                              ),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              textAlign: TextAlign.center,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
+                  Positioned.fill(
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 24.0),
+                        child: Text(
+                          ing.name,
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black87,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.bold,
+                            height: 1.2,
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
+          );
+        },
+      );
+    }
+
+    Widget buildRightPrintControlPanel() {
+      if (_selectedIngredient == null) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Text(
+              '인쇄할 재료를 선택해 주세요.',
+              style: TextStyle(color: isDark ? Colors.white.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.4), fontSize: 15, fontWeight: FontWeight.w600),
+            ),
           ),
+        );
+      }
 
-          Container(width: 1, color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08)),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  '보관위치',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Builder(
+                  builder: (context) {
+                    final Set<String> storageKeys = {
+                      ..._selectedIngredient!.storage.keys,
+                      '입고',
+                    };
+                    if (_isStorageLocked && _lockedStorage != null) {
+                      storageKeys.add(_lockedStorage!);
+                    }
+                    return Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: storageKeys
+                          .map((loc) => _buildStorageButton(loc, isDark))
+                          .toList(),
+                    );
+                  },
+                ),
+                const SizedBox(height: 20),
 
-          Expanded(
-            flex: 2,
-            child: _selectedIngredient == null
-                ? Center(
-                    child: Text(
-                      '인쇄할 재료를 선택해 주세요.',
-                      style: TextStyle(color: isDark ? Colors.white.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.4), fontSize: 16, fontWeight: FontWeight.w600),
-                    ),
-                  )
-                : Column(
+                Text(
+                  '출력수량',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: 200,
+                  child: Row(
                     children: [
+                      _buildQtyButton(Icons.remove, () => _changeQty(-1), isDark),
+                      const SizedBox(width: 8),
                       Expanded(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(
-                                '보관위치',
-                                style: TextStyle(
-                                  color: isDark ? Colors.white : Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Builder(
-                                builder: (context) {
-                                  final Set<String> storageKeys = {
-                                    ..._selectedIngredient!.storage.keys,
-                                    '입고',
-                                  };
-                                  if (_isStorageLocked && _lockedStorage != null) {
-                                    storageKeys.add(_lockedStorage!);
-                                  }
-                                  return Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: storageKeys
-                                        .map((loc) => _buildStorageButton(loc, isDark))
-                                        .toList(),
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 24),
-
-                              Text(
-                                '출력수량',
-                                style: TextStyle(
-                                  color: isDark ? Colors.white : Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              SizedBox(
-                                width: 200,
-                                child: Row(
-                                  children: [
-                                    _buildQtyButton(Icons.remove, () => _changeQty(-1), isDark),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: TextField(
-                                        controller: _qtyController,
-                                        keyboardType: TextInputType.number,
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: isDark ? Colors.white : Colors.black87,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                        decoration: InputDecoration(
-                                          filled: true,
-                                          fillColor: isDark ? const Color(0xFF13141F) : const Color(0xFFFFFFFF),
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                          enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                            borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08)),
-                                          ),
-                                          focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                            borderSide: const BorderSide(color: Color(0xFF6366F1)),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    _buildQtyButton(Icons.add, () => _changeQty(1), isDark),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 32),
-
-                              Text(
-                                '출력 라벨 프리뷰',
-                                style: TextStyle(
-                                  color: isDark ? Colors.white : Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              GestureDetector(
-                                onTap: _showPreviewDialog,
-                                child: Container(
-                                  padding: const EdgeInsets.all(24),
-                                  decoration: BoxDecoration(
-                                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Center(child: _buildLabelPreviewCard(6.4)),
-                                      const SizedBox(height: 10),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.zoom_in, size: 16, color: isDark ? Colors.white54 : Colors.black45),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            '탭하여 크게 보기',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: isDark ? Colors.white54 : Colors.black45,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                            ],
+                        child: TextField(
+                          controller: _qtyController,
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black87,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: isDark ? const Color(0xFF13141F) : const Color(0xFFFFFFFF),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: const BorderSide(color: Color(0xFF6366F1)),
+                            ),
                           ),
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      _buildQtyButton(Icons.add, () => _changeQty(1), isDark),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
 
-                      // Fixed Sticky Bottom Bar with Print Button
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF0F111A) : Colors.white,
-                          border: Border(
-                            top: BorderSide(
-                              color: isDark ? Colors.white.withValues(alpha: 0.12) : const Color(0xFFCBD5E1),
-                              width: 1.2,
-                            ),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-                              blurRadius: 10,
-                              offset: const Offset(0, -3),
+                Text(
+                  '출력 라벨 프리뷰',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: _showPreviewDialog,
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      children: [
+                        Center(child: _buildLabelPreviewCard(6.4)),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.zoom_in, size: 16, color: isDark ? Colors.white54 : Colors.black45),
+                            const SizedBox(width: 4),
+                            Text(
+                              '탭하여 크게 보기',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white54 : Colors.black45,
+                              ),
                             ),
                           ],
                         ),
-                        child: SafeArea(
-                          top: false,
-                          child: ElevatedButton(
-                            onPressed: _printLabel,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFF1E1E),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 4,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.print, color: Colors.white, size: 26),
-                                const SizedBox(width: 12),
-                                Flexible(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        _selectedIngredient!.name,
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      Text(
-                                        '라벨 출력하기 (${int.tryParse(_qtyController.text) ?? 1}장)',
-                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+
+          // Fixed Sticky Bottom Bar with Print Button
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 14.0),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F111A) : Colors.white,
+              border: Border(
+                top: BorderSide(
+                  color: isDark ? Colors.white.withValues(alpha: 0.12) : const Color(0xFFCBD5E1),
+                  width: 1.2,
+                ),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, -3),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              top: false,
+              child: ElevatedButton(
+                onPressed: _printLabel,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF1E1E),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 4,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.print, color: Colors.white, size: 24),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _selectedIngredient!.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            '라벨 출력하기 (${int.tryParse(_qtyController.text) ?? 1}장)',
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final bool isWide = constraints.maxWidth >= 700;
+
+          if (isWide) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        searchAndCategorySection,
+                        const SizedBox(height: 14),
+                        Expanded(child: buildIngredientGrid(shrinkWrap: false)),
+                      ],
+                    ),
+                  ),
+                ),
+                Container(width: 1, color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08)),
+                Expanded(
+                  flex: 2,
+                  child: SingleChildScrollView(
+                    child: buildRightPrintControlPanel(),
+                  ),
+                ),
+              ],
+            );
+          } else {
+            // Smartphone Single-Column Layout
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  searchAndCategorySection,
+                  const SizedBox(height: 14),
+                  buildIngredientGrid(shrinkWrap: true, physics: const NeverScrollableScrollPhysics()),
+                  const SizedBox(height: 20),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF13141F) : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? Colors.white.withValues(alpha: 0.1) : const Color(0xFFCBD5E1),
+                      ),
+                    ),
+                    child: buildRightPrintControlPanel(),
+                  ),
+                ],
+              ),
+            );
+          }
+        },
       ),
     );
   }
@@ -1057,11 +1110,12 @@ class _PrintTabViewState extends State<PrintTabView> {
       ));
     }
     if (_showLine2) {
-      lines.add(LabelLine('준비: ${_formatDateTime(_prepTime)}', _fontSize2));
+      final String prefix = _selectedStorage == '입고' ? '입고' : '준비';
+      lines.add(LabelLine('$prefix: ${_formatDateTime(_prepTime)}', _fontSize2));
     }
     if (_showLine3) {
       lines.add(LabelLine(
-        _selectedStorage == '입고' ? '' : '폐기: ${_formatDateTime(_computeExpiration(ing, _selectedStorage))}',
+        '폐기: ${_formatDateTime(_computeExpiration(ing, _selectedStorage))}',
         _fontSize3,
       ));
     }

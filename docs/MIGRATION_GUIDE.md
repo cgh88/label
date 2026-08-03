@@ -7,6 +7,7 @@
 ## 1. 데이터베이스 백업 절차
 
 ### 1.1 오프라인 라이브 백업 (추천)
+
 SQLite 데이터베이스 백업은 SQLite CLI 또는 파일 복사 방식으로 손쉽게 수행할 수 있습니다.
 
 ```bash
@@ -22,6 +23,7 @@ cp database.sqlite backups/database_$(date +%Y%m%d).sqlite
 ## 2. 데이터베이스 스키마 마이그레이션
 
 ### 2.1 스키마 버전 감지 및 자동 마이그레이션
+
 서버 시작 시 `initDatabaseAsync()` 함수가 실행되어 다음과 같이 스키마를 자동 검사하고 마이그레이션을 수행합니다:
 
 1. 구버전 `ingredients` 테이블 존재 여부 확인 (`walkin` 컬럼 보유 여부).
@@ -37,6 +39,7 @@ cp database.sqlite backups/database_$(date +%Y%m%d).sqlite
 ## 3. 환경 변수 설정 및 보안 마이그레이션
 
 ### 3.1 프로덕션 환경 변수
+
 프로덕션 실행 환경 (`NODE_ENV=production`)에서는 다음 환경 변수가 필수입니다:
 
 ```env
@@ -49,4 +52,5 @@ SESSION_SECRET=Your32CharacterSecretRandomSessionKey!
 ```
 
 ### 3.2 사용자 비밀번호 마이그레이션 (SHA-256 -> Scrypt)
- legacy SHA-256 비밀번호는 사용자 첫 로그인 시 자동으로 솔트(Salt)가 적용된 Scrypt 해시로 투명하게 승격 저장됩니다.
+
+legacy SHA-256 비밀번호는 사용자 첫 로그인 시 자동으로 솔트(Salt)가 적용된 Scrypt 해시로 투명하게 승격 저장됩니다.

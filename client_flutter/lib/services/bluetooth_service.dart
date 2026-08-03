@@ -400,7 +400,7 @@ class BluetoothPrintService {
     }
     if (showLine2) {
       String line2Text = prepDate;
-      if (!line2Text.contains(':') && !line2Text.startsWith('준비') && !line2Text.startsWith('Prep') && !line2Text.startsWith('OUT') && !line2Text.startsWith('IN')) {
+      if (!line2Text.contains(':') && !line2Text.startsWith('준비') && !line2Text.startsWith('입고') && !line2Text.startsWith('Prep') && !line2Text.startsWith('OUT') && !line2Text.startsWith('IN')) {
         line2Text = '준비: $line2Text';
       }
       labelLines.add(LabelLine(line2Text, fontSize2));
