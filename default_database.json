@@ -1,5 +1,5 @@
 {
-    "last_updated": "2026-07-30T02:33:33.740Z",
+    "last_updated": "2026-08-03T07:02:33.028Z",
     "categories": [
         {
             "id": 1,
@@ -1180,16 +1180,6 @@
             "shelf_days": 2
         },
         {
-            "ingredient_name": "알프레도 소스",
-            "storage_id": 7,
-            "shelf_days": 5
-        },
-        {
-            "ingredient_name": "알프레도 소스",
-            "storage_id": 39,
-            "shelf_days": 2
-        },
-        {
             "ingredient_name": "페퍼 BBQ 소스",
             "storage_id": 4,
             "shelf_days": 12
@@ -1318,6 +1308,21 @@
             "ingredient_name": "피자소스",
             "storage_id": 4,
             "shelf_days": 10
+        },
+        {
+            "ingredient_name": "알프레도 소스",
+            "storage_id": 4,
+            "shelf_days": 12
+        },
+        {
+            "ingredient_name": "알프레도 소스",
+            "storage_id": 7,
+            "shelf_days": 5
+        },
+        {
+            "ingredient_name": "알프레도 소스",
+            "storage_id": 39,
+            "shelf_days": 2
         }
     ]
 }
