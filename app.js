@@ -144,7 +144,7 @@ let state = {
         sizeLine2: 1.0,
         showLine3: true,
         sizeLine3: 1.0,
-        showLine4: true,
+        showLine4: false,
         sizeLine4: 0.5
     }
 };
@@ -524,6 +524,14 @@ function setupEventHandlers() {
     document.getElementById("add-location-form").addEventListener("submit", handleAddLocation);
     document.getElementById("mgmt-add-ingredient-form").addEventListener("submit", handleMgmtAddIngredient);
     document.getElementById("reset-default-btn").addEventListener("click", handleResetDatabase);
+
+    // Login & Logout
+    if (loginForm) {
+        loginForm.addEventListener("submit", handleLogin);
+    }
+    if (logoutBtn) {
+        logoutBtn.addEventListener("click", handleLogout);
+    }
 
     // Excel Upload
     const uploadExcelBtn = document.getElementById("upload-excel-btn");
@@ -1637,7 +1645,8 @@ function updateStickerPreview() {
         stickerLine1.textContent = `[${storageDisplay}] ${ingredient.name}${abbrText}`;
     }
     if (stickerLine2) {
-        stickerLine2.textContent = `준비: ${formatDate(state.prepTime)}`;
+        const line2Prefix = state.selectedStorage === "입고" ? "입고" : "준비";
+        stickerLine2.textContent = `${line2Prefix}: ${formatDate(state.prepTime)}`;
     }
     if (stickerLine3) {
         if (state.selectedStorage === "입고") {
@@ -2487,4 +2496,127 @@ function selectSauceCard(id) {
     const item = sauceState.db.find(i => i.Source_ID === id);
     if (item) renderSaucePrintedLabel(item);
     updateSauceUI();
+}
+
+// ==========================================
+// Authentication Logic & Helpers
+// ==========================================
+async function checkAuthStatus() {
+    try {
+        const status = await apiGet('/api/auth/status');
+        if (status.loggedIn) {
+            state.user = status.user;
+            if (loginOverlay) loginOverlay.style.display = "none";
+            if (logoutBtn) logoutBtn.style.display = "flex";
+            
+            applyRoleRestrictions();
+            await loadAllData();
+            renderMainDataViews();
+            
+            if (state.ingredients.length > 0) {
+                selectIngredient(state.ingredients[0].name);
+            }
+        } else {
+            state.user = null;
+            if (loginOverlay) loginOverlay.style.display = "flex";
+            if (logoutBtn) logoutBtn.style.display = "none";
+        }
+    } catch (e) {
+        console.error("Auth check failed:", e);
+        if (loginOverlay) loginOverlay.style.display = "flex";
+        if (logoutBtn) logoutBtn.style.display = "none";
+    }
+}
+
+function applyRoleRestrictions() {
+    const manageTabBtn = document.querySelector('.main-tab[data-tab="tab-manage"]');
+    if (!state.user) return;
+    
+    if (state.user.role === 'admin') {
+        if (settingsOpenBtn) settingsOpenBtn.style.display = "flex";
+        if (manageTabBtn) manageTabBtn.style.display = "flex";
+    } else {
+        // Staff role restrictions
+        if (settingsOpenBtn) settingsOpenBtn.style.display = "none";
+        if (manageTabBtn) manageTabBtn.style.display = "none";
+        
+        // Force to Print Tab
+        state.activeTab = "tab-print";
+        document.querySelectorAll(".main-tab").forEach(t => {
+            if (t.dataset.tab === "tab-print") t.classList.add("active");
+            else t.classList.remove("active");
+        });
+        document.querySelectorAll(".tab-content").forEach(c => {
+            if (c.id === "tab-print") c.classList.add("active");
+            else c.classList.remove("active");
+        });
+    }
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+    if (loginErrorMsg) loginErrorMsg.style.display = "none";
+    
+    const username = loginUsernameInput ? loginUsernameInput.value.trim() : "";
+    const password = loginPasswordInput ? loginPasswordInput.value : "";
+    
+    if (!username || !password) {
+        showLoginError("아이디와 비밀번호를 모두 입력해 주세요.");
+        return;
+    }
+    
+    try {
+        const response = await apiPost('/api/auth/login', { username, password });
+        if (response.success) {
+            state.user = response.user;
+            if (loginUsernameInput) loginUsernameInput.value = "";
+            if (loginPasswordInput) loginPasswordInput.value = "";
+            if (loginOverlay) loginOverlay.style.display = "none";
+            if (logoutBtn) logoutBtn.style.display = "flex";
+            
+            applyRoleRestrictions();
+            await loadAllData();
+            renderMainDataViews();
+            
+            if (state.ingredients.length > 0) {
+                selectIngredient(state.ingredients[0].name);
+            }
+            if (window.lucide) window.lucide.createIcons();
+        }
+    } catch (err) {
+        showLoginError(err.message || "로그인 요청에 실패했습니다.");
+    }
+}
+
+function showLoginError(msg) {
+    if (loginErrorMsg) {
+        loginErrorMsg.textContent = msg;
+        loginErrorMsg.style.display = "block";
+    }
+}
+
+async function handleLogout() {
+    if (!confirm("로그아웃 하시겠습니까?")) return;
+    try {
+        await apiPost('/api/auth/logout', {});
+        state.user = null;
+        if (loginOverlay) loginOverlay.style.display = "flex";
+        if (logoutBtn) logoutBtn.style.display = "none";
+        
+        // Reset state
+        state.ingredients = [];
+        state.categories = [];
+        state.locations = [];
+        state.selectedId = null;
+        state.selectedStorage = null;
+        
+        if (ingredientsGrid) ingredientsGrid.innerHTML = "";
+        if (selectedIngDisplay) selectedIngDisplay.textContent = "재료를 선택해 주세요";
+        if (storageOptionsContainer) storageOptionsContainer.innerHTML = "";
+    } catch (e) {
+        console.error("Logout failed:", e);
+        state.user = null;
+        if (loginOverlay) loginOverlay.style.display = "flex";
+        if (logoutBtn) logoutBtn.style.display = "none";
+    }
 }

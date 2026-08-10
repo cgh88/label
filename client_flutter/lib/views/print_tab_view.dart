@@ -45,7 +45,7 @@ class _PrintTabViewState extends State<PrintTabView> {
   bool _showLine1 = true;
   bool _showLine2 = true;
   bool _showLine3 = true;
-  bool _showLine4 = true;
+  bool _showLine4 = false;
   double _fontSize1 = 12.5;
   double _fontSize2 = 12.5;
   double _fontSize3 = 12.5;
@@ -89,7 +89,7 @@ class _PrintTabViewState extends State<PrintTabView> {
     final show1 = prefs.getBool('layout_show_line_1') ?? true;
     final show2 = prefs.getBool('layout_show_line_2') ?? true;
     final show3 = prefs.getBool('layout_show_line_3') ?? true;
-    final show4 = prefs.getBool('layout_show_line_4') ?? true;
+    final show4 = prefs.getBool('layout_show_line_4') ?? false;
     final fs1 = prefs.getDouble('layout_font_size_1') ?? 12.5;
     final fs2 = prefs.getDouble('layout_font_size_2') ?? 12.5;
     final fs3 = prefs.getDouble('layout_font_size_3') ?? 12.5;
@@ -284,7 +284,7 @@ class _PrintTabViewState extends State<PrintTabView> {
       final storage = _selectedStorage;
       final prepPrefix = storage == '입고' ? '입고' : '준비';
       final prepStr = '$prepPrefix: ${_formatDateTime(_prepTime)}';
-      final expStr = '폐기: ${_formatDateTime(_computeExpiration(_selectedIngredient!, storage))}';
+      final expStr = storage == '입고' ? '' : '폐기: ${_formatDateTime(_computeExpiration(_selectedIngredient!, storage))}';
 
       final success = await bluetoothPrintService.printTsplLabel(
         width: _labelWidth,
@@ -380,7 +380,7 @@ class _PrintTabViewState extends State<PrintTabView> {
                 : fullLine1;
             final String line2Prefix = storage == '입고' ? '입고' : '준비';
             final String line2 = '$line2Prefix: ${_formatDateTime(_prepTime)}';
-            final String line3 = '폐기: ${_formatDateTime(_computeExpiration(_selectedIngredient!, storage))}';
+            final String line3 = storage == '입고' ? '' : '폐기: ${_formatDateTime(_computeExpiration(_selectedIngredient!, storage))}';
             final String line4 = '(담당: $staff)';
 
             return pw.Padding(
@@ -401,7 +401,7 @@ class _PrintTabViewState extends State<PrintTabView> {
                       overflow: pw.TextOverflow.clip,
                     ),
                   ],
-                  if (_showLine1 && (_showLine2 || _showLine3 || _showLine4))
+                  if (_showLine1 && (_showLine2 || (_showLine3 && line3.isNotEmpty) || _showLine4))
                     pw.SizedBox(height: pdfVerticalGap),
                   if (_showLine2) ...[
                     pw.Text(line2,
@@ -410,16 +410,16 @@ class _PrintTabViewState extends State<PrintTabView> {
                       overflow: pw.TextOverflow.clip,
                     ),
                   ],
-                  if (_showLine2 && (_showLine3 || _showLine4))
+                  if (_showLine2 && ((_showLine3 && line3.isNotEmpty) || _showLine4))
                     pw.SizedBox(height: pdfVerticalGap),
-                  if (_showLine3) ...[
+                  if (_showLine3 && line3.isNotEmpty) ...[
                     pw.Text(line3,
                       style: pw.TextStyle(font: fontBold, fontSize: pdfFontSize3, color: PdfColors.black),
                       maxLines: 1,
                       overflow: pw.TextOverflow.clip,
                     ),
                   ],
-                  if (_showLine3 && _showLine4)
+                  if (_showLine3 && line3.isNotEmpty && _showLine4)
                     pw.SizedBox(height: pdfVerticalGap),
                   if (_showLine4) ...[
                     pw.Text(line4,
@@ -1113,7 +1113,7 @@ class _PrintTabViewState extends State<PrintTabView> {
       final String prefix = _selectedStorage == '입고' ? '입고' : '준비';
       lines.add(LabelLine('$prefix: ${_formatDateTime(_prepTime)}', _fontSize2));
     }
-    if (_showLine3) {
+    if (_showLine3 && _selectedStorage != '입고') {
       lines.add(LabelLine(
         '폐기: ${_formatDateTime(_computeExpiration(ing, _selectedStorage))}',
         _fontSize3,

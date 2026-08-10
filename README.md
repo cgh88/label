@@ -48,6 +48,8 @@ flutter run
 
 ## 문서 및 가이드
 
+- [AWS Lightsail 웹 서버 배포 매뉴얼](docs/AWS_LIGHTSAIL_DEPLOY_GUIDE.md)
+- [서버 배포 및 데이터 관리 매뉴얼](docs/SERVER_DEPLOY_AND_DATA_GUIDE.md)
 - [마이그레이션 및 백업 가이드](docs/MIGRATION_GUIDE.md)
 - [운영 및 배포 가이드](docs/OPERATIONS.md)
 - [PM2 설정](ecosystem.config.js)

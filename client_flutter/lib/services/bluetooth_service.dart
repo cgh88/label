@@ -410,7 +410,9 @@ class BluetoothPrintService {
       if (line3Text.isNotEmpty && !line3Text.contains(':') && !line3Text.startsWith('폐기') && !line3Text.startsWith('IN') && !line3Text.startsWith('※')) {
         line3Text = '폐기: $line3Text';
       }
-      labelLines.add(LabelLine(line3Text, fontSize3));
+      if (line3Text.isNotEmpty) {
+        labelLines.add(LabelLine(line3Text, fontSize3));
+      }
     }
     if (showLine4) {
       labelLines.add(LabelLine('(담당: $staff)', fontSize4));

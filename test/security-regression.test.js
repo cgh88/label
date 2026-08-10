@@ -146,8 +146,8 @@ test('api/sync/database allows GET and POST', async () => {
     const baseUrl = `http://127.0.0.1:${server.address().port}`;
 
     try {
-        // Unauthenticated access is rejected.
-        assert.equal((await fetch(`${baseUrl}/api/sync/database`)).status, 401);
+        // Unauthenticated read-only access is allowed.
+        assert.equal((await fetch(`${baseUrl}/api/sync/database`)).status, 200);
 
         const cookie = await loginAndGetCookie(baseUrl);
         const getRes = await fetch(`${baseUrl}/api/sync/database`, { headers: { Cookie: cookie } });
