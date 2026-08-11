@@ -207,7 +207,7 @@ class _LoginViewState extends State<LoginView> {
                           autocorrect: false,
                           style: isDark ? const TextStyle(color: Colors.white) : const TextStyle(color: Color(0xFF0F172A)),
                           decoration: InputDecoration(
-                            labelText: '서버 주소 (예: http://192.168.0.25:3000)',
+                            labelText: '서버 주소 (예: https://labelprint.pji.co.kr)',
                             labelStyle: isDark
                                 ? TextStyle(color: Colors.white.withValues(alpha: 0.6))
                                 : const TextStyle(color: Color(0xFF64748B)),

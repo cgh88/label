@@ -22,7 +22,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
   final _heightController = TextEditingController();
 
   final _apiUrlController = TextEditingController(
-    text: 'http://192.168.0.25:3000', //Cho Test IP
+    text: 'https://labelprint.pji.co.kr',
   );
 
   double _selectedWidth = 50;
@@ -754,11 +754,11 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                     color: isDark ? Colors.white : Colors.black87,
                   ),
                   decoration: InputDecoration(
-                    labelText: 'API 서버 주소 (예: http://192.168.0.15:3000)',
+                    labelText: 'API 서버 주소 (예: https://labelprint.pji.co.kr)',
                     labelStyle: TextStyle(
                       color: isDark ? Colors.white60 : Colors.black54,
                     ),
-                    hintText: 'http://localhost:3000',
+                    hintText: 'https://labelprint.pji.co.kr',
                     hintStyle: TextStyle(
                       color: isDark ? Colors.white30 : Colors.black38,
                     ),
