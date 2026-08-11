@@ -1708,8 +1708,17 @@ app.post('/api/ingredients/reset', requireAdmin, async (req, res) => {
     }
 });
 
+function findApkPath() {
+    const locations = [
+        path.join(__dirname, 'files', 'app-release.apk'),
+        path.join(__dirname, 'client_flutter', 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk'),
+        path.join(__dirname, 'app-release.apk')
+    ];
+    return locations.find(p => fs.existsSync(p)) || null;
+}
+
 app.get('/api/app-info', (req, res) => {
-    const apkPath = path.join(__dirname, 'client_flutter', 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk');
+    const apkPath = findApkPath();
     const pubspecPath = path.join(__dirname, 'client_flutter', 'pubspec.yaml');
     
     let version = '1.0.0';
@@ -1724,7 +1733,7 @@ app.get('/api/app-info', (req, res) => {
         }
     }
 
-    if (fs.existsSync(apkPath)) {
+    if (apkPath) {
         const stats = fs.statSync(apkPath);
         const buildDate = stats.mtime.toISOString();
         const sizeMb = (stats.size / (1024 * 1024)).toFixed(1);
@@ -1748,8 +1757,8 @@ app.get('/api/app-info', (req, res) => {
 });
 
 app.get('/download/app-release.apk', (req, res) => {
-    const apkPath = path.join(__dirname, 'client_flutter', 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk');
-    if (fs.existsSync(apkPath)) {
+    const apkPath = findApkPath();
+    if (apkPath) {
         res.setHeader('Content-Type', 'application/vnd.android.package-archive');
         res.download(apkPath, 'shelflife-label-app.apk');
     } else {

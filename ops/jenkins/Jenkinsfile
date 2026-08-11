@@ -29,7 +29,7 @@ pipeline {
                     set -eu
                     rm -rf release
                     mkdir -p release
-                    cp server.js app.js index.html style.css release/
+                    cp -r files server.js app.js index.html style.css release/
                 '''
             }
         }
