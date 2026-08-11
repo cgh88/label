@@ -173,7 +173,7 @@ class ApiSyncService {
       );
     }
 
-    final targetEndpoint = '$apiSyncUrl/api/sync/database';
+    final targetEndpoint = '$apiSyncUrl/api/health';
     try {
       final response = await http.get(
         Uri.parse(targetEndpoint),
@@ -189,6 +189,23 @@ class ApiSyncService {
           timestamp: nowStr,
         );
       } else {
+        // Fallback check: try database sync endpoint if /api/health returns non-200
+        final syncEndpoint = '$apiSyncUrl/api/sync/database';
+        final syncRes = await http.get(
+          Uri.parse(syncEndpoint),
+          headers: await authHeaders(),
+        ).timeout(const Duration(seconds: 4));
+
+        if (syncRes.statusCode == 200) {
+          return ServerConnectionStatus(
+            isReachable: true,
+            message: '원격 서버 접속 가능 (상태: OK 200)',
+            statusCode: 200,
+            targetUrl: syncEndpoint,
+            timestamp: nowStr,
+          );
+        }
+
         final bodySnippet = response.body.length > 500 ? '${response.body.substring(0, 500)}...' : response.body;
         return ServerConnectionStatus(
           isReachable: false,
