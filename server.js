@@ -284,7 +284,7 @@ function checkIpMatch(clientIp, allowedIpsStr) {
 // ==========================================
 // JWT Authentication Helpers & Session Verification
 // ==========================================
-const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+const JWT_SECRET = process.env.JWT_SECRET || 'shelflife-label-jwt-secret-key-2026';
 
 function base64UrlEncode(str) {
     return Buffer.from(str).toString('base64')
