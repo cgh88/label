@@ -79,6 +79,19 @@ class ApiSyncService {
         ).timeout(const Duration(seconds: 10));
       }
 
+      // 3. If 401 persists (unauthenticated on server requiring login) and local DB exists, use local DB gracefully
+      if (response.statusCode == 401) {
+        final hasLocalItems = DatabaseService.instance.ingredients.isNotEmpty;
+        if (hasLocalItems) {
+          onProgress?.call(1.0, '로컬 데이터베이스 사용 중 (로그인 후 동기화 가능)');
+          return SyncResult(
+            success: true,
+            message: '로컬 데이터베이스 사용 중 (로그인 후 서버 동기화가 진행됩니다).',
+            isUpToDate: true,
+          );
+        }
+      }
+
       if (response.statusCode != 200) {
         onProgress?.call(1.0, '원격 데이터 읽기 실패 (${response.statusCode})');
         return SyncResult(
