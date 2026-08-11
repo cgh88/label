@@ -57,6 +57,14 @@ class _LoginViewState extends State<LoginView> {
       baseUrl = 'http://$baseUrl';
     }
     baseUrl = baseUrl.replaceAll(RegExp(r'/+$'), '');
+
+    if (baseUrl.contains('labelprint.pji.co.kr')) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = '해당 외부 서버 주소(labelprint.pji.co.kr)는 태블릿에서 접속할 수 없습니다. (내부/로컬 서버 주소를 입력해 주세요.)';
+      });
+      return;
+    }
     await ApiSyncService.instance.saveConfig(baseUrl);
     final loginUrl = '$baseUrl/api/auth/login';
 
@@ -259,7 +267,7 @@ class _LoginViewState extends State<LoginView> {
                           autocorrect: false,
                           style: isDark ? const TextStyle(color: Colors.white) : const TextStyle(color: Color(0xFF0F172A)),
                           decoration: InputDecoration(
-                            labelText: '서버 주소 (예: https://labelprint.pji.co.kr)',
+                            labelText: '서버 주소 (예: http://192.168.0.25:3000)',
                             labelStyle: isDark
                                 ? TextStyle(color: Colors.white.withValues(alpha: 0.6))
                                 : const TextStyle(color: Color(0xFF64748B)),

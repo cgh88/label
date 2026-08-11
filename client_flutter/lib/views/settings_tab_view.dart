@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:file_picker/file_picker.dart';
@@ -23,10 +22,8 @@ class _SettingsTabViewState extends State<SettingsTabView> {
   final _heightController = TextEditingController();
 
   final _apiUrlController = TextEditingController(
-    text: 'https://labelprint.pji.co.kr',
+    text: 'http://192.168.0.25:3000',
   );
-  final _adminIpController = TextEditingController();
-  String _currentClientIp = '조회 중...';
 
   double _selectedWidth = 50;
   double _selectedHeight = 30;
@@ -118,32 +115,6 @@ class _SettingsTabViewState extends State<SettingsTabView> {
     setState(() {
       _apiUrlController.text = ApiSyncService.instance.apiSyncUrl;
     });
-
-    try {
-      final baseUrl = ApiSyncService.instance.apiSyncUrl;
-      final ipRes = await http.get(Uri.parse('$baseUrl/api/client-ip')).timeout(const Duration(seconds: 4));
-      if (ipRes.statusCode == 200) {
-        final data = jsonDecode(ipRes.body);
-        if (mounted) {
-          setState(() {
-            _currentClientIp = data['ip'] ?? '알 수 없음';
-          });
-        }
-      }
-
-      final headers = await ApiSyncService.authHeaders();
-      final settingsRes = await http.get(Uri.parse('$baseUrl/api/system-settings'), headers: headers).timeout(const Duration(seconds: 4));
-      if (settingsRes.statusCode == 200) {
-        final data = jsonDecode(settingsRes.body);
-        if (data['settings'] != null && mounted) {
-          setState(() {
-            _adminIpController.text = data['settings']['admin_allowed_ips'] ?? '';
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Failed to load admin IP settings in flutter: $e');
-    }
   }
 
   Future<void> _saveLayoutSetting(String key, dynamic value) async {
@@ -190,6 +161,18 @@ class _SettingsTabViewState extends State<SettingsTabView> {
       return;
     }
 
+    if (parsedUri.host.contains('labelprint.pji.co.kr')) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Colors.redAccent,
+            content: Text('해당 외부 서버 주소(labelprint.pji.co.kr)는 태블릿에서 접속할 수 없습니다. (내부/로컬 서버 주소를 입력해 주세요.)'),
+          ),
+        );
+      }
+      return;
+    }
+
     _apiUrlController.text = url;
     await ApiSyncService.instance.saveConfig(url);
 
@@ -198,88 +181,6 @@ class _SettingsTabViewState extends State<SettingsTabView> {
         context,
       ).showSnackBar(const SnackBar(content: Text('API 동기화 서버 주소가 저장되었습니다.')));
     }
-  }
-
-  Future<void> _saveAdminIpSettings() async {
-    final val = _adminIpController.text.trim();
-    try {
-      final baseUrl = ApiSyncService.instance.apiSyncUrl;
-      final headers = await ApiSyncService.authHeaders(jsonBody: true);
-      final res = await http.post(
-        Uri.parse('$baseUrl/api/system-settings'),
-        headers: headers,
-        body: jsonEncode({
-          'setting_key': 'admin_allowed_ips',
-          'setting_value': val,
-        }),
-      ).timeout(const Duration(seconds: 8));
-
-      final data = jsonDecode(res.body);
-      if (res.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              backgroundColor: Colors.green,
-              content: Text('관리자 접속 IP 설정이 성공적으로 저장되었습니다.'),
-            ),
-          );
-        }
-      } else {
-        if (mounted) {
-          _showAccessDeniedDialog(data['error'] ?? '저장 실패', data['clientIp'] ?? _currentClientIp);
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.redAccent,
-            content: Text('설정 저장 오류: $e'),
-          ),
-        );
-      }
-    }
-  }
-
-  void _showAccessDeniedDialog(String message, String clientIp) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.shield_outlined, color: Colors.redAccent),
-            SizedBox(width: 8),
-            Text('접속 불가 (Access Denied)', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(message, style: const TextStyle(fontSize: 14)),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                '현재 접속 IP: $clientIp',
-                style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('확인'),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _performVersionUpdate() async {
@@ -865,102 +766,31 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                     color: isDark ? Colors.white : Colors.black87,
                   ),
                   decoration: InputDecoration(
-                    labelText: 'API 서버 주소 (예: https://labelprint.pji.co.kr)',
+                    labelText: 'API 서버 주소 (예: http://192.168.0.15:3000)',
                     labelStyle: TextStyle(
                       color: isDark ? Colors.white60 : Colors.black54,
                     ),
-                    hintText: 'https://labelprint.pji.co.kr',
+                    hintText: 'http://localhost:3000',
                     hintStyle: TextStyle(
                       color: isDark ? Colors.white30 : Colors.black38,
                     ),
                   ),
                 ),
                 const SizedBox(height: 24),
-                const Divider(height: 1),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      '관리자 접속 IP 제한 설정',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                    Text(
-                      '현재 IP: $_currentClientIp',
-                      style: TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                        color: isDark ? Colors.indigoAccent : Colors.indigo,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _adminIpController,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: '허용 IP 주소 (쉼표 구분, 빈값은 미제한)',
-                    labelStyle: TextStyle(
-                      color: isDark ? Colors.white60 : Colors.black54,
-                    ),
-                    hintText: '예: 123.45.67.89, 192.168.0.10',
-                    hintStyle: TextStyle(
-                      color: isDark ? Colors.white30 : Colors.black38,
-                    ),
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.my_location, size: 18),
-                      tooltip: '현재 IP 입력',
-                      onPressed: () {
-                        if (_currentClientIp.isNotEmpty && _currentClientIp != '조회 중...' && _currentClientIp != '알 수 없음') {
-                          final current = _adminIpController.text.trim();
-                          if (current.isEmpty) {
-                            _adminIpController.text = _currentClientIp;
-                          } else if (!current.contains(_currentClientIp)) {
-                            _adminIpController.text = '$current, $_currentClientIp';
-                          }
-                        }
-                      },
+                ElevatedButton(
+                  onPressed: _saveApiSettings,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF1E1E),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _saveApiSettings,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF1E1E),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: const Text('서버주소 저장', style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _saveAdminIpSettings,
-                        icon: const Icon(Icons.shield, size: 18),
-                        label: const Text('Admin IP 저장', style: TextStyle(fontWeight: FontWeight.bold)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6366F1),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  child: const Text(
+                    '설정 저장',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
