@@ -1,0 +1,63 @@
+pipeline {
+    agent any
+
+    options {
+        disableConcurrentBuilds()
+        timestamps()
+        timeout(time: 20, unit: 'MINUTES')
+    }
+
+    triggers {
+        pollSCM('H/5 * * * *')
+    }
+
+    stages {
+        stage('Test') {
+            steps {
+                sh 'npm ci'
+                sh 'npm test'
+            }
+        }
+
+        stage('Prepare release') {
+            steps {
+                sh '''
+                    set -eu
+                    rm -rf release
+                    mkdir -p release
+                    cp server.js app.js index.html style.css release/
+                '''
+            }
+        }
+
+        stage('Deploy to Lightsail') {
+            steps {
+                sshagent(credentials: ['label-deploy-key']) {
+                    sh '''
+                        set -eu
+                        ssh -o StrictHostKeyChecking=yes \
+                            -o UserKnownHostsFile=/var/jenkins_home/.ssh/known_hosts \
+                            jenkins-deploy@54.180.136.194 \
+                            'rm -rf /var/lib/jenkins-deploy/release && mkdir -p /var/lib/jenkins-deploy/release'
+
+                        scp -o StrictHostKeyChecking=yes \
+                            -o UserKnownHostsFile=/var/jenkins_home/.ssh/known_hosts \
+                            release/* \
+                            jenkins-deploy@54.180.136.194:/var/lib/jenkins-deploy/release/
+
+                        ssh -o StrictHostKeyChecking=yes \
+                            -o UserKnownHostsFile=/var/jenkins_home/.ssh/known_hosts \
+                            jenkins-deploy@54.180.136.194 \
+                            'sudo /usr/local/sbin/deploy-papa-label'
+                    '''
+                }
+            }
+        }
+
+        stage('Verify') {
+            steps {
+                sh 'curl --fail --silent https://labelprint.pji.co.kr/api/health'
+            }
+        }
+    }
+}

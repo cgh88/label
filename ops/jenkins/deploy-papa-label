@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+STAGE="/var/lib/jenkins-deploy/release"
+APP="/opt/papa-label"
+BACKUP="$APP/backups/$(date +%Y%m%d-%H%M%S)"
+
+for file in server.js app.js index.html style.css; do
+    test -f "$STAGE/$file"
+done
+
+mkdir -p "$BACKUP"
+for file in server.js app.js index.html style.css; do
+    cp "$APP/$file" "$BACKUP/$file"
+    install -o label-server -g label-server -m 0640 "$STAGE/$file" "$APP/$file"
+done
+
+systemctl restart label-server
+sleep 2
+systemctl is-active --quiet label-server
+curl --fail --silent https://labelprint.pji.co.kr/api/health >/dev/null
+echo "Deployment successful"

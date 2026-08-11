@@ -1,0 +1,17 @@
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: papa-label-jenkins:lts-jdk21-node20
+    container_name: papa-label-jenkins
+    restart: unless-stopped
+    mem_limit: 768m
+    cpus: 1.0
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+
+volumes:
+  jenkins_home:
