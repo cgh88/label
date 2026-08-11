@@ -162,36 +162,51 @@ class ApiSyncService {
 
   /// Checks whether the configured remote API server is reachable.
   Future<ServerConnectionStatus> checkServerConnection() async {
+    final nowStr = DateTime.now().toLocal().toString().split('.').first;
     if (!isConfigured()) {
       return ServerConnectionStatus(
         isReachable: false,
         message: '서버 주소가 설정되지 않았습니다.',
+        errorDetail: '[오류 원인 상세]\n- 설정된 API 서버 URL이 존재하지 않거나 올바르지 않습니다.\n- 설정 메뉴에서 서버 주소(예: https://labelprint.pji.co.kr)를 입력해 주세요.',
+        targetUrl: apiSyncUrl,
+        timestamp: nowStr,
       );
     }
 
+    final targetEndpoint = '$apiSyncUrl/api/sync/database';
     try {
       final response = await http.get(
-        Uri.parse('$apiSyncUrl/api/sync/database'),
+        Uri.parse(targetEndpoint),
         headers: await authHeaders(),
-      ).timeout(const Duration(seconds: 3));
+      ).timeout(const Duration(seconds: 4));
 
       if (response.statusCode == 200) {
         return ServerConnectionStatus(
           isReachable: true,
           message: '원격 서버 접속 가능 (상태: OK 200)',
           statusCode: 200,
+          targetUrl: targetEndpoint,
+          timestamp: nowStr,
         );
       } else {
+        final bodySnippet = response.body.length > 500 ? '${response.body.substring(0, 500)}...' : response.body;
         return ServerConnectionStatus(
           isReachable: false,
           message: '서버 응답 오류 (상태 코드: ${response.statusCode})',
           statusCode: response.statusCode,
+          errorDetail: '[HTTP 서버 응답 에러 로그]\n- 타겟 URL: $targetEndpoint\n- HTTP 상태 코드: ${response.statusCode}\n- 서버 응답 메시지:\n${bodySnippet.isNotEmpty ? bodySnippet : "(본문 내용 없음)"}',
+          targetUrl: targetEndpoint,
+          timestamp: nowStr,
         );
       }
-    } catch (e) {
+    } catch (e, stack) {
+      final stackSnippet = stack.toString().split('\n').take(4).join('\n');
       return ServerConnectionStatus(
         isReachable: false,
         message: '서버 접속 불가 (네트워크 미연결 또는 서버 오프라인)',
+        errorDetail: '[네트워크 / 접속 에러 로그]\n- 타겟 URL: $targetEndpoint\n- 예외 유형: ${e.runtimeType}\n- 에러 내용: $e\n- 스택 트레이스:\n$stackSnippet',
+        targetUrl: targetEndpoint,
+        timestamp: nowStr,
       );
     }
   }
@@ -309,11 +324,17 @@ class ServerConnectionStatus {
   final bool isReachable;
   final String message;
   final int? statusCode;
+  final String? errorDetail;
+  final String? targetUrl;
+  final String? timestamp;
 
   ServerConnectionStatus({
     required this.isReachable,
     required this.message,
     this.statusCode,
+    this.errorDetail,
+    this.targetUrl,
+    this.timestamp,
   });
 }
 
