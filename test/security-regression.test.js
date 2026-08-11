@@ -94,8 +94,8 @@ test('api/default-database returns default database content', async () => {
     const baseUrl = `http://127.0.0.1:${server.address().port}`;
 
     try {
-        // Unauthenticated access is rejected.
-        assert.equal((await fetch(`${baseUrl}/api/default-database`)).status, 401);
+        // Unauthenticated GET access returns default database.
+        assert.equal((await fetch(`${baseUrl}/api/default-database`)).status, 200);
 
         const cookie = await loginAndGetCookie(baseUrl);
         const res = await fetch(`${baseUrl}/api/default-database`, { headers: { Cookie: cookie } });
@@ -171,8 +171,8 @@ test('api/sync/database requires authentication and supports JWT Bearer token', 
     const baseUrl = `http://127.0.0.1:${server.address().port}`;
 
     try {
-        // Unauthenticated access is rejected.
-        assert.equal((await fetch(`${baseUrl}/api/sync/database`)).status, 401);
+        // GET sync/database is publicly accessible for tablet download
+        assert.equal((await fetch(`${baseUrl}/api/sync/database`)).status, 200);
 
         // JWT Bearer token header authentication
         const jwtToken = await loginAndGetJwt(baseUrl);

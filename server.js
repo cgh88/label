@@ -867,7 +867,7 @@ app.get('/api/auth/status', (req, res) => {
 // ==========================================
 
 // GET /api/default-database
-app.get('/api/default-database', requireLogin, (req, res) => {
+app.get('/api/default-database', (req, res) => {
     try {
         const defaultPath = path.join(__dirname, 'default_database.json');
         if (fs.existsSync(defaultPath)) {
@@ -892,8 +892,8 @@ app.get('/api/default-database', requireLogin, (req, res) => {
     });
 });
 
-// GET /api/sync/database (Database download for tablet sync)
-app.get('/api/sync/database', requireLogin, async (req, res) => {
+// GET /api/sync/database (Database download for tablet sync - public read access)
+app.get('/api/sync/database', async (req, res) => {
     try {
         const categories = await allAsync("SELECT * FROM categories ORDER BY sort_order ASC, id ASC");
         const storage_locations = await allAsync("SELECT * FROM storage_locations ORDER BY sort_order ASC, id ASC");
