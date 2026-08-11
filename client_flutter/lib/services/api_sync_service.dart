@@ -10,14 +10,11 @@ class ApiSyncService {
   static final ApiSyncService instance = ApiSyncService._();
   ApiSyncService._();
 
-  String apiSyncUrl = 'http://localhost:3000';
+  String apiSyncUrl = 'https://labelprint.pji.co.kr';
 
   Future<void> loadConfig() async {
     final prefs = await SharedPreferences.getInstance();
-    apiSyncUrl = prefs.getString('api_sync_url') ?? 'http://localhost:3000';
-    if (apiSyncUrl.contains('labelprint.pji.co.kr')) {
-      apiSyncUrl = 'http://localhost:3000';
-    }
+    apiSyncUrl = prefs.getString('api_sync_url') ?? 'https://labelprint.pji.co.kr';
   }
 
   Future<void> saveConfig(String url) async {
@@ -28,9 +25,6 @@ class ApiSyncService {
 
   bool isConfigured() {
     final uri = Uri.tryParse(apiSyncUrl);
-    if (uri != null && uri.host.contains('labelprint.pji.co.kr')) {
-      return false;
-    }
     return apiSyncUrl.isNotEmpty && uri != null && uri.hasScheme && uri.host.isNotEmpty;
   }
 

@@ -441,7 +441,7 @@ class _ManageTabViewState extends State<ManageTabView> {
       try {
         final apiBaseUrl = ApiSyncService.instance.isConfigured()
             ? ApiSyncService.instance.apiSyncUrl
-            : 'http://localhost:3000';
+            : 'https://labelprint.pji.co.kr';
         await DatabaseService.instance.downloadAndResetDatabase(
           url: '$apiBaseUrl/api/default-database',
           onProgress: (progress) {

@@ -22,7 +22,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
   final _heightController = TextEditingController();
 
   final _apiUrlController = TextEditingController(
-    text: 'http://192.168.0.25:3000',
+    text: 'https://labelprint.pji.co.kr',
   );
 
   double _selectedWidth = 50;
@@ -155,18 +155,6 @@ class _SettingsTabViewState extends State<SettingsTabView> {
           const SnackBar(
             backgroundColor: Colors.redAccent,
             content: Text('유효한 HTTP/HTTPS URL 형식이 아닙니다.'),
-          ),
-        );
-      }
-      return;
-    }
-
-    if (parsedUri.host.contains('labelprint.pji.co.kr')) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: Colors.redAccent,
-            content: Text('해당 외부 서버 주소(labelprint.pji.co.kr)는 태블릿에서 접속할 수 없습니다. (내부/로컬 서버 주소를 입력해 주세요.)'),
           ),
         );
       }
@@ -766,11 +754,11 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                     color: isDark ? Colors.white : Colors.black87,
                   ),
                   decoration: InputDecoration(
-                    labelText: 'API 서버 주소 (예: http://192.168.0.15:3000)',
+                    labelText: 'API 서버 주소 (예: https://labelprint.pji.co.kr)',
                     labelStyle: TextStyle(
                       color: isDark ? Colors.white60 : Colors.black54,
                     ),
-                    hintText: 'http://localhost:3000',
+                    hintText: 'https://labelprint.pji.co.kr',
                     hintStyle: TextStyle(
                       color: isDark ? Colors.white30 : Colors.black38,
                     ),
