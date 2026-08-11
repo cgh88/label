@@ -1227,24 +1227,27 @@ app.get('/api/categories', requireLogin, (req, res) => {
     });
 });
 
-app.post('/api/categories', requireAdmin, (req, res) => {
+app.post('/api/categories', requireAdmin, async (req, res) => {
     const { name, emoji } = req.body;
     if (!name) return res.status(400).json({ error: '카테고리 이름은 필수입니다.' });
-    db.run("INSERT INTO categories (name, emoji, sort_order) VALUES (?, ?, (SELECT COALESCE(MAX(sort_order),0)+1 FROM categories))",
-        [name, emoji || ''], function(err) {
-            if (err) {
-                if (err.message.includes('UNIQUE')) return res.status(400).json({ error: '이미 존재하는 카테고리입니다.' });
-                return res.status(500).json({ error: err.message });
-            }
-            res.status(201).json({ id: this.lastID, name, emoji: emoji || '' });
-        });
+    try {
+        await runAsync("INSERT INTO categories (name, emoji, sort_order) VALUES (?, ?, (SELECT COALESCE(MAX(sort_order),0)+1 FROM categories))", [name, emoji || '']);
+        await touchDbLastUpdatedAsync();
+        res.status(201).json({ success: true, name, emoji: emoji || '' });
+    } catch (err) {
+        if (err.message && err.message.includes('UNIQUE')) return res.status(400).json({ error: '이미 존재하는 카테고리입니다.' });
+        sendServerError(res, err, '카테고리 추가 중 오류가 발생했습니다.');
+    }
 });
 
-app.delete('/api/categories/:id', requireAdmin, (req, res) => {
-    db.run("DELETE FROM categories WHERE id = ?", [req.params.id], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+app.delete('/api/categories/:id', requireAdmin, async (req, res) => {
+    try {
+        await runAsync("DELETE FROM categories WHERE id = ?", [req.params.id]);
+        await touchDbLastUpdatedAsync();
         res.json({ success: true });
-    });
+    } catch (err) {
+        sendServerError(res, err, '카테고리 삭제 중 오류가 발생했습니다.');
+    }
 });
 
 // ==========================================
@@ -1257,25 +1260,28 @@ app.get('/api/storage-locations', requireLogin, (req, res) => {
     });
 });
 
-app.post('/api/storage-locations', requireAdmin, (req, res) => {
+app.post('/api/storage-locations', requireAdmin, async (req, res) => {
     const { name, unit } = req.body;
     if (!name) return res.status(400).json({ error: '보관위치 이름은 필수입니다.' });
     const insertUnit = unit || 'day';
-    db.run("INSERT INTO storage_locations (name, sort_order, unit) VALUES (?, (SELECT COALESCE(MAX(sort_order),0)+1 FROM storage_locations), ?)",
-        [name, insertUnit], function(err) {
-            if (err) {
-                if (err.message.includes('UNIQUE')) return res.status(400).json({ error: '이미 존재하는 보관위치입니다.' });
-                return res.status(500).json({ error: err.message });
-            }
-            res.status(201).json({ id: this.lastID, name, unit: insertUnit });
-        });
+    try {
+        await runAsync("INSERT INTO storage_locations (name, sort_order, unit) VALUES (?, (SELECT COALESCE(MAX(sort_order),0)+1 FROM storage_locations), ?)", [name, insertUnit]);
+        await touchDbLastUpdatedAsync();
+        res.status(201).json({ success: true, name, unit: insertUnit });
+    } catch (err) {
+        if (err.message && err.message.includes('UNIQUE')) return res.status(400).json({ error: '이미 존재하는 보관위치입니다.' });
+        sendServerError(res, err, '보관위치 추가 중 오류가 발생했습니다.');
+    }
 });
 
-app.delete('/api/storage-locations/:id', requireAdmin, (req, res) => {
-    db.run("DELETE FROM storage_locations WHERE id = ?", [req.params.id], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+app.delete('/api/storage-locations/:id', requireAdmin, async (req, res) => {
+    try {
+        await runAsync("DELETE FROM storage_locations WHERE id = ?", [req.params.id]);
+        await touchDbLastUpdatedAsync();
         res.json({ success: true });
-    });
+    } catch (err) {
+        sendServerError(res, err, '보관위치 삭제 중 오류가 발생했습니다.');
+    }
 });
 
 // ==========================================
@@ -1288,7 +1294,7 @@ app.get('/api/label-sizes', requireLogin, (req, res) => {
     });
 });
 
-app.post('/api/label-sizes', requireAdmin, (req, res) => {
+app.post('/api/label-sizes', requireAdmin, async (req, res) => {
     const { width, height } = req.body;
     const w = parseInt(width);
     const h = parseInt(height);
@@ -1299,22 +1305,26 @@ app.post('/api/label-sizes', requireAdmin, (req, res) => {
         return res.status(400).json({ error: '가로 크기는 20~150mm, 세로 크기는 15~150mm 사이여야 합니다.' });
     }
 
-    db.get("SELECT id FROM label_sizes WHERE width = ? AND height = ?", [w, h], (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (row) return res.status(400).json({ error: '이미 존재하는 규격 프리셋입니다.' });
+    try {
+        const row = await allAsync("SELECT id FROM label_sizes WHERE width = ? AND height = ?", [w, h]);
+        if (row && row.length > 0) return res.status(400).json({ error: '이미 존재하는 규격 프리셋입니다.' });
 
-        db.run("INSERT INTO label_sizes (width, height, is_default) VALUES (?, ?, 0)", [w, h], function(err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.status(201).json({ id: this.lastID, width: w, height: h, is_default: 0 });
-        });
-    });
+        await runAsync("INSERT INTO label_sizes (width, height, is_default) VALUES (?, ?, 0)", [w, h]);
+        await touchDbLastUpdatedAsync();
+        res.status(201).json({ success: true, width: w, height: h, is_default: 0 });
+    } catch (err) {
+        sendServerError(res, err, '라벨 규격 추가 중 오류가 발생했습니다.');
+    }
 });
 
-app.delete('/api/label-sizes/:id', requireAdmin, (req, res) => {
-    db.run("DELETE FROM label_sizes WHERE id = ?", [req.params.id], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+app.delete('/api/label-sizes/:id', requireAdmin, async (req, res) => {
+    try {
+        await runAsync("DELETE FROM label_sizes WHERE id = ?", [req.params.id]);
+        await touchDbLastUpdatedAsync();
         res.json({ success: true });
-    });
+    } catch (err) {
+        sendServerError(res, err, '라벨 규격 삭제 중 오류가 발생했습니다.');
+    }
 });
 
 // ==========================================
