@@ -3,7 +3,14 @@
 // ==========================================
 async function apiGet(url) {
     const response = await fetch(url);
-    if (!response.ok) throw new Error("데이터 조회 실패");
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        const e = new Error(err.error || "데이터 조회 실패");
+        e.status = response.status;
+        e.ipBlocked = err.ipBlocked;
+        e.clientIp = err.clientIp;
+        throw e;
+    }
     return await response.json();
 }
 
@@ -14,8 +21,12 @@ async function apiPost(url, data) {
         body: JSON.stringify(data)
     });
     if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "요청 처리 실패");
+        const err = await response.json().catch(() => ({}));
+        const e = new Error(err.error || "요청 처리 실패");
+        e.status = response.status;
+        e.ipBlocked = err.ipBlocked;
+        e.clientIp = err.clientIp;
+        throw e;
     }
     return await response.json();
 }
@@ -27,8 +38,12 @@ async function apiPut(url, data) {
         body: JSON.stringify(data)
     });
     if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "수정 실패");
+        const err = await response.json().catch(() => ({}));
+        const e = new Error(err.error || "수정 실패");
+        e.status = response.status;
+        e.ipBlocked = err.ipBlocked;
+        e.clientIp = err.clientIp;
+        throw e;
     }
     return await response.json();
 }
@@ -36,13 +51,11 @@ async function apiPut(url, data) {
 async function apiDelete(url) {
     const response = await fetch(url, { method: "DELETE" });
     if (!response.ok) {
-        let errMsg = "삭제 실패";
-        try {
-            const err = await response.json();
-            errMsg = err.error || errMsg;
-        } catch (_) {}
-        const e = new Error(errMsg);
+        const err = await response.json().catch(() => ({}));
+        const e = new Error(err.error || "삭제 실패");
         e.status = response.status;
+        e.ipBlocked = err.ipBlocked;
+        e.clientIp = err.clientIp;
         throw e;
     }
     return await response.json();
@@ -531,6 +544,55 @@ function setupEventHandlers() {
     }
     if (logoutBtn) {
         logoutBtn.addEventListener("click", handleLogout);
+    }
+
+    // Access Denied Modal Close
+    const accessDeniedCloseBtn = document.getElementById("access-denied-close-btn");
+    if (accessDeniedCloseBtn) {
+        accessDeniedCloseBtn.addEventListener("click", closeAccessDeniedModal);
+    }
+
+    // Admin IP Allowlist Controls
+    const fillIpBtn = document.getElementById("fill-current-ip-btn");
+    const saveAdminIpBtn = document.getElementById("save-admin-ip-btn");
+
+    if (fillIpBtn) {
+        fillIpBtn.addEventListener("click", () => {
+            const displayEl = document.getElementById("current-client-ip-display");
+            const inputEl = document.getElementById("admin-allowed-ips-input");
+            if (displayEl && inputEl && displayEl.dataset.clientIp) {
+                const currentIp = displayEl.dataset.clientIp;
+                let existing = inputEl.value.trim();
+                if (!existing) {
+                    inputEl.value = currentIp;
+                } else if (!existing.includes(currentIp)) {
+                    inputEl.value = `${existing}, ${currentIp}`;
+                }
+            }
+        });
+    }
+
+    if (saveAdminIpBtn) {
+        saveAdminIpBtn.addEventListener("click", async () => {
+            const inputEl = document.getElementById("admin-allowed-ips-input");
+            if (!inputEl) return;
+            const val = inputEl.value.trim();
+            try {
+                saveAdminIpBtn.disabled = true;
+                saveAdminIpBtn.textContent = "저장 중...";
+                await apiPost('/api/system-settings', { setting_key: 'admin_allowed_ips', setting_value: val });
+                alert("관리자 접속 IP 설정이 성공적으로 저장되었습니다.");
+            } catch (err) {
+                if (err.ipBlocked || (err.message && err.message.includes('허용되지 않은 IP'))) {
+                    showAccessDeniedModal(err.message, err.clientIp);
+                } else {
+                    alert("저장 실패: " + err.message);
+                }
+            } finally {
+                saveAdminIpBtn.disabled = false;
+                saveAdminIpBtn.textContent = "저장";
+            }
+        });
     }
 
     // Excel Upload
@@ -1770,16 +1832,51 @@ function triggerPrint() {
 }
 
 // ==========================================
-// Settings Modal
+// Settings Modal & Access Denied Modal
 // ==========================================
-function openSettingsModal() {
+async function openSettingsModal() {
     settingsModal.style.display = "flex";
     document.body.classList.add("modal-open");
+
+    // Load current client IP and Admin Allowed IP settings
+    try {
+        const ipRes = await apiGet('/api/client-ip');
+        const displayEl = document.getElementById("current-client-ip-display");
+        if (displayEl) {
+            displayEl.textContent = `현재 접속 IP: ${ipRes.ip || '알 수 없음'}`;
+            displayEl.dataset.clientIp = ipRes.ip || '';
+        }
+
+        const settingsRes = await apiGet('/api/system-settings');
+        const inputEl = document.getElementById("admin-allowed-ips-input");
+        if (inputEl && settingsRes.settings) {
+            inputEl.value = settingsRes.settings.admin_allowed_ips || "";
+        }
+    } catch (e) {
+        console.error("Failed to load admin IP settings:", e);
+    }
 }
 
 function closeSettingsModal() {
     settingsModal.style.display = "none";
     document.body.classList.remove("modal-open");
+}
+
+function showAccessDeniedModal(msg, clientIp) {
+    const modal = document.getElementById("access-denied-modal");
+    const msgEl = document.getElementById("access-denied-msg");
+    const ipEl = document.getElementById("access-denied-client-ip");
+    if (modal) {
+        if (msgEl && msg) msgEl.innerHTML = msg.replace(/\n/g, "<br>");
+        if (ipEl) ipEl.textContent = clientIp || "알 수 없음";
+        modal.style.display = "flex";
+        if (window.lucide) window.lucide.createIcons();
+    }
+}
+
+function closeAccessDeniedModal() {
+    const modal = document.getElementById("access-denied-modal");
+    if (modal) modal.style.display = "none";
 }
 
 // ==========================================
@@ -2584,7 +2681,11 @@ async function handleLogin(e) {
             if (window.lucide) window.lucide.createIcons();
         }
     } catch (err) {
-        showLoginError(err.message || "로그인 요청에 실패했습니다.");
+        if (err.ipBlocked || (err.message && err.message.includes('허용되지 않은 IP'))) {
+            showAccessDeniedModal(err.message, err.clientIp);
+        } else {
+            showLoginError(err.message || "로그인 요청에 실패했습니다.");
+        }
     }
 }
 

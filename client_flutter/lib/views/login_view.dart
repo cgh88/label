@@ -109,11 +109,17 @@ class _LoginViewState extends State<LoginView> {
           }
         }));
       } else {
+        final errorMsg = body['error']?.toString() ?? '아이디 또는 비밀번호가 올바르지 않습니다.';
+        final isIpBlocked = response.statusCode == 403 || body['ipBlocked'] == true || errorMsg.contains('허용되지 않은 IP');
+
         if (mounted) {
           setState(() {
             _isLoading = false;
-            _errorMessage = body['error']?.toString() ?? '아이디 또는 비밀번호가 올바르지 않습니다.';
+            _errorMessage = isIpBlocked ? null : errorMsg;
           });
+          if (isIpBlocked) {
+            _showAccessDeniedDialog(errorMsg, body['clientIp']?.toString() ?? '알 수 없음');
+          }
         }
       }
     } catch (e) {
@@ -124,6 +130,47 @@ class _LoginViewState extends State<LoginView> {
         });
       }
     }
+  }
+
+  void _showAccessDeniedDialog(String message, String clientIp) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.shield_outlined, color: Colors.redAccent),
+            SizedBox(width: 8),
+            Text('접속 불가 (Access Denied)', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(message, style: const TextStyle(fontSize: 14)),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                '현재 접속 IP: $clientIp',
+                style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

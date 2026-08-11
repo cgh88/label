@@ -2058,3 +2058,25 @@ body.light-theme .sauce-card {
         grid-template-columns: 1fr !important;
     }
 }
+
+/* Badge & Access Denied Styles */
+.badge-client-ip {
+    font-family: monospace;
+    font-size: 0.78rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--accent-color, #818cf8);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.access-denied-container {
+    background: rgba(20, 15, 25, 0.96) !important;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 20px 40px rgba(239, 68, 68, 0.25) !important;
+}
+
+body.light-theme .access-denied-container {
+    background: #ffffff !important;
+    box-shadow: 0 20px 40px rgba(239, 68, 68, 0.2) !important;
+}

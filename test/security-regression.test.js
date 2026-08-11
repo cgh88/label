@@ -21,7 +21,20 @@ const {
     isLoginRateLimited,
     recordLoginFailure,
     validateRuntimeSecurityConfig,
+    getClientIp,
+    normalizeIp,
+    checkIpMatch,
 } = require('../server');
+
+test('IP utilities correctly normalize and match client IPs', () => {
+    assert.equal(normalizeIp('::ffff:192.168.0.10'), '192.168.0.10');
+    assert.equal(normalizeIp('::1'), '127.0.0.1');
+    assert.equal(normalizeIp('localhost'), '127.0.0.1');
+
+    assert.equal(checkIpMatch('123.45.67.89', ''), true);
+    assert.equal(checkIpMatch('123.45.67.89', '123.45.67.89, 10.0.0.1'), true);
+    assert.equal(checkIpMatch('192.168.1.1', '123.45.67.89, 10.0.0.1'), false);
+});
 
 async function loginAndGetCookie(baseUrl, username = 'admin', password = 'admin') {
     const res = await fetch(`${baseUrl}/api/auth/login`, {

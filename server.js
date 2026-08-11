@@ -231,6 +231,57 @@ function verifyPassword(password, storedHash) {
 }
 
 // ==========================================
+// IP Utilities & Admin Access Restrictions
+// ==========================================
+function normalizeIp(ip) {
+    if (!ip || typeof ip !== 'string') return '';
+    let cleaned = ip.trim();
+    if (cleaned.startsWith('::ffff:')) {
+        cleaned = cleaned.substring(7);
+    }
+    if (cleaned === '::1' || cleaned === 'localhost') {
+        cleaned = '127.0.0.1';
+    }
+    return cleaned;
+}
+
+function getClientIp(req) {
+    if (!req) return '127.0.0.1';
+    const xForwardedFor = req.headers ? (req.headers['x-forwarded-for'] || req.headers['X-Forwarded-For']) : null;
+    if (xForwardedFor && typeof xForwardedFor === 'string') {
+        const ips = xForwardedFor.split(',');
+        if (ips.length > 0 && ips[0].trim()) {
+            return normalizeIp(ips[0]);
+        }
+    }
+    const rawIp = req.ip || (req.socket ? req.socket.remoteAddress : null) || '127.0.0.1';
+    return normalizeIp(rawIp);
+}
+
+async function getAdminAllowedIpsAsync() {
+    try {
+        const row = await allAsync("SELECT setting_value FROM system_settings WHERE setting_key = 'admin_allowed_ips'");
+        if (row && row.length > 0) {
+            return row[0].setting_value || '';
+        }
+    } catch (_) {}
+    return '';
+}
+
+function checkIpMatch(clientIp, allowedIpsStr) {
+    if (!allowedIpsStr || !allowedIpsStr.trim()) {
+        return true; // Empty setting means unrestricted
+    }
+    const normalizedClient = normalizeIp(clientIp);
+    const allowedList = allowedIpsStr.split(/[\s,]+/)
+        .map(ip => normalizeIp(ip))
+        .filter(ip => ip.length > 0);
+
+    if (allowedList.length === 0) return true;
+    return allowedList.includes(normalizedClient);
+}
+
+// ==========================================
 // JWT Authentication Helpers & Session Verification
 // ==========================================
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
@@ -332,7 +383,7 @@ function getActiveSession(req, res) {
 }
 
 function requireRole(role) {
-    return (req, res, next) => {
+    return async (req, res, next) => {
         const session = getActiveSession(req, res);
         if (!session) {
             return res.status(401).json({ error: '로그인이 필요합니다.' });
@@ -340,6 +391,20 @@ function requireRole(role) {
         if (role && session.role !== role) {
             return res.status(403).json({ error: '관리자 권한이 필요합니다.' });
         }
+
+        // If checking admin role (or session has admin role), enforce IP Allowlist
+        if (session.role === 'admin') {
+            const allowedIpsStr = await getAdminAllowedIpsAsync();
+            const clientIp = getClientIp(req);
+            if (!checkIpMatch(clientIp, allowedIpsStr)) {
+                return res.status(403).json({
+                    error: `허용되지 않은 IP 주소입니다. 접속이 불가능합니다. (접속 IP: ${clientIp})`,
+                    ipBlocked: true,
+                    clientIp: clientIp
+                });
+            }
+        }
+
         req.user = session;
         next();
     };
@@ -633,7 +698,8 @@ async function seedSystemSettingsAsync() {
     const defaultSettings = [
         { key: 'operating_start_time', val: '11:00:00', desc: '오전 출고 시 유효시간 차감 시작 시각' },
         { key: 'operating_end_time', val: '22:00:00', desc: '매장 영업 마감 시각' },
-        { key: 'sauce_id_prefix', val: 'S', desc: '소스통 바코드 ID 접두사' }
+        { key: 'sauce_id_prefix', val: 'S', desc: '소스통 바코드 ID 접두사' },
+        { key: 'admin_allowed_ips', val: '', desc: '관리자 접속 허용 IP 주소 (쉼표 구분, 빈값은 미제한)' }
     ];
     for (const st of defaultSettings) {
         await runAsync(
@@ -735,12 +801,26 @@ app.post('/api/auth/login', (req, res) => {
         return res.status(429).json({ error: '로그인 실패가 너무 많습니다. 잠시 후 다시 시도해 주세요.' });
     }
 
-    db.get("SELECT * FROM users WHERE username = ?", [username], (err, user) => {
+    db.get("SELECT * FROM users WHERE username = ?", [username], async (err, user) => {
         if (err) return res.status(500).json({ error: err.message });
         const passwordCheck = user ? verifyPassword(password, user.password) : { valid: false };
         if (!user || !passwordCheck.valid) {
             recordLoginFailure(req, username);
             return res.status(400).json({ error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
+        }
+
+        // If logging in as admin, verify IP Allowlist
+        if (user.role === 'admin') {
+            const allowedIpsStr = await getAdminAllowedIpsAsync();
+            const clientIp = getClientIp(req);
+            if (!checkIpMatch(clientIp, allowedIpsStr)) {
+                recordLoginFailure(req, username);
+                return res.status(403).json({
+                    error: `허용되지 않은 IP 주소입니다. 접속이 불가능합니다. (접속 IP: ${clientIp})`,
+                    ipBlocked: true,
+                    clientIp: clientIp
+                });
+            }
         }
 
         clearLoginFailures(req, username);
@@ -1668,6 +1748,40 @@ app.get('/download/app-release.apk', (req, res) => {
 });
 
 // ==========================================
+// API: System Settings & Client IP
+// ==========================================
+app.get('/api/client-ip', (req, res) => {
+    res.json({ ip: getClientIp(req) });
+});
+
+app.get('/api/system-settings', requireLogin, async (req, res) => {
+    try {
+        const rows = await allAsync("SELECT setting_key, setting_value, description FROM system_settings");
+        const settings = {};
+        rows.forEach(r => { settings[r.setting_key] = r.setting_value; });
+        res.json({ success: true, settings });
+    } catch (err) {
+        sendServerError(res, err, '시스템 설정을 불러오는 중 오류가 발생했습니다.');
+    }
+});
+
+app.post('/api/system-settings', requireAdmin, async (req, res) => {
+    const { setting_key, setting_value } = req.body;
+    if (!setting_key || typeof setting_key !== 'string') {
+        return res.status(400).json({ error: '유효한 설정 키를 입력해 주세요.' });
+    }
+    try {
+        await runAsync(
+            "INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value",
+            [setting_key, String(setting_value ?? '')]
+        );
+        res.json({ success: true, message: '설정이 성공적으로 저장되었습니다.' });
+    } catch (err) {
+        sendServerError(res, err, '시스템 설정을 저장하는 중 오류가 발생했습니다.');
+    }
+});
+
+// ==========================================
 // Start Server & Graceful Shutdown
 // ==========================================
 if (require.main === module) {
@@ -1707,4 +1821,7 @@ module.exports = {
     isLoginRateLimited,
     recordLoginFailure,
     validateRuntimeSecurityConfig,
+    getClientIp,
+    normalizeIp,
+    checkIpMatch,
 };
