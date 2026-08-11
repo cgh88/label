@@ -1782,6 +1782,32 @@ app.post('/api/system-settings', requireAdmin, async (req, res) => {
 });
 
 // ==========================================
+// APK Download & App Version API
+// ==========================================
+app.get('/api/version', (req, res) => {
+    const version = '1.0.5';
+    const buildNumber = 105;
+    const apkPath = path.join(__dirname, 'client_flutter', 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk');
+    const exists = fs.existsSync(apkPath);
+    res.json({
+        exists,
+        version,
+        buildNumber,
+        downloadUrl: '/download/app-release.apk'
+    });
+});
+
+app.get('/download/app-release.apk', (req, res) => {
+    const apkPath = path.join(__dirname, 'client_flutter', 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk');
+    if (fs.existsSync(apkPath)) {
+        res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+        res.download(apkPath, 'shelflife-label-app.apk');
+    } else {
+        res.status(404).send('APK 파일이 없습니다.');
+    }
+});
+
+// ==========================================
 // Start Server & Graceful Shutdown
 // ==========================================
 if (require.main === module) {
