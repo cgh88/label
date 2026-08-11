@@ -44,7 +44,7 @@ pipeline {
                             jenkins-deploy@${DEPLOY_HOST} \
                             'rm -rf /var/lib/jenkins-deploy/release && mkdir -p /var/lib/jenkins-deploy/release'
 
-                        scp -o StrictHostKeyChecking=yes \
+                        scp -r -o StrictHostKeyChecking=yes \
                             -o UserKnownHostsFile=/var/jenkins_home/.ssh/known_hosts \
                             release/* \
                             jenkins-deploy@${DEPLOY_HOST}:/var/lib/jenkins-deploy/release/
