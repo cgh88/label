@@ -28,12 +28,17 @@ class ApiSyncService {
     return apiSyncUrl.isNotEmpty && uri != null && uri.hasScheme && uri.host.isNotEmpty;
   }
 
-  /// Builds request headers including the stored session cookie if available.
+  /// Builds request headers including the stored JWT token and session cookie if available.
   static Future<Map<String, String>> authHeaders({bool jsonBody = false}) async {
     final headers = <String, String>{};
     if (jsonBody) headers['Content-Type'] = 'application/json';
 
     final prefs = await SharedPreferences.getInstance();
+    final jwtToken = prefs.getString('jwt_token');
+    if (jwtToken != null && jwtToken.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $jwtToken';
+    }
+
     final rawCookie = prefs.getString('session_cookie');
     if (rawCookie != null && rawCookie.isNotEmpty) {
       final token = rawCookie.split(';').first.trim();

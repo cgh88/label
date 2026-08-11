@@ -230,17 +230,105 @@ function verifyPassword(password, storedHash) {
     };
 }
 
+// ==========================================
+// JWT Authentication Helpers & Session Verification
+// ==========================================
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+
+function base64UrlEncode(str) {
+    return Buffer.from(str).toString('base64')
+        .replace(/=/g, '')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_');
+}
+
+function base64UrlDecode(str) {
+    let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) base64 += '=';
+    return Buffer.from(base64, 'base64').toString('utf8');
+}
+
+function createJwtToken(payload, secret = JWT_SECRET, expiresInMs = SESSION_MAX_AGE_MS) {
+    const header = { alg: 'HS256', typ: 'JWT' };
+    const now = Date.now();
+    const fullPayload = {
+        ...payload,
+        iat: Math.floor(now / 1000),
+        exp: Math.floor((now + expiresInMs) / 1000)
+    };
+    const encodedHeader = base64UrlEncode(JSON.stringify(header));
+    const encodedPayload = base64UrlEncode(JSON.stringify(fullPayload));
+    const signature = crypto.createHmac('sha256', secret)
+        .update(`${encodedHeader}.${encodedPayload}`)
+        .digest('base64')
+        .replace(/=/g, '')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_');
+    return `${encodedHeader}.${encodedPayload}.${signature}`;
+}
+
+function verifyJwtToken(token, secret = JWT_SECRET) {
+    if (!token || typeof token !== 'string') return null;
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const [encodedHeader, encodedPayload, signature] = parts;
+    const expectedSignature = crypto.createHmac('sha256', secret)
+        .update(`${encodedHeader}.${encodedPayload}`)
+        .digest('base64')
+        .replace(/=/g, '')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_');
+
+    try {
+        const sigBuf = Buffer.from(signature);
+        const expBuf = Buffer.from(expectedSignature);
+        if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+            return null;
+        }
+
+        const payload = JSON.parse(base64UrlDecode(encodedPayload));
+        if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+            return null; // Token expired
+        }
+        return payload;
+    } catch (_) {
+        return null;
+    }
+}
+
 function getActiveSession(req, res) {
-    const token = req.cookies.session_token;
-    if (!token || !sessions[token]) {
-        return null;
+    let token = null;
+
+    // 1. Check Authorization: Bearer <token>
+    const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+    if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7).trim();
     }
-    if (sessions[token].expiresAt < Date.now()) {
-        delete sessions[token];
-        res.clearCookie('session_token');
-        return null;
+
+    // 2. Check Cookie session_token
+    if (!token && req.cookies && req.cookies.session_token) {
+        token = req.cookies.session_token;
     }
-    return sessions[token];
+
+    if (!token) return null;
+
+    // 3. Verify JWT
+    const jwtPayload = verifyJwtToken(token);
+    if (jwtPayload) {
+        return { username: jwtPayload.username, role: jwtPayload.role, expiresAt: jwtPayload.exp * 1000 };
+    }
+
+    // 4. Fallback to legacy in-memory session mapping
+    if (sessions[token]) {
+        if (sessions[token].expiresAt < Date.now()) {
+            delete sessions[token];
+            if (res && res.clearCookie) res.clearCookie('session_token');
+            return null;
+        }
+        return sessions[token];
+    }
+
+    return null;
 }
 
 function requireRole(role) {
@@ -661,7 +749,7 @@ app.post('/api/auth/login', (req, res) => {
             db.run("UPDATE users SET password = ? WHERE username = ?", [hashPassword(password), user.username]);
         }
 
-        const token = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
+        const token = createJwtToken({ username: user.username, role: user.role });
         const expiresAt = Date.now() + SESSION_MAX_AGE_MS;
         sessions[token] = { username: user.username, role: user.role, expiresAt };
 
@@ -673,7 +761,7 @@ app.post('/api/auth/login', (req, res) => {
             path: '/'
         });
 
-        res.json({ success: true, user: { username: user.username, role: user.role } });
+        res.json({ success: true, token, user: { username: user.username, role: user.role } });
     });
 });
 
@@ -724,8 +812,8 @@ app.get('/api/default-database', requireLogin, (req, res) => {
     });
 });
 
-// GET /api/sync/database (Read-only database download for tablet sync)
-app.get('/api/sync/database', async (req, res) => {
+// GET /api/sync/database (Database download for tablet sync)
+app.get('/api/sync/database', requireLogin, async (req, res) => {
     try {
         const categories = await allAsync("SELECT * FROM categories ORDER BY sort_order ASC, id ASC");
         const storage_locations = await allAsync("SELECT * FROM storage_locations ORDER BY sort_order ASC, id ASC");

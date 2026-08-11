@@ -77,9 +77,14 @@ class _LoginViewState extends State<LoginView> {
         final role = user['role']?.toString() ?? 'staff';
         final returnedUsername = user['username']?.toString() ?? username;
 
+        final prefs = await SharedPreferences.getInstance();
+        final jwtToken = body['token']?.toString();
+        if (jwtToken != null && jwtToken.isNotEmpty) {
+          await prefs.setString('jwt_token', jwtToken);
+        }
+
         final rawCookie = response.headers['set-cookie'];
         if (rawCookie != null) {
-          final prefs = await SharedPreferences.getInstance();
           await prefs.setString('session_cookie', rawCookie);
         }
 

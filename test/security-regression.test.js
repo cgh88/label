@@ -141,14 +141,37 @@ test('api/print-logs appends a log entry', async () => {
     }
 });
 
-test('api/sync/database allows GET and POST', async () => {
+async function loginAndGetJwt(baseUrl, username = 'admin', password = 'admin') {
+    const res = await fetch(`${baseUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+    });
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.ok(data.token);
+    return data.token;
+}
+
+test('api/sync/database requires authentication and supports JWT Bearer token', async () => {
     const server = app.listen(0);
     const baseUrl = `http://127.0.0.1:${server.address().port}`;
 
     try {
-        // Unauthenticated read-only access is allowed.
-        assert.equal((await fetch(`${baseUrl}/api/sync/database`)).status, 200);
+        // Unauthenticated access is rejected.
+        assert.equal((await fetch(`${baseUrl}/api/sync/database`)).status, 401);
 
+        // JWT Bearer token header authentication
+        const jwtToken = await loginAndGetJwt(baseUrl);
+        const bearerRes = await fetch(`${baseUrl}/api/sync/database`, {
+            headers: { Authorization: `Bearer ${jwtToken}` }
+        });
+        assert.equal(bearerRes.status, 200);
+        const bearerDbData = await bearerRes.json();
+        assert.ok(bearerDbData.last_updated);
+        assert.ok(Array.isArray(bearerDbData.categories));
+
+        // Cookie header authentication (legacy/web support)
         const cookie = await loginAndGetCookie(baseUrl);
         const getRes = await fetch(`${baseUrl}/api/sync/database`, { headers: { Cookie: cookie } });
         assert.equal(getRes.status, 200);
