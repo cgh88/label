@@ -379,19 +379,61 @@ class _SauceTabViewState extends State<SauceTabView> {
     return Card(
       elevation: 3,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isCompact = constraints.maxWidth < 600;
-            final Widget clockBadge = Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.local_pizza, color: Color(0xFF6366F1), size: 28),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        '피자소스 유효기한 스마트 라벨링',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          '실시간 KDS',
+                          style: TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '개봉 후 실온 누적 10시간 관리 · 냉장 보관 차감 일시정지 · 11시 고정 차감 룰 적용',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white60 : Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1E2030) : const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
               ),
               child: Row(
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.access_time_filled, size: 16, color: Color(0xFF38BDF8)),
                   const SizedBox(width: 6),
@@ -400,106 +442,14 @@ class _SauceTabViewState extends State<SauceTabView> {
                     style: const TextStyle(
                       fontFamily: 'monospace',
                       fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                      fontSize: 14,
                       color: Color(0xFF38BDF8),
                     ),
                   ),
                 ],
               ),
-            );
-
-            if (isCompact) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF6366F1).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.local_pizza, color: Color(0xFF6366F1), size: 24),
-                      ),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text(
-                          '피자소스 스마트 라벨링',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          'KDS',
-                          style: TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  clockBadge,
-                ],
-              );
-            }
-
-            return Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF6366F1).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.local_pizza, color: Color(0xFF6366F1), size: 28),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Text(
-                            '피자소스 유효기한 스마트 라벨링',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF10B981).withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              '실시간 KDS',
-                              style: TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '개봉 후 실온 누적 10시간 관리 · 냉장 보관 차감 일시정지 · 11시 고정 차감 룰 적용',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? Colors.white60 : Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                clockBadge,
-              ],
-            );
-          },
+            ),
+          ],
         ),
       ),
     );
@@ -509,7 +459,7 @@ class _SauceTabViewState extends State<SauceTabView> {
     return Card(
       elevation: 3,
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -517,22 +467,17 @@ class _SauceTabViewState extends State<SauceTabView> {
               children: [
                 const Icon(Icons.qr_code_scanner, size: 20, color: Color(0xFF3B82F6)),
                 const SizedBox(width: 8),
-                const Flexible(
-                  child: Text(
-                    '소스 ID 바코드 스캔 및 액션 제어',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                const Text(
+                  '소스 ID 바코드 스캔 및 액션 제어',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-                if (_selectedSauceId != null) ...[
-                  const SizedBox(width: 6),
+                const Spacer(),
+                if (_selectedSauceId != null)
                   Chip(
-                    avatar: const Icon(Icons.check_circle, size: 14, color: Colors.blueAccent),
-                    label: Text('$_selectedSauceId', style: const TextStyle(fontSize: 11)),
-                    padding: EdgeInsets.zero,
+                    avatar: const Icon(Icons.check_circle, size: 16, color: Colors.blueAccent),
+                    label: Text('선택됨: $_selectedSauceId', style: const TextStyle(fontSize: 12)),
                     onDeleted: () => setState(() => _selectedSauceId = null),
                   ),
-                ],
               ],
             ),
             const SizedBox(height: 14),
@@ -563,7 +508,6 @@ class _SauceTabViewState extends State<SauceTabView> {
                               labelStyle: TextStyle(
                                 color: isSel ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
                                 fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
-                                fontSize: 12,
                               ),
                               label: Text('${ing.name} (${(ing.sauceBottleValidMin / 60).toStringAsFixed(0)}시간)'),
                               selected: isSel,
@@ -582,104 +526,71 @@ class _SauceTabViewState extends State<SauceTabView> {
             ),
 
             // Barcode Input Field
-            TextField(
-              controller: _idInputController,
-              decoration: InputDecoration(
-                hintText: '소스통 ID 입력 (비워두면 자동 발급)',
-                hintStyle: const TextStyle(fontSize: 13),
-                prefixIcon: const Icon(Icons.barcode_reader),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () => _idInputController.clear(),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _idInputController,
+                    decoration: InputDecoration(
+                      hintText: '소스통 ID 입력 (비워두면 자동 발급: 예 S20260729-001)',
+                      prefixIcon: const Icon(Icons.barcode_reader),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () => _idInputController.clear(),
+                      ),
+                    ),
+                    onSubmitted: (_) => _triggerPrep(),
+                  ),
                 ),
-              ),
-              onSubmitted: (_) => _triggerPrep(),
+              ],
             ),
             const SizedBox(height: 14),
 
-            // 3 Action Buttons (PREP, IN, OUT) Responsive Layout
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isNarrow = constraints.maxWidth < 450;
-
-                Widget buildBtn({
-                  required Color color,
-                  required IconData icon,
-                  required String mainText,
-                  required String subText,
-                  required VoidCallback onPressed,
-                }) {
-                  return ElevatedButton(
+            // 3 Action Buttons (PREP, IN, OUT)
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: color,
+                      backgroundColor: const Color(0xFF2563EB),
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: isNarrow ? 10 : 12, horizontal: 4),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
-                    onPressed: onPressed,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(icon, size: isNarrow ? 16 : 18),
-                            const SizedBox(width: 4),
-                            Text(
-                              mainText,
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: isNarrow ? 13 : 14),
-                            ),
-                          ],
-                        ),
-                        if (subText.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            '($subText)',
-                            style: TextStyle(fontSize: isNarrow ? 10 : 11, color: Colors.white.withValues(alpha: 0.85)),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ],
+                    icon: const Icon(Icons.new_releases),
+                    label: const Text('PREP (최초개봉)', style: TextStyle(fontWeight: FontWeight.bold)),
+                    onPressed: _triggerPrep,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFD97706),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
-                  );
-                }
-
-                return Row(
-                  children: [
-                    Expanded(
-                      child: buildBtn(
-                        color: const Color(0xFF2563EB),
-                        icon: Icons.new_releases,
-                        mainText: 'PREP',
-                        subText: '최초개봉',
-                        onPressed: _triggerPrep,
-                      ),
+                    icon: const Icon(Icons.ac_unit),
+                    label: const Text('IN (냉장보관)', style: TextStyle(fontWeight: FontWeight.bold)),
+                    onPressed: _triggerIn,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF059669),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: buildBtn(
-                        color: const Color(0xFFD97706),
-                        icon: Icons.ac_unit,
-                        mainText: 'IN',
-                        subText: '냉장보관',
-                        onPressed: _triggerIn,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: buildBtn(
-                        color: const Color(0xFF059669),
-                        icon: Icons.outdoor_grill,
-                        mainText: 'OUT',
-                        subText: '실온사용',
-                        onPressed: _triggerOut,
-                      ),
-                    ),
-                  ],
-                );
-              },
+                    icon: const Icon(Icons.outdoor_grill),
+                    label: const Text('OUT (실온사용)', style: TextStyle(fontWeight: FontWeight.bold)),
+                    onPressed: _triggerOut,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -693,36 +604,32 @@ class _SauceTabViewState extends State<SauceTabView> {
     return Card(
       elevation: 3,
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isCompact = constraints.maxWidth < 480;
-                final Widget titleWidget = const Row(
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
                   children: [
                     Icon(Icons.print, size: 20, color: Color(0xFF10B981)),
                     SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        '감열지 라벨 스티커 미리보기',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    Text(
+                      '감열지 라벨 스티커 미리보기',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ],
-                );
-
-                final Widget printButton = ElevatedButton.icon(
+                ),
+                ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF10B981),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  icon: const Icon(Icons.print, size: 16),
-                  label: const Text('라벨 스티커 출력', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                  icon: const Icon(Icons.print, size: 18),
+                  label: const Text('라벨 스티커 출력', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   onPressed: () {
                     if (item == null) {
                       _showSnackBar('출력할 소스 라벨을 선택해 주세요.');
@@ -730,28 +637,8 @@ class _SauceTabViewState extends State<SauceTabView> {
                     }
                     _printBluetoothLabel(item);
                   },
-                );
-
-                if (isCompact) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      titleWidget,
-                      const SizedBox(height: 10),
-                      printButton,
-                    ],
-                  );
-                }
-
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(child: titleWidget),
-                    const SizedBox(width: 8),
-                    printButton,
-                  ],
-                );
-              },
+                ),
+              ],
             ),
             const SizedBox(height: 16),
 
