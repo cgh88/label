@@ -10,6 +10,8 @@ services:
     cpus: 1.0
     ports:
       - "127.0.0.1:8080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - jenkins_home:/var/jenkins_home
 

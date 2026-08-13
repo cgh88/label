@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:file_picker/file_picker.dart';
@@ -23,7 +22,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
   final _heightController = TextEditingController();
 
   final _apiUrlController = TextEditingController(
-    text: 'https://labelprint.pji.co.kr',
+    text: 'https://labelprint.pji.co.kr/',
   );
 
   double _selectedWidth = 50;
@@ -145,7 +144,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
     }
 
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'http://$url';
+      url = 'https://$url';
     }
     url = url.replaceAll(RegExp(r'/+$'), '');
 
@@ -320,144 +319,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
         _serverStatus = status;
         _isCheckingServer = false;
       });
-      if (!status.isReachable) {
-        _showServerErrorDialog(status);
-      }
     }
-  }
-
-  void _showServerErrorDialog(ServerConnectionStatus status) {
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        final errorText = status.errorDetail ?? status.message;
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          backgroundColor: const Color(0xFF0F172A),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 24),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  '서버 접속 불가 에러 로그',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          content: Container(
-            width: 520,
-            constraints: const BoxConstraints(maxHeight: 400),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF334155)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '요약: ${status.message}',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFF87171),
-                          ),
-                        ),
-                        if (status.targetUrl != null && status.targetUrl!.isNotEmpty) ...[
-                          const SizedBox(height: 6),
-                          Text(
-                            '타겟 URL: ${status.targetUrl}',
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-                          ),
-                        ],
-                        if (status.timestamp != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            '발생 시각: ${status.timestamp}',
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    '상세 에러 로그:',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFCBD5E1)),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF020617),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF1E293B)),
-                    ),
-                    child: SelectableText(
-                      errorText,
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                        color: Color(0xFFFCA5A5),
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton.icon(
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: '에러 요약: ${status.message}\nURL: ${status.targetUrl}\n시각: ${status.timestamp}\n\n$errorText'));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('에러 로그가 클립보드에 복사되었습니다.'),
-                    backgroundColor: Colors.green,
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.copy_rounded, size: 18, color: Color(0xFF38BDF8)),
-              label: const Text('에러 로그 복사', style: TextStyle(color: Color(0xFF38BDF8))),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF334155),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('닫기'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   Future<void> _pickAndImportDatabaseFile() async {
@@ -773,55 +635,48 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                       ),
                     ),
                     Flexible(
-                      child: GestureDetector(
-                        onTap: () {
-                          if (_serverStatus != null && !_serverStatus!.isReachable) {
-                            _showServerErrorDialog(_serverStatus!);
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _serverStatus == null
-                                ? Colors.grey.withValues(alpha: 0.2)
-                                : (_serverStatus!.isReachable
-                                    ? Colors.greenAccent.withValues(alpha: 0.2)
-                                    : Colors.redAccent.withValues(alpha: 0.2)),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                _serverStatus == null
-                                    ? Icons.help_outline
-                                    : (_serverStatus!.isReachable
-                                        ? Icons.check_circle_outline
-                                        : Icons.highlight_off),
-                                size: 14,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _serverStatus == null
+                              ? Colors.grey.withValues(alpha: 0.2)
+                              : (_serverStatus!.isReachable
+                                  ? Colors.greenAccent.withValues(alpha: 0.2)
+                                  : Colors.redAccent.withValues(alpha: 0.2)),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _serverStatus == null
+                                  ? Icons.help_outline
+                                  : (_serverStatus!.isReachable
+                                      ? Icons.check_circle_outline
+                                      : Icons.highlight_off),
+                              size: 14,
+                              color: _serverStatus == null
+                                  ? Colors.grey
+                                  : (_serverStatus!.isReachable
+                                      ? Colors.greenAccent
+                                      : Colors.redAccent),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _serverStatus == null
+                                  ? '접속 미확인'
+                                  : (_serverStatus!.isReachable ? '접속 가능' : '접속 불가'),
+                              style: TextStyle(
                                 color: _serverStatus == null
                                     ? Colors.grey
                                     : (_serverStatus!.isReachable
                                         ? Colors.greenAccent
                                         : Colors.redAccent),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
                               ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _serverStatus == null
-                                    ? '접속 미확인'
-                                    : (_serverStatus!.isReachable ? '접속 가능' : '접속 불가 (로그 클릭)'),
-                                style: TextStyle(
-                                  color: _serverStatus == null
-                                      ? Colors.grey
-                                      : (_serverStatus!.isReachable
-                                          ? Colors.greenAccent
-                                          : Colors.redAccent),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -895,17 +750,20 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: _apiUrlController,
+                  readOnly: true,
+                  enabled: false,
                   style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
+                    color: isDark ? Colors.white70 : Colors.black54,
                   ),
                   decoration: InputDecoration(
-                    labelText: 'API 서버 주소 (예: https://labelprint.pji.co.kr)',
+                    labelText: 'API 서버 주소 (고정 / 변경 불가)',
                     labelStyle: TextStyle(
                       color: isDark ? Colors.white60 : Colors.black54,
                     ),
-                    hintText: 'https://labelprint.pji.co.kr',
-                    hintStyle: TextStyle(
-                      color: isDark ? Colors.white30 : Colors.black38,
+                    hintText: 'https://labelprint.pji.co.kr/',
+                    prefixIcon: Icon(
+                      Icons.lock_outline,
+                      color: isDark ? Colors.white60 : Colors.black54,
                     ),
                   ),
                 ),
@@ -1230,31 +1088,64 @@ class _SettingsTabViewState extends State<SettingsTabView> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final bool isWide = constraints.maxWidth >= 850;
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child:
-                isWide
-                    ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: leftColumn),
-                        const SizedBox(width: 24),
-                        Expanded(child: rightColumn),
-                      ],
-                    )
-                    : Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        leftColumn,
-                        const SizedBox(height: 24),
-                        rightColumn,
-                      ],
-                    ),
-          );
-        },
+      body: Stack(
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final bool isWide = constraints.maxWidth >= 850;
+              return SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24.0, 36.0, 24.0, 24.0),
+                child:
+                    isWide
+                        ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: leftColumn),
+                            const SizedBox(width: 24),
+                            Expanded(child: rightColumn),
+                          ],
+                        )
+                        : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            leftColumn,
+                            const SizedBox(height: 24),
+                            rightColumn,
+                          ],
+                        ),
+              );
+            },
+          ),
+          Positioned(
+            top: 8,
+            right: 24,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color:
+                    isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color:
+                      isDark
+                          ? Colors.white.withValues(alpha: 0.12)
+                          : Colors.black.withValues(alpha: 0.1),
+                ),
+              ),
+              child: Text(
+                'V1.1 202608131017',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white60 : Colors.black54,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

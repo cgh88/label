@@ -392,8 +392,8 @@ function requireRole(role) {
             return res.status(403).json({ error: '관리자 권한이 필요합니다.' });
         }
 
-        // If checking admin role (or session has admin role), enforce IP Allowlist
-        if (session.role === 'admin') {
+        // Enforce IP Allowlist ONLY if explicit admin role is required (requireAdmin management operations)
+        if (role === 'admin') {
             const allowedIpsStr = await getAdminAllowedIpsAsync();
             const clientIp = getClientIp(req);
             if (!checkIpMatch(clientIp, allowedIpsStr)) {
@@ -809,19 +809,6 @@ app.post('/api/auth/login', (req, res) => {
             return res.status(400).json({ error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
         }
 
-        // If logging in as admin, verify IP Allowlist
-        if (user.role === 'admin') {
-            const allowedIpsStr = await getAdminAllowedIpsAsync();
-            const clientIp = getClientIp(req);
-            if (!checkIpMatch(clientIp, allowedIpsStr)) {
-                recordLoginFailure(req, username);
-                return res.status(403).json({
-                    error: `허용되지 않은 IP 주소입니다. 접속이 불가능합니다. (접속 IP: ${clientIp})`,
-                    ipBlocked: true,
-                    clientIp: clientIp
-                });
-            }
-        }
 
         clearLoginFailures(req, username);
 

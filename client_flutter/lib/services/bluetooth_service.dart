@@ -400,22 +400,28 @@ class BluetoothPrintService {
     }
     if (showLine2) {
       String line2Text = prepDate;
-      if (!line2Text.contains(':') && !line2Text.startsWith('준비') && !line2Text.startsWith('입고') && !line2Text.startsWith('Prep') && !line2Text.startsWith('OUT') && !line2Text.startsWith('IN')) {
-        line2Text = '준비: $line2Text';
+      final String prefix = storage == '입고' ? '입고' : '준비';
+      if (!line2Text.startsWith('준비') &&
+          !line2Text.startsWith('입고') &&
+          !line2Text.startsWith('Prep') &&
+          !line2Text.startsWith('PREP') &&
+          !line2Text.startsWith('OUT') &&
+          !line2Text.startsWith('IN')) {
+        line2Text = '$prefix: $line2Text';
       }
       labelLines.add(LabelLine(line2Text, fontSize2));
     }
     if (showLine3) {
       String line3Text = expDate;
-      if (line3Text.isNotEmpty && !line3Text.contains(':') && !line3Text.startsWith('폐기') && !line3Text.startsWith('IN') && !line3Text.startsWith('※')) {
+      if (line3Text.isNotEmpty &&
+          !line3Text.startsWith('폐기') &&
+          !line3Text.startsWith('IN') &&
+          !line3Text.startsWith('※')) {
         line3Text = '폐기: $line3Text';
       }
       if (line3Text.isNotEmpty) {
         labelLines.add(LabelLine(line3Text, fontSize3));
       }
-    }
-    if (showLine4) {
-      labelLines.add(LabelLine('(담당: $staff)', fontSize4));
     }
 
     final Uint8List bitmap = await _renderLabelMonochrome(

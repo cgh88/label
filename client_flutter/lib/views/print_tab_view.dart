@@ -281,10 +281,11 @@ class _PrintTabViewState extends State<PrintTabView> {
     if (bluetoothPrintService.isConnected) {
       final qty = int.tryParse(_qtyController.text) ?? 1;
       final storage = _selectedStorage;
-      final prepStr = _formatDateTime(_prepTime);
-      final expStr = storage != '입고'
-          ? _formatDateTime(_computeExpiration(_selectedIngredient!, storage))
-          : '';
+      final prepPrefix = storage == '입고' ? '입고' : '준비';
+      final prepStr = '$prepPrefix: ${_formatDateTime(_prepTime)}';
+      final expStr = storage == '입고'
+          ? ''
+          : '폐기: ${_formatDateTime(_computeExpiration(_selectedIngredient!, storage))}';
 
       final success = await bluetoothPrintService.printTsplLabel(
         width: _labelWidth,
@@ -299,7 +300,7 @@ class _PrintTabViewState extends State<PrintTabView> {
         showLine1: _showLine1,
         showLine2: _showLine2,
         showLine3: _showLine3,
-        showLine4: _showLine4,
+        showLine4: false,
         fontSize1: _fontSize1,
         fontSize2: _fontSize2,
         fontSize3: _fontSize3,
@@ -354,7 +355,6 @@ class _PrintTabViewState extends State<PrintTabView> {
           build: (pw.Context context) {
             final String abbr = _selectedIngredient!.abbr;
             final String name = _selectedIngredient!.name;
-            final String staff = _staffController.text.isEmpty ? '-' : _staffController.text;
 
             // Scale font size based on width
             final double scale = (_labelWidth / 50.0).clamp(0.5, 2.0);
@@ -378,12 +378,13 @@ class _PrintTabViewState extends State<PrintTabView> {
             final String line1 = (abbr.isNotEmpty && estWidth > pdfAvailWidth)
                 ? '[$storageDisplay] $abbr'
                 : fullLine1;
-            final String line2 = '준비: ${_formatDateTime(_prepTime)}';
+            final String line2Prefix = storage == '입고' ? '입고' : '준비';
+            final String line2 = '$line2Prefix: ${_formatDateTime(_prepTime)}';
             
             final String line3 = storage == '입고'
                 ? ''
                 : '폐기: ${_formatDateTime(_computeExpiration(_selectedIngredient!, storage))}';
-            final String line4 = '(담당: $staff)';
+            final String line4 = '';
 
             return pw.Padding(
               padding: pw.EdgeInsets.only(
@@ -1057,16 +1058,16 @@ class _PrintTabViewState extends State<PrintTabView> {
       ));
     }
     if (_showLine2) {
-      lines.add(LabelLine('준비: ${_formatDateTime(_prepTime)}', _fontSize2));
+      final String prefix = _selectedStorage == '입고' ? '입고' : '준비';
+      lines.add(LabelLine('$prefix: ${_formatDateTime(_prepTime)}', _fontSize2));
     }
     if (_showLine3) {
-      lines.add(LabelLine(
-        _selectedStorage == '입고' ? '' : '폐기: ${_formatDateTime(_computeExpiration(ing, _selectedStorage))}',
-        _fontSize3,
-      ));
-    }
-    if (_showLine4) {
-      lines.add(LabelLine('(담당: ${_staffController.text.isEmpty ? '-' : _staffController.text})', _fontSize4));
+      if (_selectedStorage != '입고') {
+        lines.add(LabelLine(
+          '폐기: ${_formatDateTime(_computeExpiration(ing, _selectedStorage))}',
+          _fontSize3,
+        ));
+      }
     }
     return lines;
   }

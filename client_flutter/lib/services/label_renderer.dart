@@ -47,31 +47,40 @@ void paintLabel(
 
   final List<ui.Paragraph> paras = [];
   for (final line in lines) {
-    final double fontSize = line.sizePt * 1.734 * scale * density;
+    if (line.text.isEmpty) continue;
 
-    ui.Paragraph buildParagraph(String textStr) {
+    double curFontSize = line.sizePt * 1.734 * scale * density;
+
+    ui.Paragraph buildParagraph(String textStr, double fSize) {
       final builder = ui.ParagraphBuilder(ui.ParagraphStyle(
         textAlign: ui.TextAlign.left,
-        fontSize: fontSize,
+        fontSize: fSize,
         fontWeight: ui.FontWeight.bold,
         maxLines: 1,
-        ellipsis: '…',
       ))
         ..pushStyle(ui.TextStyle(color: const ui.Color(0xFF000000)))
         ..addText(textStr);
       final p = builder.build()
-        ..layout(ui.ParagraphConstraints(width: availWidth));
+        ..layout(ui.ParagraphConstraints(width: availWidth * 2.0));
       return p;
     }
 
-    ui.Paragraph p = buildParagraph(line.text);
+    ui.Paragraph p = buildParagraph(line.text, curFontSize);
 
-    // If line text exceeds available width and fallbackText is provided,
-    // fallback (e.g. omit product name and show code/abbr only).
+    // If text width exceeds available width, try fallbackText first
     if (line.fallbackText != null && line.fallbackText!.isNotEmpty) {
-      if (p.didExceedMaxLines || p.maxIntrinsicWidth > (availWidth + 0.1)) {
-        p = buildParagraph(line.fallbackText!);
+      if (p.maxIntrinsicWidth > (availWidth + 0.1)) {
+        p = buildParagraph(line.fallbackText!, curFontSize);
       }
+    }
+
+    // If still exceeding width, shrink font size slightly so full date/text is never cut off
+    while (p.maxIntrinsicWidth > (availWidth + 0.1) && curFontSize > 5.0 * density) {
+      curFontSize -= 0.4 * density;
+      final String renderText = (line.fallbackText != null && line.fallbackText!.isNotEmpty && p.maxIntrinsicWidth > (availWidth + 0.1))
+          ? line.fallbackText!
+          : line.text;
+      p = buildParagraph(renderText, curFontSize);
     }
 
     paras.add(p);

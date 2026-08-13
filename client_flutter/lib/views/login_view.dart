@@ -54,9 +54,10 @@ class _LoginViewState extends State<LoginView> {
     // login (and later sync/print) all target the same server.
     var baseUrl = _serverUrlController.text.trim();
     if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
-      baseUrl = 'http://$baseUrl';
+      baseUrl = 'https://$baseUrl';
     }
     baseUrl = baseUrl.replaceAll(RegExp(r'/+$'), '');
+
     await ApiSyncService.instance.saveConfig(baseUrl);
     final loginUrl = '$baseUrl/api/auth/login';
 
@@ -255,41 +256,27 @@ class _LoginViewState extends State<LoginView> {
                         // the tablet cannot reach the PC server via localhost).
                         TextFormField(
                           controller: _serverUrlController,
-                          keyboardType: TextInputType.url,
-                          autocorrect: false,
-                          style: isDark ? const TextStyle(color: Colors.white) : const TextStyle(color: Color(0xFF0F172A)),
+                          readOnly: true,
+                          enabled: false,
+                          style: isDark ? const TextStyle(color: Colors.white70) : const TextStyle(color: Color(0xFF64748B)),
                           decoration: InputDecoration(
-                            labelText: '서버 주소 (예: https://labelprint.pji.co.kr)',
+                            labelText: '서버 주소 (고정)',
                             labelStyle: isDark
                                 ? TextStyle(color: Colors.white.withValues(alpha: 0.6))
                                 : const TextStyle(color: Color(0xFF64748B)),
                             prefixIcon: Icon(
-                              Icons.dns_outlined,
+                              Icons.lock_outline,
                               color: isDark ? Colors.white70 : const Color(0xFF64748B),
                             ),
                             filled: true,
-                            fillColor: isDark ? const Color(0xFF1E1F24) : const Color(0xFFF8FAFC),
-                            enabledBorder: OutlineInputBorder(
+                            fillColor: isDark ? const Color(0xFF18191E) : const Color(0xFFF1F5F9),
+                            disabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide(
                                 color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFE2E8F0),
                               ),
                             ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: isDark ? Colors.white30 : const Color(0xFF0F172A),
-                                width: 2,
-                              ),
-                            ),
-                            errorStyle: const TextStyle(color: Colors.redAccent),
                           ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return '서버 주소를 입력해 주세요.';
-                            }
-                            return null;
-                          },
                         ),
                         const SizedBox(height: 20),
 

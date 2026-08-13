@@ -10,11 +10,12 @@ class ApiSyncService {
   static final ApiSyncService instance = ApiSyncService._();
   ApiSyncService._();
 
-  String apiSyncUrl = 'https://labelprint.pji.co.kr';
+  String apiSyncUrl = 'https://labelprint.pji.co.kr/';
 
   Future<void> loadConfig() async {
     final prefs = await SharedPreferences.getInstance();
-    apiSyncUrl = prefs.getString('api_sync_url') ?? 'https://labelprint.pji.co.kr';
+    apiSyncUrl = 'https://labelprint.pji.co.kr/';
+    await prefs.setString('api_sync_url', apiSyncUrl);
   }
 
   Future<void> saveConfig(String url) async {
@@ -28,9 +29,6 @@ class ApiSyncService {
     return apiSyncUrl.isNotEmpty && uri != null && uri.hasScheme && uri.host.isNotEmpty;
   }
 
-  static const String defaultSystemJwtToken =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InN0YWZmIiwicm9sZSI6InN0YWZmIiwiaWF0IjoxNzUwMDAwMDAwLCJleHAiOjQxMDAwMDAwMDB9.gC4tlgJekZ6OkVsXa_IhP_gzGoiKHSkoSeSA_zxhLDs';
-
   /// Builds request headers including the stored JWT token and session cookie if available.
   static Future<Map<String, String>> authHeaders({bool jsonBody = false}) async {
     final headers = <String, String>{};
@@ -40,9 +38,6 @@ class ApiSyncService {
     final jwtToken = prefs.getString('jwt_token');
     if (jwtToken != null && jwtToken.isNotEmpty) {
       headers['Authorization'] = 'Bearer $jwtToken';
-    } else {
-      // Pre-authenticated default system token for immediate out-of-the-box API connectivity
-      headers['Authorization'] = 'Bearer $defaultSystemJwtToken';
     }
 
     final rawCookie = prefs.getString('session_cookie');
@@ -83,19 +78,6 @@ class ApiSyncService {
         response = await http.get(
           Uri.parse('$apiSyncUrl/api/sync/database'),
         ).timeout(const Duration(seconds: 10));
-      }
-
-      // 3. If 401 persists (unauthenticated on server requiring login) and local DB exists, use local DB gracefully
-      if (response.statusCode == 401) {
-        final hasLocalItems = DatabaseService.instance.ingredients.isNotEmpty;
-        if (hasLocalItems) {
-          onProgress?.call(1.0, '로컬 데이터베이스 사용 중 (로그인 후 동기화 가능)');
-          return SyncResult(
-            success: true,
-            message: '로컬 데이터베이스 사용 중 (로그인 후 서버 동기화가 진행됩니다).',
-            isUpToDate: true,
-          );
-        }
       }
 
       if (response.statusCode != 200) {
@@ -162,68 +144,36 @@ class ApiSyncService {
 
   /// Checks whether the configured remote API server is reachable.
   Future<ServerConnectionStatus> checkServerConnection() async {
-    final nowStr = DateTime.now().toLocal().toString().split('.').first;
     if (!isConfigured()) {
       return ServerConnectionStatus(
         isReachable: false,
         message: '서버 주소가 설정되지 않았습니다.',
-        errorDetail: '[오류 원인 상세]\n- 설정된 API 서버 URL이 존재하지 않거나 올바르지 않습니다.\n- 설정 메뉴에서 서버 주소(예: https://labelprint.pji.co.kr)를 입력해 주세요.',
-        targetUrl: apiSyncUrl,
-        timestamp: nowStr,
       );
     }
 
-    final targetEndpoint = '$apiSyncUrl/api/health';
     try {
       final response = await http.get(
-        Uri.parse(targetEndpoint),
+        Uri.parse('$apiSyncUrl/api/sync/database'),
         headers: await authHeaders(),
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 3));
 
       if (response.statusCode == 200) {
         return ServerConnectionStatus(
           isReachable: true,
           message: '원격 서버 접속 가능 (상태: OK 200)',
           statusCode: 200,
-          targetUrl: targetEndpoint,
-          timestamp: nowStr,
         );
       } else {
-        // Fallback check: try database sync endpoint if /api/health returns non-200
-        final syncEndpoint = '$apiSyncUrl/api/sync/database';
-        final syncRes = await http.get(
-          Uri.parse(syncEndpoint),
-          headers: await authHeaders(),
-        ).timeout(const Duration(seconds: 4));
-
-        if (syncRes.statusCode == 200) {
-          return ServerConnectionStatus(
-            isReachable: true,
-            message: '원격 서버 접속 가능 (상태: OK 200)',
-            statusCode: 200,
-            targetUrl: syncEndpoint,
-            timestamp: nowStr,
-          );
-        }
-
-        final bodySnippet = response.body.length > 500 ? '${response.body.substring(0, 500)}...' : response.body;
         return ServerConnectionStatus(
           isReachable: false,
           message: '서버 응답 오류 (상태 코드: ${response.statusCode})',
           statusCode: response.statusCode,
-          errorDetail: '[HTTP 서버 응답 에러 로그]\n- 타겟 URL: $targetEndpoint\n- HTTP 상태 코드: ${response.statusCode}\n- 서버 응답 메시지:\n${bodySnippet.isNotEmpty ? bodySnippet : "(본문 내용 없음)"}',
-          targetUrl: targetEndpoint,
-          timestamp: nowStr,
         );
       }
-    } catch (e, stack) {
-      final stackSnippet = stack.toString().split('\n').take(4).join('\n');
+    } catch (e) {
       return ServerConnectionStatus(
         isReachable: false,
         message: '서버 접속 불가 (네트워크 미연결 또는 서버 오프라인)',
-        errorDetail: '[네트워크 / 접속 에러 로그]\n- 타겟 URL: $targetEndpoint\n- 예외 유형: ${e.runtimeType}\n- 에러 내용: $e\n- 스택 트레이스:\n$stackSnippet',
-        targetUrl: targetEndpoint,
-        timestamp: nowStr,
       );
     }
   }
@@ -341,17 +291,11 @@ class ServerConnectionStatus {
   final bool isReachable;
   final String message;
   final int? statusCode;
-  final String? errorDetail;
-  final String? targetUrl;
-  final String? timestamp;
 
   ServerConnectionStatus({
     required this.isReachable,
     required this.message,
     this.statusCode,
-    this.errorDetail,
-    this.targetUrl,
-    this.timestamp,
   });
 }
 
