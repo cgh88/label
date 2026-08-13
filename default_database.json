@@ -1,5 +1,5 @@
 {
-    "last_updated": "2026-08-03T07:02:33.028Z",
+    "last_updated": "2026-08-13T02:02:09.265Z",
     "categories": [
         {
             "id": 1,
@@ -851,7 +851,7 @@
         },
         {
             "ingredient_name": "치킨스트립",
-            "storage_id": 7,
+            "storage_id": 10,
             "shelf_days": 3
         },
         {
