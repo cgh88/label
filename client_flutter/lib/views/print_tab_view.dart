@@ -200,6 +200,7 @@ class _PrintTabViewState extends State<PrintTabView> {
     _selectedIngredient = ing;
     // Prep time is no longer manually edited; use the current time.
     _prepTime = DateTime.now();
+    _qtyController.text = '1';
 
     // Check if the currently locked storage location is supported by this ingredient.
     // If not supported, automatically release the lock.
@@ -256,6 +257,24 @@ class _PrintTabViewState extends State<PrintTabView> {
     return DateFormat('yyyy-MM-dd (\'$weekday\') HH:mm').format(dt);
   }
 
+  void _showSnackBar(String msg, {bool isError = false, Duration duration = const Duration(seconds: 3)}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          msg,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        ),
+        backgroundColor: isError ? const Color(0xFFDC2626) : const Color(0xFF1E293B),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.only(bottom: 96, left: 32, right: 32),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: duration,
+      ),
+    );
+  }
+
   Future<void> _printLabel() async {
     if (_selectedIngredient == null) return;
 
@@ -266,20 +285,15 @@ class _PrintTabViewState extends State<PrintTabView> {
     if (!bluetoothPrintService.isConnected) {
       final autoOk = await bluetoothPrintService.autoConnect();
       if (!autoOk) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('블루투스 프린터가 연결되어 있지 않습니다. 설정에서 프린터를 연결해 주세요.'),
-            ),
-          );
-        }
+        _showSnackBar('블루투스 프린터가 연결되어 있지 않습니다. 설정에서 프린터를 연결해 주세요.', isError: true);
         widget.onNavigateToSettings?.call();
         return;
       }
     }
 
+    final int qty = (int.tryParse(_qtyController.text) ?? 1).clamp(1, 999);
+
     if (bluetoothPrintService.isConnected) {
-      final qty = int.tryParse(_qtyController.text) ?? 1;
       final storage = _selectedStorage;
       final prepPrefix = storage == '입고' ? '입고' : '준비';
       final prepStr = '$prepPrefix: ${_formatDateTime(_prepTime)}';
@@ -310,11 +324,7 @@ class _PrintTabViewState extends State<PrintTabView> {
       );
 
       if (success) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('블루투스 프린터로 $qty장의 라벨을 전송했습니다.')),
-          );
-        }
+        _showSnackBar('블루투스 프린터로 $qty장의 라벨을 전송했습니다.');
         return;
       }
     }
@@ -345,7 +355,6 @@ class _PrintTabViewState extends State<PrintTabView> {
       fontBold = pw.Font.helveticaBold();
     }
     
-    final qty = int.tryParse(_qtyController.text) ?? 1;
     final storage = _selectedStorage;
 
     for (int i = 0; i < qty; i++) {
@@ -450,20 +459,13 @@ class _PrintTabViewState extends State<PrintTabView> {
       if (mounted) {
         final String errMsg = e.toString();
         if (errMsg.contains('MissingPluginException')) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              backgroundColor: Colors.redAccent,
-              duration: Duration(seconds: 7),
-              content: Text('인쇄 플러그인이 로드되지 않았습니다. 새 패키지가 설치된 후 Hot Restart만 하셨다면, 터미널/에디터에서 실행 중인 앱을 완전히 종료(Stop)하고 처음부터 다시 실행(Run)해 주세요.'),
-            ),
+          _showSnackBar(
+            '인쇄 플러그인이 로드되지 않았습니다. 새 패키지가 설치된 후 Hot Restart만 하셨다면, 터미널/에디터에서 실행 중인 앱을 완전히 종료(Stop)하고 처음부터 다시 실행(Run)해 주세요.',
+            isError: true,
+            duration: const Duration(seconds: 7),
           );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: Colors.redAccent,
-              content: Text('인쇄를 시작하는 도중 오류가 발생했습니다: $e'),
-            ),
-          );
+          _showSnackBar('인쇄를 시작하는 도중 오류가 발생했습니다: $e', isError: true);
         }
       }
     }
@@ -786,6 +788,8 @@ class _PrintTabViewState extends State<PrintTabView> {
                                       child: TextField(
                                         controller: _qtyController,
                                         keyboardType: TextInputType.number,
+                                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                        onChanged: (_) => setState(() {}),
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
                                           color: isDark ? Colors.white : Colors.black87,
