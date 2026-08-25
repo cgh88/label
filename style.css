@@ -482,11 +482,23 @@ body.light-theme .category-tab {
 /* Ingredients Grid & Card */
 .ingredients-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
     max-height: 1200px;
     overflow-y: auto;
     padding-right: 6px;
+}
+
+@media (max-width: 900px) {
+    .ingredients-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .ingredients-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .ingredients-grid::-webkit-scrollbar {
@@ -510,15 +522,17 @@ body.light-theme .ingredients-grid::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--card-border);
     border-radius: var(--border-radius-sm);
-    padding: 12px;
+    padding: 14px 12px;
+    min-height: 115px;
     cursor: pointer;
     transition: var(--transition-smooth);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: 8px;
+    gap: 10px;
     position: relative;
     overflow: hidden;
+    box-sizing: border-box;
 }
 
 body.light-theme .ingredient-card {
@@ -543,12 +557,12 @@ body.light-theme .ingredient-card:hover {
 
 /* Category Indicators */
 .card-category {
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     display: inline-flex;
-    padding: 1px 6px;
+    padding: 2px 7px;
     border-radius: 4px;
     width: fit-content;
 }
@@ -589,42 +603,48 @@ body.light-theme .ingredient-card:hover {
 }
 
 .card-name {
-    font-size: 0.92rem;
+    font-size: 1.02rem;
     font-weight: 700;
-    line-height: 1.3;
+    line-height: 1.35;
     color: var(--text-primary);
     word-break: keep-all;
+    overflow-wrap: break-word;
+    padding-right: 36px;
 }
 
 .card-abbr-badge {
     position: absolute;
-    top: 8px;
-    right: 8px;
-    font-size: 0.72rem;
+    top: 10px;
+    right: 10px;
+    font-size: 0.76rem;
     font-weight: 800;
-    background: rgba(255, 255, 255, 0.08);
-    padding: 2px 5px;
-    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 3px 7px;
+    border-radius: 4px;
     color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 body.light-theme .card-abbr-badge {
-    background: rgba(0, 0, 0, 0.05);
+    background: rgba(0, 0, 0, 0.06);
+    border-color: rgba(0, 0, 0, 0.08);
 }
 
 .card-limits {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
-    font-size: 0.7rem;
+    gap: 5px;
+    font-size: 0.72rem;
     color: var(--text-muted);
+    margin-top: 4px;
 }
 
 .card-limit-pill {
-    background: rgba(255, 255, 255, 0.03);
-    padding: 1px 4px;
-    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
     border: 1px solid var(--card-border);
+    font-weight: 600;
 }
 
 /* ==========================================
