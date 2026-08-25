@@ -1828,7 +1828,15 @@ function triggerPrint() {
         printStickerContainer.appendChild(item);
     }
     
-    window.print();
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => {
+            window.print();
+        }).catch(() => {
+            window.print();
+        });
+    } else {
+        window.print();
+    }
 }
 
 // ==========================================

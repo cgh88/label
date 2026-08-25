@@ -57,8 +57,12 @@ void paintLabel(
         fontSize: fSize,
         fontWeight: ui.FontWeight.bold,
         maxLines: 1,
+        fontFamily: 'NotoSansKR',
       ))
-        ..pushStyle(ui.TextStyle(color: const ui.Color(0xFF000000)))
+        ..pushStyle(ui.TextStyle(
+          color: const ui.Color(0xFF000000),
+          fontFamily: 'NotoSansKR',
+        ))
         ..addText(textStr);
       final p = builder.build()
         ..layout(ui.ParagraphConstraints(width: availWidth * 2.0));

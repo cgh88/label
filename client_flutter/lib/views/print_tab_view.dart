@@ -128,6 +128,7 @@ class _PrintTabViewState extends State<PrintTabView> {
 
 
   Timer? _searchDebounceTimer;
+  bool _isPrinting = false;
 
   void _onSearchChanged() {
     _searchDebounceTimer?.cancel();
@@ -276,99 +277,101 @@ class _PrintTabViewState extends State<PrintTabView> {
   }
 
   Future<void> _printLabel() async {
-    if (_selectedIngredient == null) return;
+    if (_selectedIngredient == null || _isPrinting) return;
 
-    // Check if Bluetooth printer is connected to print via TSPL commands directly
-    final bluetoothPrintService = BluetoothPrintService.instance;
+    setState(() {
+      _isPrinting = true;
+    });
 
-    // If not connected, attempt automatic connection first.
-    if (!bluetoothPrintService.isConnected) {
-      final autoOk = await bluetoothPrintService.autoConnect();
-      if (!autoOk) {
-        _showSnackBar('블루투스 프린터가 연결되어 있지 않습니다. 설정에서 프린터를 연결해 주세요.', isError: true);
-        widget.onNavigateToSettings?.call();
-        return;
+    try {
+      // Check if Bluetooth printer is connected to print via TSPL commands directly
+      final bluetoothPrintService = BluetoothPrintService.instance;
+
+      // If not connected, attempt automatic connection first.
+      if (!bluetoothPrintService.isConnected) {
+        final autoOk = await bluetoothPrintService.autoConnect();
+        if (!autoOk) {
+          _showSnackBar('블루투스 프린터가 연결되어 있지 않습니다. 설정에서 프린터를 연결해 주세요.', isError: true);
+          widget.onNavigateToSettings?.call();
+          return;
+        }
       }
-    }
 
-    final int qty = (int.tryParse(_qtyController.text) ?? 1).clamp(1, 999);
+      final int qty = (int.tryParse(_qtyController.text) ?? 1).clamp(1, 999);
 
-    if (bluetoothPrintService.isConnected) {
-      final storage = _selectedStorage;
-      final prepPrefix = storage == '입고' ? '입고' : '준비';
-      final prepStr = '$prepPrefix: ${_formatDateTime(_prepTime)}';
-      final expStr = storage == '입고'
-          ? ''
-          : '폐기: ${_formatDateTime(_computeExpiration(_selectedIngredient!, storage))}';
+      if (bluetoothPrintService.isConnected) {
+        final storage = _selectedStorage;
+        final prepPrefix = storage == '입고' ? '입고' : '준비';
+        final prepStr = '$prepPrefix: ${_formatDateTime(_prepTime)}';
+        final expStr = storage == '입고'
+            ? ''
+            : '폐기: ${_formatDateTime(_computeExpiration(_selectedIngredient!, storage))}';
 
-      final success = await bluetoothPrintService.printTsplLabel(
-        width: _labelWidth,
-        height: _labelHeight,
-        name: _selectedIngredient!.name,
-        abbr: _selectedIngredient!.abbr,
-        storage: storage,
-        prepDate: prepStr,
-        expDate: expStr,
-        staff: _staffController.text.isEmpty ? '-' : _staffController.text,
-        quantity: qty,
-        showLine1: _showLine1,
-        showLine2: _showLine2,
-        showLine3: _showLine3,
-        showLine4: false,
-        fontSize1: _fontSize1,
-        fontSize2: _fontSize2,
-        fontSize3: _fontSize3,
-        fontSize4: _fontSize4,
-        leftPaddingPercent: _leftPadding,
-        verticalGapPt: _verticalGap,
+        final success = await bluetoothPrintService.printTsplLabel(
+          width: _labelWidth,
+          height: _labelHeight,
+          name: _selectedIngredient!.name,
+          abbr: _selectedIngredient!.abbr,
+          storage: storage,
+          prepDate: prepStr,
+          expDate: expStr,
+          staff: _staffController.text.isEmpty ? '-' : _staffController.text,
+          quantity: qty,
+          showLine1: _showLine1,
+          showLine2: _showLine2,
+          showLine3: _showLine3,
+          showLine4: false,
+          fontSize1: _fontSize1,
+          fontSize2: _fontSize2,
+          fontSize3: _fontSize3,
+          fontSize4: _fontSize4,
+          leftPaddingPercent: _leftPadding,
+          verticalGapPt: _verticalGap,
+        );
+
+        if (success) {
+          _showSnackBar('블루투스 프린터로 $qty장의 라벨을 전송했습니다.');
+          return;
+        }
+      }
+      
+      final doc = pw.Document();
+      
+      // Convert mm to points (1 inch = 25.4 mm = 72 points)
+      final double widthPt = _labelWidth * 72 / 25.4;
+      final double heightPt = _labelHeight * 72 / 25.4;
+      
+      final pageFormat = PdfPageFormat(
+        widthPt,
+        heightPt,
+        marginTop: 0,
+        marginBottom: 0,
+        marginLeft: 0,
+        marginRight: 0,
       );
 
-      if (success) {
-        _showSnackBar('블루투스 프린터로 $qty장의 라벨을 전송했습니다.');
-        return;
+      // Load PDF-compatible Korean fonts from local TTF assets (no CDN dependency)
+      // NOTE: Must use TTF format - CFF-based OTF files cause "invalid characters" errors
+      pw.Font fontBold;
+      try {
+        final fontData = await rootBundle.load('fonts/NotoSansKR-VF.ttf');
+        fontBold = pw.Font.ttf(fontData);
+      } catch (e) {
+        debugPrint('Font load failed, using built-in Helvetica: $e');
+        fontBold = pw.Font.helveticaBold();
       }
-    }
-    
-    final doc = pw.Document();
-    
-    // Convert mm to points (1 inch = 25.4 mm = 72 points)
-    final double widthPt = _labelWidth * 72 / 25.4;
-    final double heightPt = _labelHeight * 72 / 25.4;
-    
-    final pageFormat = PdfPageFormat(
-      widthPt,
-      heightPt,
-      marginTop: 0,
-      marginBottom: 0,
-      marginLeft: 0,
-      marginRight: 0,
-    );
+      final storage = _selectedStorage;
 
-    // Load PDF-compatible Korean fonts from local TTF assets (no CDN dependency)
-    // NOTE: Must use TTF format - CFF-based OTF files cause "invalid characters" errors
-    pw.Font fontBold;
-    try {
-      final fontData = await rootBundle.load('fonts/NotoSansKR-VF.ttf');
-      fontBold = pw.Font.ttf(fontData);
-    } catch (e) {
-      debugPrint('Font load failed, using built-in Helvetica: $e');
-      fontBold = pw.Font.helveticaBold();
-    }
-    
-    final storage = _selectedStorage;
+      for (int i = 0; i < qty; i++) {
+        doc.addPage(
+          pw.Page(
+            pageFormat: pageFormat,
+            build: (pw.Context context) {
+              final String abbr = _selectedIngredient!.abbr;
+              final String name = _selectedIngredient!.name;
+              final double scale = (_labelWidth / 50.0).clamp(0.5, 2.0);
 
-    for (int i = 0; i < qty; i++) {
-      doc.addPage(
-        pw.Page(
-          pageFormat: pageFormat,
-          build: (pw.Context context) {
-            final String abbr = _selectedIngredient!.abbr;
-            final String name = _selectedIngredient!.name;
-
-            // Scale font size based on width
-            final double scale = (_labelWidth / 50.0).clamp(0.5, 2.0);
-            
-            // Map settings to PDF points (12.5 screen font size translates to fontSize scale)
+              // Map settings to PDF points (12.5 screen font size translates to fontSize scale)
             final double pdfFontSize1 = (_fontSize1 * 9.6 / 12.5 * scale).clamp(5.0, 24.0);
             final double pdfFontSize2 = (_fontSize2 * 9.6 / 12.5 * scale).clamp(5.0, 24.0);
             final double pdfFontSize3 = (_fontSize3 * 9.6 / 12.5 * scale).clamp(5.0, 24.0);
@@ -448,7 +451,6 @@ class _PrintTabViewState extends State<PrintTabView> {
       );
     }
 
-    try {
       await Printing.layoutPdf(
         onLayout: (PdfPageFormat format) async => doc.save(),
         format: pageFormat,
@@ -467,6 +469,14 @@ class _PrintTabViewState extends State<PrintTabView> {
         } else {
           _showSnackBar('인쇄를 시작하는 도중 오류가 발생했습니다: $e', isError: true);
         }
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPrinting = false;
+        });
+      } else {
+        _isPrinting = false;
       }
     }
   }
@@ -886,43 +896,64 @@ class _PrintTabViewState extends State<PrintTabView> {
                         child: SafeArea(
                           top: false,
                           child: ElevatedButton(
-                            onPressed: _printLabel,
+                            onPressed: _isPrinting ? null : _printLabel,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFFF1E1E),
+                              disabledBackgroundColor: const Color(0xFFFF1E1E).withValues(alpha: 0.6),
                               foregroundColor: Colors.white,
+                              disabledForegroundColor: Colors.white70,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               elevation: 4,
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.print, color: Colors.white, size: 26),
-                                const SizedBox(width: 12),
-                                Flexible(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                            child: _isPrinting
+                                ? const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Text(
-                                        _selectedIngredient!.name,
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                      SizedBox(
+                                        width: 22,
+                                        height: 22,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          color: Colors.white,
+                                        ),
                                       ),
+                                      SizedBox(width: 12),
                                       Text(
-                                        '라벨 출력하기 (${int.tryParse(_qtyController.text) ?? 1}장)',
-                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                        '라벨 인쇄 중...',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                      ),
+                                    ],
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.print, color: Colors.white, size: 26),
+                                      const SizedBox(width: 12),
+                                      Flexible(
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              _selectedIngredient!.name,
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            Text(
+                                              '라벨 출력하기 (${int.tryParse(_qtyController.text) ?? 1}장)',
+                                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ],
                                   ),
-                                ),
-                              ],
-                            ),
                           ),
                         ),
                       ),

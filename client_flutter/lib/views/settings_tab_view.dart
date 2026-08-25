@@ -1135,7 +1135,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                 ),
               ),
               child: Text(
-                'V1.1 202608131108',
+                'V1.1.1 20260825',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,

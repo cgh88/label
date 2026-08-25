@@ -330,37 +330,10 @@ class BluetoothPrintService {
         verticalGapPt: verticalGapPt,
       );
     } catch (e) {
-      debugPrint('Error writing TSPL to Bluetooth printer, attempting auto-reconnect retry: $e');
+      debugPrint('Error writing TSPL to Bluetooth printer: $e');
       _isConnected = false;
       _notifyConnectionChange();
-      final bool reconnected = await autoConnect();
-      if (reconnected) {
-        try {
-          return await _executeTsplPrint(
-            width: width,
-            height: height,
-            name: name,
-            abbr: abbr,
-            storage: storage,
-            prepDate: prepDate,
-            expDate: expDate,
-            staff: staff,
-            quantity: quantity,
-            showLine1: showLine1,
-            showLine2: showLine2,
-            showLine3: showLine3,
-            showLine4: showLine4,
-            fontSize1: fontSize1,
-            fontSize2: fontSize2,
-            fontSize3: fontSize3,
-            fontSize4: fontSize4,
-            leftPaddingPercent: leftPaddingPercent,
-            verticalGapPt: verticalGapPt,
-          );
-        } catch (retryErr) {
-          debugPrint('Retry write failed after autoConnect: $retryErr');
-        }
-      }
+      // Do not duplicate execute the print here as the buffer might have already been sent.
       return false;
     }
   }
@@ -441,7 +414,7 @@ class BluetoothPrintService {
         'BITMAP 0,0,$widthBytes,$heightDots,0,';
     out.add(ascii.encode(header));
     out.add(bitmap);
-    out.add(ascii.encode('\r\nPRINT $quantity\r\n'));
+    out.add(ascii.encode('\r\nPRINT $quantity,1\r\n'));
 
     await _bluetooth.writeBytes(out.toBytes());
     _isConnected = true;

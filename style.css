@@ -39,9 +39,7 @@
     --border-radius-sm: 8px;
     --border-radius-md: 14px;
     --border-radius-lg: 24px;
-    --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    --shadow-premium: 0 10px 40px 0 rgba(0, 0, 0, 0.5);
-    --font-main: 'Outfit', 'Noto Sans KR', sans-serif;
+    --font-main: 'Outfit', 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', sans-serif;
 }
 
 /* Light Theme Overrides */
@@ -1009,7 +1007,7 @@ body.light-theme .sticker-preview-outer {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    font-family: 'Noto Sans KR', sans-serif;
+    font-family: var(--font-main);
     color: #000000 !important;
     position: relative;
     user-select: none;
@@ -1026,7 +1024,7 @@ body.light-theme .sticker-preview-outer {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: 'Outfit', sans-serif;
+    font-family: var(--font-main);
     font-size: 0.9rem;
     font-weight: 900;
     color: #000000;
