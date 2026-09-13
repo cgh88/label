@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_sync_service.dart';
 import 'services/bluetooth_service.dart';
+import 'services/usb_print_service.dart';
 import 'services/database_service.dart';
 import 'views/login_view.dart';
 import 'views/print_tab_view.dart';
@@ -227,10 +229,25 @@ class _SplashScreenState extends State<SplashScreen> {
           debugPrint('Background sync error on startup: $e');
         }
 
-        try {
-          await BluetoothPrintService.instance.autoConnect();
-        } catch (e) {
-          debugPrint('Background BT autoConnect on startup: $e');
+        final bool isAndroid =
+            !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+        final bool isWindows =
+            !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+
+        if (isAndroid) {
+          try {
+            await BluetoothPrintService.instance.autoConnect();
+          } catch (e) {
+            debugPrint('Background BT autoConnect on startup: $e');
+          }
+        }
+
+        if (isWindows) {
+          try {
+            await UsbPrintService.instance.init();
+          } catch (e) {
+            debugPrint('Background USB init on startup: $e');
+          }
         }
       }));
     } catch (e) {

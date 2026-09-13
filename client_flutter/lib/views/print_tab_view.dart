@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -9,6 +10,7 @@ import 'package:printing/printing.dart';
 import '../models/models.dart';
 import '../services/database_service.dart';
 import '../services/bluetooth_service.dart';
+import '../services/usb_print_service.dart';
 import '../services/layout_events.dart';
 import '../services/label_renderer.dart';
 
@@ -97,7 +99,16 @@ class _PrintTabViewState extends State<PrintTabView> {
     final pad = prefs.getDouble('layout_left_padding') ?? 10.0;
     final gap = prefs.getDouble('layout_vertical_gap') ?? 3.5;
 
+    final bool isWindows =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+    final double targetWidth =
+        isWindows ? (prefs.getDouble('label_width') ?? 55.0) : 55.0;
+    final double targetHeight =
+        isWindows ? (prefs.getDouble('label_height') ?? 20.0) : 20.0;
+
     if (_staffController.text != staff ||
+        _labelWidth != targetWidth ||
+        _labelHeight != targetHeight ||
         _showLine1 != show1 ||
         _showLine2 != show2 ||
         _showLine3 != show3 ||
@@ -110,8 +121,8 @@ class _PrintTabViewState extends State<PrintTabView> {
         _verticalGap != gap) {
       setState(() {
         _staffController.text = staff;
-        _labelWidth = 55.0;
-        _labelHeight = 20.0;
+        _labelWidth = targetWidth;
+        _labelHeight = targetHeight;
         _showLine1 = show1;
         _showLine2 = show2;
         _showLine3 = show3;
@@ -284,54 +295,61 @@ class _PrintTabViewState extends State<PrintTabView> {
     });
 
     try {
-      // Check if Bluetooth printer is connected to print via TSPL commands directly
-      final bluetoothPrintService = BluetoothPrintService.instance;
-
-      // If not connected, attempt automatic connection first.
-      if (!bluetoothPrintService.isConnected) {
-        final autoOk = await bluetoothPrintService.autoConnect();
-        if (!autoOk) {
-          _showSnackBar('블루투스 프린터가 연결되어 있지 않습니다. 설정에서 프린터를 연결해 주세요.', isError: true);
-          widget.onNavigateToSettings?.call();
-          return;
-        }
-      }
-
+      final bool isAndroid =
+          !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
       final int qty = (int.tryParse(_qtyController.text) ?? 1).clamp(1, 999);
 
-      if (bluetoothPrintService.isConnected) {
-        final storage = _selectedStorage;
-        final prepPrefix = storage == '입고' ? '입고' : '준비';
-        final prepStr = '$prepPrefix: ${_formatDateTime(_prepTime)}';
-        final expStr = storage == '입고'
-            ? ''
-            : '폐기: ${_formatDateTime(_computeExpiration(_selectedIngredient!, storage))}';
+      // On Android: Check if Bluetooth printer is connected to print via TSPL commands directly
+      if (isAndroid) {
+        final bluetoothPrintService = BluetoothPrintService.instance;
 
-        final success = await bluetoothPrintService.printTsplLabel(
-          width: _labelWidth,
-          height: _labelHeight,
-          name: _selectedIngredient!.name,
-          abbr: _selectedIngredient!.abbr,
-          storage: storage,
-          prepDate: prepStr,
-          expDate: expStr,
-          staff: _staffController.text.isEmpty ? '-' : _staffController.text,
-          quantity: qty,
-          showLine1: _showLine1,
-          showLine2: _showLine2,
-          showLine3: _showLine3,
-          showLine4: false,
-          fontSize1: _fontSize1,
-          fontSize2: _fontSize2,
-          fontSize3: _fontSize3,
-          fontSize4: _fontSize4,
-          leftPaddingPercent: _leftPadding,
-          verticalGapPt: _verticalGap,
-        );
+        // If not connected, attempt automatic connection first.
+        if (!bluetoothPrintService.isConnected) {
+          final autoOk = await bluetoothPrintService.autoConnect();
+          if (!autoOk) {
+            _showSnackBar(
+              '블루투스 프린터가 연결되어 있지 않습니다. 설정에서 프린터를 연결해 주세요.',
+              isError: true,
+            );
+            widget.onNavigateToSettings?.call();
+            return;
+          }
+        }
 
-        if (success) {
-          _showSnackBar('블루투스 프린터로 $qty장의 라벨을 전송했습니다.');
-          return;
+        if (bluetoothPrintService.isConnected) {
+          final storage = _selectedStorage;
+          final prepPrefix = storage == '입고' ? '입고' : '준비';
+          final prepStr = '$prepPrefix: ${_formatDateTime(_prepTime)}';
+          final expStr = storage == '입고'
+              ? ''
+              : '폐기: ${_formatDateTime(_computeExpiration(_selectedIngredient!, storage))}';
+
+          final success = await bluetoothPrintService.printTsplLabel(
+            width: _labelWidth,
+            height: _labelHeight,
+            name: _selectedIngredient!.name,
+            abbr: _selectedIngredient!.abbr,
+            storage: storage,
+            prepDate: prepStr,
+            expDate: expStr,
+            staff: _staffController.text.isEmpty ? '-' : _staffController.text,
+            quantity: qty,
+            showLine1: _showLine1,
+            showLine2: _showLine2,
+            showLine3: _showLine3,
+            showLine4: false,
+            fontSize1: _fontSize1,
+            fontSize2: _fontSize2,
+            fontSize3: _fontSize3,
+            fontSize4: _fontSize4,
+            leftPaddingPercent: _leftPadding,
+            verticalGapPt: _verticalGap,
+          );
+
+          if (success) {
+            _showSnackBar('블루투스 프린터로 $qty장의 라벨을 전송했습니다.');
+            return;
+          }
         }
       }
       
@@ -450,6 +468,33 @@ class _PrintTabViewState extends State<PrintTabView> {
         ),
       );
     }
+
+      final bool isWindows =
+          !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+      if (isWindows) {
+        final usbService = UsbPrintService.instance;
+        final modeLabel = usbService.connectionTypeLabel;
+        if (usbService.isEnabled &&
+            usbService.selectedPrinter != null &&
+            usbService.isDirectPrint) {
+          final success = await usbService.printPdfDocument(
+            doc: doc,
+            format: pageFormat,
+            name: 'label_${_selectedIngredient!.name}_$storage',
+          );
+          if (success) {
+            _showSnackBar(
+              '$modeLabel 프린터(${usbService.selectedPrinter!.name})로 $qty장의 라벨을 전송했습니다.',
+            );
+            return;
+          } else {
+            _showSnackBar(
+              '$modeLabel 프린터 직접 인쇄 실패로 시스템 인쇄 대화상자로 전환합니다.',
+              isError: true,
+            );
+          }
+        }
+      }
 
       await Printing.layoutPdf(
         onLayout: (PdfPageFormat format) async => doc.save(),

@@ -1753,6 +1753,16 @@ app.get('/download/app-release.apk', (req, res) => {
     }
 });
 
+app.get(['/download/windows', '/download/PapaLabel_Windows_Release.zip'], (req, res) => {
+    const winZipPath = path.join(__dirname, 'files', 'PapaLabel_Windows_Release.zip');
+    if (fs.existsSync(winZipPath)) {
+        res.setHeader('Content-Type', 'application/zip');
+        res.download(winZipPath, 'PapaLabel_Windows_Release.zip');
+    } else {
+        res.status(404).send('Windows 배포 파일이 없습니다.');
+    }
+});
+
 // ==========================================
 // API: System Settings & Client IP
 // ==========================================

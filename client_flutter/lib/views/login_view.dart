@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_sync_service.dart';
 import '../services/bluetooth_service.dart';
+import '../services/usb_print_service.dart';
 
 class LoginView extends StatefulWidget {
   final Function(String username, String role) onLoginSuccess;
@@ -103,10 +105,25 @@ class _LoginViewState extends State<LoginView> {
           } catch (e) {
             debugPrint('Background sync error after login: $e');
           }
-          try {
-            await BluetoothPrintService.instance.autoConnect();
-          } catch (e) {
-            debugPrint('Background BT autoConnect error after login: $e');
+          final bool isAndroid =
+              !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+          final bool isWindows =
+              !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+
+          if (isAndroid) {
+            try {
+              await BluetoothPrintService.instance.autoConnect();
+            } catch (e) {
+              debugPrint('Background BT autoConnect error after login: $e');
+            }
+          }
+
+          if (isWindows) {
+            try {
+              await UsbPrintService.instance.init();
+            } catch (e) {
+              debugPrint('Background USB init error after login: $e');
+            }
           }
         }));
       } else {

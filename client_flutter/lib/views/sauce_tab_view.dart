@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/bluetooth_service.dart';
+import '../services/usb_print_service.dart';
 import '../services/database_service.dart';
 import '../services/api_sync_service.dart';
 
@@ -777,7 +779,8 @@ class _SauceTabViewState extends State<SauceTabView> {
   }
 
   void _printBluetoothLabel(SauceItem item) async {
-    _showSnackBar('블루투스 프린터 연결 및 출력 전송 중...');
+    final bool isWindows =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
     String statusBadge = 'PREP';
     if (item.status == 'IN') statusBadge = 'IN';
@@ -793,6 +796,41 @@ class _SauceTabViewState extends State<SauceTabView> {
       prepDateStr = 'OUT: ${_formatDateTimeWithDay(_lastPrintedRawOutTime ?? item.lastActionTime)}';
       expDateStr = '폐기: ${_formatDateTimeWithDay(item.estDiscardTime)}';
     }
+
+    if (isWindows) {
+      final usbService = UsbPrintService.instance;
+      final modeLabel = usbService.connectionTypeLabel;
+      if (usbService.isEnabled && usbService.selectedPrinter != null) {
+        _showSnackBar('$modeLabel 프린터(${usbService.selectedPrinter!.name})로 출력 전송 중...');
+        final success = await usbService.printSauceLabel(
+          widthMm: 50,
+          heightMm: 20,
+          name: 'PS 피자소스',
+          abbr: item.sourceId,
+          storage: statusBadge,
+          prepDate: prepDateStr,
+          expDate: expDateStr,
+          staff: 'KDS',
+          fontSize1: 13.0,
+          fontSize2: 12.0,
+          fontSize3: 13.0,
+          leftPaddingPercent: 5.0,
+          verticalGapPt: 3.0,
+        );
+
+        if (success) {
+          _showSnackBar('$modeLabel 프린터로 피자소스 라벨 스티커 출력 성공! (${item.sourceId})');
+        } else {
+          _showSnackBar('$modeLabel 프린터 출력에 실패했습니다. 프린터 전원 및 연결을 확인해 주세요.');
+        }
+        return;
+      } else {
+        _showSnackBar('$modeLabel 프린터가 설정되지 않았습니다. [설정] 탭에서 프린터를 선택해 주세요.');
+        return;
+      }
+    }
+
+    _showSnackBar('블루투스 프린터 연결 및 출력 전송 중...');
 
     try {
       final success = await BluetoothPrintService.instance.printTsplLabel(
