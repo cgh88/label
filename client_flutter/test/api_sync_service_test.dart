@@ -14,6 +14,10 @@ void main() {
     await service.loadConfig();
     expect(service.isConfigured(), isTrue);
     expect(service.apiSyncUrl, contains('http'));
+    expect(service.apiSyncUrl.endsWith('/'), isFalse);
+
+    service.apiSyncUrl = 'https://labelprint.pji.co.kr///';
+    expect(service.apiSyncUrl, equals('https://labelprint.pji.co.kr'));
   });
 
   test('SyncResult holds success status and message correctly', () {

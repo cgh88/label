@@ -127,6 +127,14 @@ app.get(Array.from(PUBLIC_FILES.keys()), (req, res) => {
     res.sendFile(path.join(__dirname, fileName));
 });
 
+// URL Normalizer (collapse multiple slashes e.g. //api/sync/database -> /api/sync/database)
+app.use((req, res, next) => {
+    if (req.url && req.url.includes('//')) {
+        req.url = req.url.replace(/\/+/g, '/');
+    }
+    next();
+});
+
 // Custom Cookie Parser Middleware
 app.use((req, res, next) => {
     const list = {};

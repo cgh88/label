@@ -11,6 +11,7 @@ import '../services/bluetooth_service.dart';
 import '../services/usb_print_service.dart';
 import '../services/database_service.dart';
 import '../services/layout_events.dart';
+import '../config/app_version.dart';
 
 class SettingsTabView extends StatefulWidget {
   const SettingsTabView({super.key});
@@ -53,7 +54,11 @@ class _SettingsTabViewState extends State<SettingsTabView> {
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    _loadSettings().then((_) {
+      if (mounted) {
+        _checkServerConnection(showFeedback: false);
+      }
+    });
 
     final bool isAndroid =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
@@ -73,7 +78,6 @@ class _SettingsTabViewState extends State<SettingsTabView> {
       );
     }
 
-    _checkServerConnection();
     DatabaseService.instance.dataRevision.addListener(_onDataChanged);
   }
 
@@ -174,49 +178,6 @@ class _SettingsTabViewState extends State<SettingsTabView> {
     }
     // Notify open previews (e.g. the print tab) to reload immediately.
     layoutSettingsRevision.value++;
-  }
-
-  Future<void> _saveApiSettings() async {
-    var url = _apiUrlController.text.trim();
-
-    if (url.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: Colors.redAccent,
-            content: Text('API 동기화 서버 주소를 입력해 주세요.'),
-          ),
-        );
-      }
-      return;
-    }
-
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'https://$url';
-    }
-    url = url.replaceAll(RegExp(r'/+$'), '');
-
-    final parsedUri = Uri.tryParse(url);
-    if (parsedUri == null || !parsedUri.hasScheme || parsedUri.host.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: Colors.redAccent,
-            content: Text('유효한 HTTP/HTTPS URL 형식이 아닙니다.'),
-          ),
-        );
-      }
-      return;
-    }
-
-    _apiUrlController.text = url;
-    await ApiSyncService.instance.saveConfig(url);
-
-    if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('API 동기화 서버 주소가 저장되었습니다.')));
-    }
   }
 
   Future<void> _performVersionUpdate() async {
@@ -357,7 +318,8 @@ class _SettingsTabViewState extends State<SettingsTabView> {
     dialogSetState?.call(() {});
   }
 
-  Future<void> _checkServerConnection() async {
+  Future<void> _checkServerConnection({bool showFeedback = false}) async {
+    if (!mounted) return;
     setState(() {
       _isCheckingServer = true;
     });
@@ -367,6 +329,36 @@ class _SettingsTabViewState extends State<SettingsTabView> {
         _serverStatus = status;
         _isCheckingServer = false;
       });
+      if (showFeedback) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor:
+                status.isReachable ? const Color(0xFF10B981) : Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: status.isReachable ? 2 : 3),
+            content: Row(
+              children: [
+                Icon(
+                  status.isReachable
+                      ? Icons.check_circle
+                      : Icons.error_outline,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    status.isReachable
+                        ? '서버 연결 확인 완료 (정상 접속 가능)'
+                        : status.message,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -865,70 +857,70 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                       ),
                     ),
                     Flexible(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _serverStatus == null
-                              ? Colors.grey.withValues(alpha: 0.2)
-                              : (_serverStatus!.isReachable
-                                  ? Colors.greenAccent.withValues(alpha: 0.2)
-                                  : Colors.redAccent.withValues(alpha: 0.2)),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _serverStatus == null
-                                  ? Icons.help_outline
-                                  : (_serverStatus!.isReachable
-                                      ? Icons.check_circle_outline
-                                      : Icons.highlight_off),
-                              size: 14,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
                               color: _serverStatus == null
-                                  ? Colors.grey
+                                  ? Colors.grey.withValues(alpha: 0.2)
                                   : (_serverStatus!.isReachable
-                                      ? Colors.greenAccent
-                                      : Colors.redAccent),
+                                      ? Colors.greenAccent.withValues(alpha: 0.2)
+                                      : Colors.redAccent.withValues(alpha: 0.2)),
+                              borderRadius: BorderRadius.circular(6),
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              _serverStatus == null
-                                  ? '접속 미확인'
-                                  : (_serverStatus!.isReachable ? '접속 가능' : '접속 불가'),
-                              style: TextStyle(
-                                color: _serverStatus == null
-                                    ? Colors.grey
-                                    : (_serverStatus!.isReachable
-                                        ? Colors.greenAccent
-                                        : Colors.redAccent),
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _serverStatus == null
+                                      ? Icons.help_outline
+                                      : (_serverStatus!.isReachable
+                                          ? Icons.check_circle_outline
+                                          : Icons.highlight_off),
+                                  size: 14,
+                                  color: _serverStatus == null
+                                      ? Colors.grey
+                                      : (_serverStatus!.isReachable
+                                          ? Colors.greenAccent
+                                          : Colors.redAccent),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _serverStatus == null
+                                      ? '접속 미확인'
+                                      : (_serverStatus!.isReachable ? '접속 가능' : '접속 불가'),
+                                  style: TextStyle(
+                                    color: _serverStatus == null
+                                        ? Colors.grey
+                                        : (_serverStatus!.isReachable
+                                            ? Colors.greenAccent
+                                            : Colors.redAccent),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _isCheckingServer ? null : _checkServerConnection,
-                        icon: _isCheckingServer
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.wifi_find, size: 16),
-                        label: const Text('서버 접속 상태 확인', style: TextStyle(fontSize: 12)),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                        ),
+                          ),
+                          IconButton(
+                            icon: _isCheckingServer
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.refresh, size: 18),
+                            tooltip: '서버 다시 찾기',
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.only(left: 6),
+                            constraints: const BoxConstraints(),
+                            onPressed: _isCheckingServer
+                                ? null
+                                : () => _checkServerConnection(showFeedback: true),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -938,7 +930,46 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '데이터 버전:',
+                      '앱 프로그램 버전:',
+                      style: TextStyle(
+                        color: isDark ? Colors.white70 : Colors.black87,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF1E1E).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: const Color(0xFFFF1E1E).withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: Text(
+                          AppVersion.display,
+                          style: const TextStyle(
+                            color: Color(0xFFFF1E1E),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '데이터베이스 버전:',
                       style: TextStyle(
                         color: isDark ? Colors.white70 : Colors.black87,
                         fontSize: 13,
@@ -998,8 +1029,27 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: _saveApiSettings,
+                ElevatedButton.icon(
+                  onPressed: _isCheckingServer
+                      ? null
+                      : () => _checkServerConnection(showFeedback: true),
+                  icon: _isCheckingServer
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.sync, size: 20),
+                  label: Text(
+                    _isCheckingServer ? '서버 찾는 중...' : '서버 다시 찾기 / 연결 확인',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFF1E1E),
                     foregroundColor: Colors.white,
@@ -1007,10 +1057,6 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
-                  ),
-                  child: const Text(
-                    '설정 저장',
-                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1108,14 +1154,25 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                           : Colors.black.withValues(alpha: 0.1),
                 ),
               ),
-              child: Text(
-                'V1.1.1 20260825',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white60 : Colors.black54,
-                  letterSpacing: 0.5,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.verified_outlined,
+                    size: 13,
+                    color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    AppVersion.display,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white70 : Colors.black87,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

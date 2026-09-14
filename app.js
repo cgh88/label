@@ -754,6 +754,52 @@ function adjustPrepTime(action) {
 }
 
 // ==========================================
+// Favorites Management
+// ==========================================
+const FAVORITES_STORAGE_KEY = "favorite_ingredient_names";
+
+function getFavoriteNames() {
+    try {
+        const raw = localStorage.getItem(FAVORITES_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function isFavoriteIngredient(name) {
+    const favs = getFavoriteNames();
+    return favs.includes(name);
+}
+
+function toggleFavoriteIngredient(name, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    let favs = getFavoriteNames();
+    const isFav = favs.includes(name);
+    if (isFav) {
+        favs = favs.filter(n => n !== name);
+    } else {
+        favs.push(name);
+    }
+    try {
+        localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favs));
+    } catch (e) {
+        console.error("Failed to save favorites", e);
+    }
+    
+    renderCategoryFilterTabs();
+    renderIngredients();
+    if (state.selectedId === name) {
+        const currentIng = state.ingredients.find(i => i.name === name);
+        if (currentIng) {
+            renderStorageOptions(currentIng);
+        }
+    }
+}
+
+// ==========================================
 // Rendering Engine - Front Page
 // ==========================================
 function renderCategoryFilterTabs() {
@@ -769,6 +815,15 @@ function renderCategoryFilterTabs() {
     allTab.textContent = "전체";
     allTab.addEventListener("click", handleCategoryFilterClick);
     tabsContainer.appendChild(allTab);
+
+    // Favorites
+    const favs = getFavoriteNames();
+    const favTab = document.createElement("button");
+    favTab.className = `category-tab ${state.filters.category === "favorites" ? "active" : ""}`;
+    favTab.dataset.category = "favorites";
+    favTab.textContent = favs.length > 0 ? `⭐ 즐겨찾기 (${favs.length})` : "⭐ 즐겨찾기";
+    favTab.addEventListener("click", handleCategoryFilterClick);
+    tabsContainer.appendChild(favTab);
     
     // Dynamic Categories
     state.categories.forEach(cat => {
@@ -822,9 +877,12 @@ function renderIngredients() {
     
     const searchVal = state.filters.search.toLowerCase();
     const searchChosung = getChosung(searchVal);
+    const favNames = getFavoriteNames();
     
     const filtered = state.ingredients.filter(item => {
-        if (state.filters.category !== "all" && item.category !== state.filters.category) {
+        if (state.filters.category === "favorites") {
+            if (!favNames.includes(item.name)) return false;
+        } else if (state.filters.category !== "all" && item.category !== state.filters.category) {
             return false;
         }
         
@@ -844,8 +902,11 @@ function renderIngredients() {
     });
     
     if (filtered.length === 0) {
-        const emptyState = createTextElement("div", "empty-state", "조건에 맞는 재료가 없습니다");
-        emptyState.style.cssText = "display:flex; grid-column: 1/-1; justify-content:center; align-items:center; height:200px; color:var(--text-muted);";
+        const emptyMsg = state.filters.category === "favorites"
+            ? "즐겨찾기한 품목이 없습니다.\n자주 사용하는 품목의 별(☆) 아이콘을 눌러 추가해보세요!"
+            : "조건에 맞는 재료가 없습니다";
+        const emptyState = createTextElement("div", "empty-state", emptyMsg);
+        emptyState.style.cssText = "display:flex; grid-column: 1/-1; justify-content:center; align-items:center; height:200px; color:var(--text-muted); text-align:center; white-space:pre-line; line-height:1.6;";
         ingredientsGrid.appendChild(emptyState);
         return;
     }
@@ -886,6 +947,15 @@ function renderIngredients() {
             card.appendChild(createTextElement("div", "card-abbr-badge", item.abbr));
         }
 
+        const isFav = favNames.includes(item.name);
+        const favBtn = document.createElement("button");
+        favBtn.type = "button";
+        favBtn.className = `card-fav-btn ${isFav ? 'active' : ''}`;
+        favBtn.title = isFav ? "즐겨찾기 해제" : "즐겨찾기 추가";
+        favBtn.innerHTML = isFav ? "★" : "☆";
+        favBtn.addEventListener("click", (e) => toggleFavoriteIngredient(item.name, e));
+        card.appendChild(favBtn);
+
         const limits = document.createElement("div");
         limits.className = "card-limits";
         storagePills.forEach(label => {
@@ -911,6 +981,15 @@ function renderStorageOptions(ingredient) {
         badge.style.cssText = "background:var(--primary-color); padding:2px 8px; border-radius:4px; font-size:0.8rem;";
         selectedIngDisplay.appendChild(badge);
     }
+
+    const isFav = isFavoriteIngredient(ingredient.name);
+    const favToggle = document.createElement("button");
+    favToggle.type = "button";
+    favToggle.className = `detail-fav-btn ${isFav ? "active" : ""}`;
+    favToggle.title = isFav ? "즐겨찾기 해제" : "즐겨찾기 추가";
+    favToggle.textContent = isFav ? "★ 즐겨찾기 해제" : "☆ 즐겨찾기 추가";
+    favToggle.addEventListener("click", (e) => toggleFavoriteIngredient(ingredient.name, e));
+    selectedIngDisplay.appendChild(favToggle);
 
     clearElement(storageOptionsContainer);
     

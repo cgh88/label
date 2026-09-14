@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_sync_service.dart';
 import '../services/bluetooth_service.dart';
 import '../services/usb_print_service.dart';
+import '../config/app_version.dart';
 
 class LoginView extends StatefulWidget {
   final Function(String username, String role) onLoginSuccess;
@@ -494,6 +495,20 @@ class _LoginViewState extends State<LoginView> {
               ),
               onPressed: widget.toggleTheme,
               tooltip: '테마 변경',
+            ),
+          ),
+          // App Version Display in Bottom-Right
+          Positioned(
+            bottom: 12,
+            right: 16,
+            child: Text(
+              AppVersion.display,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white38 : Colors.black38,
+                letterSpacing: 0.3,
+              ),
             ),
           ),
         ],

@@ -10,18 +10,28 @@ class ApiSyncService {
   static final ApiSyncService instance = ApiSyncService._();
   ApiSyncService._();
 
-  String apiSyncUrl = 'https://labelprint.pji.co.kr/';
+  String _apiSyncUrl = 'https://labelprint.pji.co.kr';
+
+  String get apiSyncUrl => _apiSyncUrl.trim().replaceAll(RegExp(r'/+$'), '');
+  set apiSyncUrl(String value) {
+    _apiSyncUrl = value.trim().replaceAll(RegExp(r'/+$'), '');
+  }
 
   Future<void> loadConfig() async {
     final prefs = await SharedPreferences.getInstance();
-    apiSyncUrl = 'https://labelprint.pji.co.kr/';
+    final saved = prefs.getString('api_sync_url');
+    if (saved != null && saved.trim().isNotEmpty) {
+      apiSyncUrl = saved.trim();
+    } else {
+      apiSyncUrl = 'https://labelprint.pji.co.kr';
+    }
     await prefs.setString('api_sync_url', apiSyncUrl);
   }
 
   Future<void> saveConfig(String url) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('api_sync_url', url);
     apiSyncUrl = url;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('api_sync_url', apiSyncUrl);
   }
 
   bool isConfigured() {
@@ -151,11 +161,12 @@ class ApiSyncService {
       );
     }
 
+    final baseUrl = apiSyncUrl;
     try {
       final response = await http.get(
-        Uri.parse('$apiSyncUrl/api/sync/database'),
+        Uri.parse('$baseUrl/api/sync/database'),
         headers: await authHeaders(),
-      ).timeout(const Duration(seconds: 3));
+      ).timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         return ServerConnectionStatus(

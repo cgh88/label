@@ -7,6 +7,7 @@ import 'services/api_sync_service.dart';
 import 'services/bluetooth_service.dart';
 import 'services/usb_print_service.dart';
 import 'services/database_service.dart';
+import 'services/favorites_service.dart';
 import 'views/login_view.dart';
 import 'views/print_tab_view.dart';
 import 'views/sauce_tab_view.dart';
@@ -205,6 +206,7 @@ class _SplashScreenState extends State<SplashScreen> {
       try {
         await DatabaseService.instance.init();
         await ApiSyncService.instance.loadConfig();
+        await FavoritesService.instance.init();
       } catch (e) {
         debugPrint('Database init error caught: $e');
       }

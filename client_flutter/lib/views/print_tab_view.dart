@@ -11,6 +11,7 @@ import '../models/models.dart';
 import '../services/database_service.dart';
 import '../services/bluetooth_service.dart';
 import '../services/usb_print_service.dart';
+import '../services/favorites_service.dart';
 import '../services/layout_events.dart';
 import '../services/label_renderer.dart';
 
@@ -64,6 +65,13 @@ class _PrintTabViewState extends State<PrintTabView> {
     // Reload label layout whenever it changes in the Settings tab, so the
     // preview reflects font/line changes immediately (not only on tab switch).
     layoutSettingsRevision.addListener(_loadSettings);
+    FavoritesService.instance.revision.addListener(_onFavoritesChanged);
+  }
+
+  void _onFavoritesChanged() {
+    if (mounted) {
+      _filterIngredients();
+    }
   }
 
   @override
@@ -78,6 +86,7 @@ class _PrintTabViewState extends State<PrintTabView> {
   void dispose() {
     _searchDebounceTimer?.cancel();
     layoutSettingsRevision.removeListener(_loadSettings);
+    FavoritesService.instance.revision.removeListener(_onFavoritesChanged);
     _searchController.dispose();
     _staffController.dispose();
     _qtyController.dispose();
@@ -178,7 +187,11 @@ class _PrintTabViewState extends State<PrintTabView> {
 
     _filteredIngredients = DatabaseService.instance.ingredients.where((ing) {
       // First filter by category
-      if (_selectedCategory != '전체' && ing.category != _selectedCategory) return false;
+      if (_selectedCategory == '즐겨찾기') {
+        if (!FavoritesService.instance.isFavorite(ing.name)) return false;
+      } else if (_selectedCategory != '전체' && ing.category != _selectedCategory) {
+        return false;
+      }
 
       if (!hasQuery) return true;
 
@@ -194,7 +207,13 @@ class _PrintTabViewState extends State<PrintTabView> {
 
     // Reset selection if the currently selected ingredient isn't in the filtered list
     if (_selectedIngredient != null && !_filteredIngredients.contains(_selectedIngredient)) {
-      if (_selectedCategory != '전체' && _selectedIngredient!.category != _selectedCategory) {
+      if (_selectedCategory == '즐겨찾기' &&
+          !FavoritesService.instance.isFavorite(_selectedIngredient!.name)) {
+        _selectedIngredient = null;
+        _selectedStorage = '입고';
+      } else if (_selectedCategory != '전체' &&
+          _selectedCategory != '즐겨찾기' &&
+          _selectedIngredient!.category != _selectedCategory) {
         _selectedIngredient = null;
         _selectedStorage = '입고';
       }
@@ -206,6 +225,33 @@ class _PrintTabViewState extends State<PrintTabView> {
     }
 
     setState(() {});
+  }
+
+  Future<void> _toggleFavorite(Ingredient ing) async {
+    final added = await FavoritesService.instance.toggle(ing.name);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              added ? Icons.star : Icons.star_border,
+              color: added ? const Color(0xFFF59E0B) : Colors.white70,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              added
+                  ? "'${ing.name}'이(가) 즐겨찾기에 추가되었습니다."
+                  : "'${ing.name}'이(가) 즐겨찾기에서 제거되었습니다.",
+            ),
+          ],
+        ),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   void _selectIngredient(Ingredient ing, {bool notify = true}) {
@@ -528,6 +574,7 @@ class _PrintTabViewState extends State<PrintTabView> {
 
   Color _getCategoryColor(String category) {
     switch (category) {
+      case '즐겨찾기': return const Color(0xFFF59E0B);
       case '도우': return const Color(0xFF3B82F6);
       case '미트': return const Color(0xFFEF4444);
       case '야채': return const Color(0xFF10B981);
@@ -580,12 +627,20 @@ class _PrintTabViewState extends State<PrintTabView> {
                     height: 46,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
-                      itemCount: categoriesList.length + 1,
+                      itemCount: categoriesList.length + 2,
                       itemBuilder: (context, index) {
-                        final cat = index == 0
-                            ? AppCategory(id: 0, name: '전체', emoji: '🔍', sortOrder: 0)
-                            : categoriesList[index - 1];
+                        final AppCategory cat;
+                        if (index == 0) {
+                          cat = AppCategory(id: 0, name: '전체', emoji: '🔍', sortOrder: 0);
+                        } else if (index == 1) {
+                          cat = AppCategory(id: -1, name: '즐겨찾기', emoji: '⭐', sortOrder: -1);
+                        } else {
+                          cat = categoriesList[index - 2];
+                        }
                         final isSelected = cat.name == _selectedCategory;
+                        final isFavTab = cat.name == '즐겨찾기';
+                        final favCount = FavoritesService.instance.count;
+
                         return Padding(
                           padding: const EdgeInsets.only(right: 8.0),
                           child: InkWell(
@@ -598,11 +653,17 @@ class _PrintTabViewState extends State<PrintTabView> {
                               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                               decoration: BoxDecoration(
                                 gradient: isSelected
-                                    ? const LinearGradient(
-                                        colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      )
+                                    ? (isFavTab
+                                        ? const LinearGradient(
+                                            colors: [Color(0xFFF59E0B), Color(0xFFEA580C)],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          )
+                                        : const LinearGradient(
+                                            colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ))
                                     : null,
                                 color: isSelected
                                     ? null
@@ -611,13 +672,18 @@ class _PrintTabViewState extends State<PrintTabView> {
                                 border: Border.all(
                                   color: isSelected
                                       ? Colors.transparent
-                                      : (isDark ? Colors.white.withValues(alpha: 0.2) : const Color(0xFFCBD5E1)),
+                                      : (isFavTab
+                                          ? const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.4 : 0.6)
+                                          : (isDark ? Colors.white.withValues(alpha: 0.2) : const Color(0xFFCBD5E1))),
                                   width: isSelected ? 0 : 1.2,
                                 ),
                                 boxShadow: isSelected
                                     ? [
                                         BoxShadow(
-                                          color: const Color(0xFF6366F1).withValues(alpha: 0.35),
+                                          color: (isFavTab
+                                                  ? const Color(0xFFF59E0B)
+                                                  : const Color(0xFF6366F1))
+                                              .withValues(alpha: 0.35),
                                           blurRadius: 8,
                                           offset: const Offset(0, 2),
                                         )
@@ -632,11 +698,15 @@ class _PrintTabViewState extends State<PrintTabView> {
                               ),
                               child: Center(
                                 child: Text(
-                                  '${cat.emoji} ${cat.name}',
+                                  isFavTab && favCount > 0
+                                      ? '${cat.emoji} ${cat.name} ($favCount)'
+                                      : '${cat.emoji} ${cat.name}',
                                   style: TextStyle(
                                     color: isSelected
                                         ? Colors.white
-                                        : (isDark ? Colors.white : const Color(0xFF1E293B)),
+                                        : (isFavTab
+                                            ? const Color(0xFFF59E0B)
+                                            : (isDark ? Colors.white : const Color(0xFF1E293B))),
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
                                   ),
@@ -653,9 +723,44 @@ class _PrintTabViewState extends State<PrintTabView> {
                   Expanded(
                     child: _filteredIngredients.isEmpty
                         ? Center(
-                            child: Text(
-                              '해당하는 재료가 없습니다.',
-                              style: TextStyle(color: isDark ? Colors.white.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.4), fontSize: 16, fontWeight: FontWeight.w600),
+                            child: Padding(
+                              padding: const EdgeInsets.all(24.0),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    _selectedCategory == '즐겨찾기'
+                                        ? Icons.star_outline_rounded
+                                        : Icons.search_off_rounded,
+                                    size: 56,
+                                    color: _selectedCategory == '즐겨찾기'
+                                        ? const Color(0xFFF59E0B).withValues(alpha: 0.6)
+                                        : (isDark ? Colors.white30 : Colors.black26),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Text(
+                                    _selectedCategory == '즐겨찾기'
+                                        ? '즐겨찾기한 제품이 없습니다.'
+                                        : '해당하는 재료가 없습니다.',
+                                    style: TextStyle(
+                                      color: isDark ? Colors.white70 : Colors.black87,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  if (_selectedCategory == '즐겨찾기') ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      '자주 출력하는 제품 카드의 별표(★)를 눌러 즐겨찾기에 등록해 보세요!',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: isDark ? Colors.white54 : Colors.black54,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
                           )
                         : GridView.builder(
@@ -670,6 +775,7 @@ class _PrintTabViewState extends State<PrintTabView> {
                               final ing = _filteredIngredients[index];
                               final isSelected = _selectedIngredient == ing;
                               final catColor = _getCategoryColor(ing.category);
+                              final isFav = FavoritesService.instance.isFavorite(ing.name);
                               
                               return InkWell(
                                 onTap: () => _selectIngredient(ing),
@@ -716,7 +822,7 @@ class _PrintTabViewState extends State<PrintTabView> {
                                           ),
                                           child: Text(
                                             ing.category,
-                                            style: TextStyle(
+                                            style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 11,
                                               fontWeight: FontWeight.bold,
@@ -724,26 +830,50 @@ class _PrintTabViewState extends State<PrintTabView> {
                                           ),
                                         ),
                                       ),
-                                      if (ing.abbr.isNotEmpty)
-                                        Positioned(
-                                          top: 0,
-                                          right: 0,
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
-                                            decoration: BoxDecoration(
-                                              color: isDark ? Colors.white.withValues(alpha: 0.15) : const Color(0xFFE2E8F0),
-                                              borderRadius: BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              ing.abbr,
-                                              style: TextStyle(
-                                                color: isDark ? Colors.white : const Color(0xFF1E293B),
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w800,
+                                      Positioned(
+                                        top: 0,
+                                        right: 0,
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment: CrossAxisAlignment.center,
+                                          children: [
+                                            if (ing.abbr.isNotEmpty)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: isDark ? Colors.white.withValues(alpha: 0.15) : const Color(0xFFE2E8F0),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  ing.abbr,
+                                                  style: TextStyle(
+                                                    color: isDark ? Colors.white : const Color(0xFF1E293B),
+                                                    fontSize: 10.5,
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                                ),
+                                              ),
+                                            const SizedBox(width: 4),
+                                            Material(
+                                              color: Colors.transparent,
+                                              child: InkWell(
+                                                onTap: () => _toggleFavorite(ing),
+                                                borderRadius: BorderRadius.circular(12),
+                                                child: Padding(
+                                                  padding: const EdgeInsets.all(2.5),
+                                                  child: Icon(
+                                                    isFav ? Icons.star : Icons.star_border,
+                                                    color: isFav
+                                                        ? const Color(0xFFF59E0B)
+                                                        : (isDark ? Colors.white38 : Colors.black26),
+                                                    size: 19,
+                                                  ),
+                                                ),
                                               ),
                                             ),
-                                          ),
+                                          ],
                                         ),
+                                      ),
                                       Positioned.fill(
                                         child: Align(
                                           alignment: Alignment.bottomCenter,
@@ -795,6 +925,69 @@ class _PrintTabViewState extends State<PrintTabView> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              // Selected Ingredient Banner with Favorite Toggle
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                margin: const EdgeInsets.only(bottom: 20),
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF1E2030) : const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: isDark ? Colors.white.withValues(alpha: 0.12) : const Color(0xFFCBD5E1),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: _getCategoryColor(_selectedIngredient!.category),
+                                        borderRadius: BorderRadius.circular(5),
+                                      ),
+                                      child: Text(
+                                        _selectedIngredient!.category,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        _selectedIngredient!.name,
+                                        style: TextStyle(
+                                          color: isDark ? Colors.white : Colors.black87,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () => _toggleFavorite(_selectedIngredient!),
+                                        borderRadius: BorderRadius.circular(20),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(6.0),
+                                          child: Icon(
+                                            FavoritesService.instance.isFavorite(_selectedIngredient!.name)
+                                                ? Icons.star
+                                                : Icons.star_border,
+                                            color: FavoritesService.instance.isFavorite(_selectedIngredient!.name)
+                                                ? const Color(0xFFF59E0B)
+                                                : (isDark ? Colors.white38 : Colors.black38),
+                                            size: 22,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
                               Text(
                                 '보관위치',
                                 style: TextStyle(
