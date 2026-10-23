@@ -441,11 +441,8 @@ class BluetoothPrintService {
       ui.Paint()..color = const ui.Color(0xFFFFFFFF),
     );
 
-    // This printer mirrors BITMAP output left-to-right under DIRECTION 1, which
-    // made Hangul come out reversed. Pre-flip the canvas horizontally so the
-    // printer's mirroring cancels back to a correctly readable label.
-    canvas.translate(canvasWidth.toDouble(), 0);
-    canvas.scale(-1, 1);
+    // NOTE: No horizontal pre-flip. The printer outputs BITMAP data as-is, and
+    // a previous pre-flip (translate + scale(-1, 1)) caused mirrored labels.
 
     // Draw with the exact same renderer the on-screen preview uses, at the
     // printer's 8 dots/mm, so the printed label matches the preview 1:1.

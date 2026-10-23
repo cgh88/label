@@ -35,12 +35,12 @@ if not exist "release_windows\PapaLabel_Windows" mkdir "release_windows\PapaLabe
 xcopy /E /I /Y "client_flutter\build\windows\x64\runner\Release\*" "release_windows\PapaLabel_Windows\"
 
 echo [5/5] 배포용 ZIP 파일 생성 중...
-powershell -Command "Compress-Archive -Path 'release_windows\PapaLabel_Windows' -DestinationPath 'files\PapaLabel_Windows_Release.zip' -Force; Copy-Item 'files\PapaLabel_Windows_Release.zip' 'release_windows\PapaLabel_Windows_v1.2.0.zip' -Force"
+powershell -Command "Compress-Archive -Path 'release_windows\PapaLabel_Windows' -DestinationPath 'files\PapaLabel_Windows_Release.zip' -Force; Copy-Item 'files\PapaLabel_Windows_Release.zip' 'release_windows\PapaLabel_Windows_v1.2.2.zip' -Force"
 
 echo ====================================================
 echo [완료] Windows 배포 파일이 성공적으로 생성되었습니다!
 echo  - 배포 실행 폴더: release_windows\PapaLabel_Windows\
 echo  - 웹 배포 ZIP   : files\PapaLabel_Windows_Release.zip
-echo  - 릴리즈 압축본 : release_windows\PapaLabel_Windows_v1.2.0.zip
+echo  - 릴리즈 압축본 : release_windows\PapaLabel_Windows_v1.2.2.zip
 echo ====================================================
 pause
