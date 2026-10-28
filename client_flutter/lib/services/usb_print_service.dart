@@ -7,6 +7,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'print_settings.dart';
 
 class UsbPrintService {
   UsbPrintService._privateConstructor();
@@ -325,12 +326,13 @@ class UsbPrintService {
       }
 
       final nowStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+      final bool mirror = await PrintSettings.isMirrorHorizontal();
 
       doc.addPage(
         pw.Page(
           pageFormat: pageFormat,
           build: (pw.Context context) {
-            return pw.Padding(
+            return PrintSettings.wrapPdf(mirror: mirror, pw.Padding(
               padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -367,7 +369,7 @@ class UsbPrintService {
                   ),
                 ],
               ),
-            );
+            ));
           },
         ),
       );
@@ -430,13 +432,14 @@ class UsbPrintService {
       final double pdfFontSize3 = (fontSize3 * 9.6 / 12.5 * scale).clamp(5.0, 24.0);
       final double pdfLeftPadding = widthPt * (leftPaddingPercent / 100.0);
       final double pdfVerticalGap = verticalGapPt * scale * 0.43;
+      final bool mirror = await PrintSettings.isMirrorHorizontal();
 
       for (int i = 0; i < quantity; i++) {
         doc.addPage(
           pw.Page(
             pageFormat: pageFormat,
             build: (pw.Context context) {
-              return pw.Padding(
+              return PrintSettings.wrapPdf(mirror: mirror, pw.Padding(
                 padding: pw.EdgeInsets.only(
                   left: pdfLeftPadding,
                   right: 6.0,
@@ -483,7 +486,7 @@ class UsbPrintService {
                     ],
                   ],
                 ),
-              );
+              ));
             },
           ),
         );

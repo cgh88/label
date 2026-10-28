@@ -11,6 +11,7 @@ import '../services/bluetooth_service.dart';
 import '../services/usb_print_service.dart';
 import '../services/database_service.dart';
 import '../services/layout_events.dart';
+import '../services/print_settings.dart';
 import '../config/app_version.dart';
 
 class SettingsTabView extends StatefulWidget {
@@ -49,6 +50,7 @@ class _SettingsTabViewState extends State<SettingsTabView> {
   bool _isBluetoothSupported = false;
   bool _isConnecting = false;
   bool _autoConnect = true;
+  bool _mirrorHorizontal = false;
   bool _isTestingUsb = false;
 
   @override
@@ -157,9 +159,11 @@ class _SettingsTabViewState extends State<SettingsTabView> {
 
     final autoConn =
         await BluetoothPrintService.instance.isAutoConnectEnabled();
+    final mirror = await PrintSettings.isMirrorHorizontal();
     if (mounted) {
       setState(() {
         _autoConnect = autoConn;
+        _mirrorHorizontal = mirror;
       });
     }
 
@@ -1935,6 +1939,8 @@ class _SettingsTabViewState extends State<SettingsTabView> {
               ],
             ),
             const SizedBox(height: 16),
+            _buildMirrorToggle(isDark),
+            const SizedBox(height: 16),
 
             // Connection status
             Row(
@@ -2117,6 +2123,49 @@ class _SettingsTabViewState extends State<SettingsTabView> {
     );
   }
 
+  /// Toggle for flipping printed labels left-to-right. Shared by every
+  /// print path (Android TSPL bitmap and Windows PDF).
+  Widget _buildMirrorToggle(bool isDark) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '인쇄 좌우 반전',
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black87,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '라벨 글자가 거울처럼 뒤집혀 나오면 켜거나 끄세요',
+                style: TextStyle(
+                  color: isDark ? Colors.white60 : Colors.black54,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Switch(
+          value: _mirrorHorizontal,
+          activeColor: const Color(0xFF6366F1),
+          onChanged: (val) async {
+            setState(() {
+              _mirrorHorizontal = val;
+            });
+            await PrintSettings.setMirrorHorizontal(val);
+          },
+        ),
+      ],
+    );
+  }
+
   Widget _buildBluetoothPrinterCard(bool isDark) {
     return Card(
       color: isDark ? const Color(0xFF1E2030) : Colors.white,
@@ -2209,6 +2258,8 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+              _buildMirrorToggle(isDark),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,

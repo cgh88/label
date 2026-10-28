@@ -6,6 +6,7 @@ import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'label_renderer.dart';
+import 'print_settings.dart';
 
 class BluetoothPrintService {
   BluetoothPrintService._privateConstructor() {
@@ -397,6 +398,7 @@ class BluetoothPrintService {
       }
     }
 
+    final bool mirror = await PrintSettings.isMirrorHorizontal();
     final Uint8List bitmap = await _renderLabelMonochrome(
       widthBytes: widthBytes,
       widthDots: widthDots,
@@ -404,6 +406,7 @@ class BluetoothPrintService {
       lines: labelLines,
       leftPaddingPercent: leftPaddingPercent,
       verticalGapPt: verticalGapPt,
+      mirror: mirror,
     );
 
     final BytesBuilder out = BytesBuilder();
@@ -432,6 +435,7 @@ class BluetoothPrintService {
     required List<LabelLine> lines,
     required double leftPaddingPercent,
     required double verticalGapPt,
+    bool mirror = false,
   }) async {
     final int canvasWidth = widthBytes * 8;
     final ui.PictureRecorder recorder = ui.PictureRecorder();
@@ -441,8 +445,13 @@ class BluetoothPrintService {
       ui.Paint()..color = const ui.Color(0xFFFFFFFF),
     );
 
-    // NOTE: No horizontal pre-flip. The printer outputs BITMAP data as-is, and
-    // a previous pre-flip (translate + scale(-1, 1)) caused mirrored labels.
+    // Optional left-to-right flip, controlled by the user in Settings
+    // ([인쇄 좌우 반전]). Some printers/firmware mirror BITMAP output and some
+    // don't, so this is a user setting instead of a hard-coded compensation.
+    if (mirror) {
+      canvas.translate(canvasWidth.toDouble(), 0);
+      canvas.scale(-1, 1);
+    }
 
     // Draw with the exact same renderer the on-screen preview uses, at the
     // printer's 8 dots/mm, so the printed label matches the preview 1:1.

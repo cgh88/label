@@ -14,6 +14,7 @@ import '../services/usb_print_service.dart';
 import '../services/favorites_service.dart';
 import '../services/layout_events.dart';
 import '../services/label_renderer.dart';
+import '../services/print_settings.dart';
 
 class PrintTabView extends StatefulWidget {
   final int activeTabIndex;
@@ -425,6 +426,7 @@ class _PrintTabViewState extends State<PrintTabView> {
         fontBold = pw.Font.helveticaBold();
       }
       final storage = _selectedStorage;
+      final bool mirror = await PrintSettings.isMirrorHorizontal();
 
       for (int i = 0; i < qty; i++) {
         doc.addPage(
@@ -462,7 +464,7 @@ class _PrintTabViewState extends State<PrintTabView> {
                 : '폐기: ${_formatDateTime(_computeExpiration(_selectedIngredient!, storage))}';
             final String line4 = '';
 
-            return pw.Padding(
+            return PrintSettings.wrapPdf(mirror: mirror, pw.Padding(
               padding: pw.EdgeInsets.only(
                 left: pdfLeftPadding,
                 right: 6.0,
@@ -509,7 +511,7 @@ class _PrintTabViewState extends State<PrintTabView> {
                   ],
                 ],
               ),
-            );
+            ));
           },
         ),
       );
