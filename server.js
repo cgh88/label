@@ -1717,16 +1717,25 @@ function getAppReleaseInfo() {
     const winZipPath = path.join(__dirname, 'files', 'PapaLabel_Windows_Release.zip');
     const winExists = fs.existsSync(winZipPath);
     const pubspecPath = path.join(__dirname, 'client_flutter', 'pubspec.yaml');
+    const versionJsonPath = path.join(__dirname, 'files', 'app-version.json');
     
-    let version = '1.0.0';
-    let buildNumber = '1';
+    let version = '1.2.3';
+    let buildNumber = '7';
     
-    if (fs.existsSync(pubspecPath)) {
+    if (fs.existsSync(versionJsonPath)) {
+        try {
+            const verData = JSON.parse(fs.readFileSync(versionJsonPath, 'utf8'));
+            if (verData.version) version = String(verData.version);
+            if (verData.buildNumber) buildNumber = String(verData.buildNumber);
+        } catch (e) {
+            // fallback to pubspec or default
+        }
+    } else if (fs.existsSync(pubspecPath)) {
         const pubContent = fs.readFileSync(pubspecPath, 'utf8');
         const match = pubContent.match(/^version:\s*([^\s+]+)\+?(\d+)?/m);
         if (match) {
-            version = match[1] || '1.0.0';
-            buildNumber = match[2] || '1';
+            version = match[1] || '1.2.3';
+            buildNumber = match[2] || '7';
         }
     }
 

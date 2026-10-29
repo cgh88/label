@@ -3,6 +3,7 @@ const path = require('path');
 
 const pubspecPath = path.join(__dirname, '..', 'client_flutter', 'pubspec.yaml');
 const appVersionDartPath = path.join(__dirname, '..', 'client_flutter', 'lib', 'config', 'app_version.dart');
+const filesVersionJsonPath = path.join(__dirname, '..', 'files', 'app-version.json');
 
 function getFormattedDate(date = new Date()) {
     const yyyy = date.getFullYear();
@@ -52,6 +53,16 @@ class AppVersion {
 `;
 
     fs.writeFileSync(appVersionDartPath, dartContent, 'utf8');
+
+    const filesDir = path.dirname(filesVersionJsonPath);
+    if (fs.existsSync(filesDir)) {
+        fs.writeFileSync(
+            filesVersionJsonPath,
+            JSON.stringify({ version, buildNumber: String(buildNumber), buildDate: nowStr }, null, 2) + '\n',
+            'utf8'
+        );
+    }
+
     console.log(`[성공] 앱 버전 정보가 자동 생성되었습니다:`);
     console.log(` - 버전: v${version} (빌드 #${buildNumber})`);
     console.log(` - 빌드 일시: ${nowStr}`);
