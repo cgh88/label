@@ -3,6 +3,7 @@ const fs = require('fs');
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const crypto = require('crypto');
+const zlib = require('zlib');
 const multer = require('multer');
 const xlsx = require('xlsx');
 
@@ -1712,6 +1713,142 @@ function findApkPath() {
     return locations.find(p => fs.existsSync(p)) || null;
 }
 
+let cachedApkMeta = { key: '', version: null, buildNumber: null };
+
+/**
+ * Reads `versionName` and `versionCode` directly from the APK's binary AndroidManifest.xml.
+ * Uses partial file reads (ZIP Central Directory + AndroidManifest.xml entry) and caches by mtime/size.
+ */
+function extractVersionFromApk(apkPath, stats) {
+    try {
+        const cacheKey = `${apkPath}:${stats.size}:${stats.mtimeMs}`;
+        if (cachedApkMeta.key === cacheKey && cachedApkMeta.version) {
+            return cachedApkMeta;
+        }
+
+        const fd = fs.openSync(apkPath, 'r');
+        try {
+            const fileSize = stats.size;
+            const tailSize = Math.min(fileSize, 65557);
+            const tailBuf = Buffer.alloc(tailSize);
+            fs.readSync(fd, tailBuf, 0, tailSize, fileSize - tailSize);
+
+            let eocd = tailBuf.length - 22;
+            while (eocd >= 0 && tailBuf.readUInt32LE(eocd) !== 0x06054b50) eocd--;
+            if (eocd < 0) return null;
+
+            const cdEntries = tailBuf.readUInt16LE(eocd + 10);
+            const cdSize = tailBuf.readUInt32LE(eocd + 12);
+            const cdOffset = tailBuf.readUInt32LE(eocd + 16);
+
+            const cdBuf = Buffer.alloc(cdSize);
+            fs.readSync(fd, cdBuf, 0, cdSize, cdOffset);
+
+            let pos = 0;
+            let xmlBuf = null;
+            for (let i = 0; i < cdEntries && pos + 46 <= cdBuf.length; i++) {
+                const method = cdBuf.readUInt16LE(pos + 10);
+                const compSize = cdBuf.readUInt32LE(pos + 20);
+                const fnLen = cdBuf.readUInt16LE(pos + 28);
+                const exLen = cdBuf.readUInt16LE(pos + 30);
+                const cmLen = cdBuf.readUInt16LE(pos + 32);
+                const lfhOffset = cdBuf.readUInt32LE(pos + 42);
+                const name = cdBuf.toString('utf8', pos + 46, pos + 46 + fnLen);
+
+                if (name === 'AndroidManifest.xml') {
+                    const lfhBuf = Buffer.alloc(30);
+                    fs.readSync(fd, lfhBuf, 0, 30, lfhOffset);
+                    const lfhFnLen = lfhBuf.readUInt16LE(26);
+                    const lfhExLen = lfhBuf.readUInt16LE(28);
+                    const dataStart = lfhOffset + 30 + lfhFnLen + lfhExLen;
+                    const compBuf = Buffer.alloc(compSize);
+                    fs.readSync(fd, compBuf, 0, compSize, dataStart);
+                    xmlBuf = method === 8 ? zlib.inflateRawSync(compBuf) : compBuf;
+                    break;
+                }
+                pos += 46 + fnLen + exLen + cmLen;
+            }
+
+            if (!xmlBuf) return null;
+
+            let offset = 8;
+            const strings = [];
+            const resIds = [];
+            let versionCode = null;
+            let versionName = null;
+
+            while (offset + 8 <= xmlBuf.length) {
+                const chunkType = xmlBuf.readUInt16LE(offset);
+                const headerSize = xmlBuf.readUInt16LE(offset + 2);
+                const chunkSize = xmlBuf.readUInt32LE(offset + 4);
+                if (chunkSize <= 0) break;
+
+                if (chunkType === 0x0001) {
+                    const stringCount = xmlBuf.readUInt32LE(offset + 8);
+                    const flags = xmlBuf.readUInt32LE(offset + 16);
+                    const stringsStart = offset + xmlBuf.readUInt32LE(offset + 20);
+                    const isUtf8 = (flags & (1 << 8)) !== 0;
+                    for (let i = 0; i < stringCount; i++) {
+                        const strOffset = stringsStart + xmlBuf.readUInt32LE(offset + 28 + i * 4);
+                        if (isUtf8) {
+                            let p = strOffset;
+                            let charLen = xmlBuf[p++];
+                            if (charLen & 0x80) p++;
+                            let byteLen = xmlBuf[p++];
+                            if (byteLen & 0x80) byteLen = ((byteLen & 0x7f) << 8) | xmlBuf[p++];
+                            strings.push(xmlBuf.toString('utf8', p, p + byteLen));
+                        } else {
+                            let p = strOffset;
+                            let charLen = xmlBuf.readUInt16LE(p); p += 2;
+                            if (charLen & 0x8000) { charLen = ((charLen & 0x7fff) << 16) | xmlBuf.readUInt16LE(p); p += 2; }
+                            strings.push(xmlBuf.toString('utf16le', p, p + charLen * 2));
+                        }
+                    }
+                } else if (chunkType === 0x0180) {
+                    const count = (chunkSize - headerSize) / 4;
+                    for (let i = 0; i < count; i++) {
+                        resIds.push(xmlBuf.readUInt32LE(offset + headerSize + i * 4));
+                    }
+                } else if (chunkType === 0x0102) {
+                    const attrExtOffset = offset + headerSize;
+                    const nameIdx = xmlBuf.readInt32LE(attrExtOffset + 4);
+                    const attrStart = xmlBuf.readUInt16LE(attrExtOffset + 8);
+                    const attrSize = xmlBuf.readUInt16LE(attrExtOffset + 10);
+                    const attrCount = xmlBuf.readUInt16LE(attrExtOffset + 12);
+                    if (strings[nameIdx] === 'manifest') {
+                        let aPos = attrExtOffset + attrStart;
+                        for (let i = 0; i < attrCount; i++) {
+                            const aNameIdx = xmlBuf.readInt32LE(aPos + 4);
+                            const aRawValIdx = xmlBuf.readInt32LE(aPos + 8);
+                            const aData = xmlBuf.readUInt32LE(aPos + 16);
+                            const resId = aNameIdx >= 0 && aNameIdx < resIds.length ? resIds[aNameIdx] : 0;
+                            const attrName = strings[aNameIdx] || '';
+                            if (resId === 0x0101021b || attrName === 'versionCode') {
+                                versionCode = String(aData);
+                            } else if (resId === 0x0101021c || attrName === 'versionName') {
+                                versionName = aRawValIdx >= 0 ? strings[aRawValIdx] : String(aData);
+                            }
+                            aPos += attrSize;
+                        }
+                        break;
+                    }
+                }
+                offset += chunkSize;
+            }
+
+            if (versionName) {
+                cachedApkMeta = { key: cacheKey, version: versionName, buildNumber: versionCode || '1' };
+                return cachedApkMeta;
+            }
+        } finally {
+            fs.closeSync(fd);
+        }
+    } catch (e) {
+        console.warn('[APK Parser] Failed to extract version from APK:', e.message);
+    }
+    return null;
+}
+
 function getAppReleaseInfo() {
     const apkPath = findApkPath();
     const winZipPath = path.join(__dirname, 'files', 'PapaLabel_Windows_Release.zip');
@@ -1741,6 +1878,11 @@ function getAppReleaseInfo() {
 
     if (apkPath) {
         const stats = fs.statSync(apkPath);
+        const apkMeta = extractVersionFromApk(apkPath, stats);
+        if (apkMeta && apkMeta.version) {
+            version = apkMeta.version;
+            buildNumber = apkMeta.buildNumber;
+        }
         const buildDate = stats.mtime.toISOString();
         const sizeMb = (stats.size / (1024 * 1024)).toFixed(1);
         return {
@@ -1768,6 +1910,7 @@ function getAppReleaseInfo() {
 }
 
 app.get('/api/app-info', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.json(getAppReleaseInfo());
 });
 
@@ -1829,6 +1972,7 @@ app.post('/api/system-settings', requireAdmin, async (req, res) => {
 // APK Download & App Version API
 // ==========================================
 app.get('/api/version', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.json(getAppReleaseInfo());
 });
 
