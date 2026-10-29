@@ -7,6 +7,7 @@ import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:printing/printing.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/api_sync_service.dart';
+import '../services/app_update_service.dart';
 import '../services/bluetooth_service.dart';
 import '../services/usb_print_service.dart';
 import '../services/database_service.dart';
@@ -1064,6 +1065,36 @@ class _SettingsTabViewState extends State<SettingsTabView> {
                   ),
                 ),
                 const SizedBox(height: 12),
+                if (!kIsWeb) ...[
+                  OutlinedButton.icon(
+                    onPressed:
+                        () => AppUpdateService.instance.checkAndPromptUpdate(
+                          context,
+                        ),
+                    icon: const Icon(
+                      Icons.install_mobile,
+                      color: Color(0xFFFF1E1E),
+                    ),
+                    label: const Text(
+                      '앱 프로그램 업데이트 확인 / 원터치 설치',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFFF1E1E),
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: const BorderSide(
+                        color: Color(0xFFFF1E1E),
+                        width: 1.2,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 OutlinedButton.icon(
                   onPressed: _performVersionUpdate,
                   icon: const Icon(Icons.system_update_alt, color: Color(0xFF6366F1)),

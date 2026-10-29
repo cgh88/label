@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_sync_service.dart';
+import 'services/app_update_service.dart';
 import 'services/bluetooth_service.dart';
 import 'services/usb_print_service.dart';
 import 'services/database_service.dart';
@@ -431,6 +432,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _loadOrientationPreference();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        AppUpdateService.instance.checkOnStartupIfNeeded(context);
+      }
+    });
   }
 
   void _navigateToSettings() {
